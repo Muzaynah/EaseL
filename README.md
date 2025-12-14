@@ -4,15 +4,11 @@ EaseL is a browser-based assistive drawing and learning application designed for
 
 EaseL is implemented as a Progressive Web Application (PWA) and runs entirely on the client side to ensure privacy, accessibility, and ease of deployment.
 
----
-
 ## Motivation
 
 Most digital art and learning tools rely on fine motor control through a mouse, keyboard, or touch input. Individuals with neuromotor disabilities often face significant barriers when accessing such systems.
 
 EaseL addresses this gap by providing an inclusive, hands-free platform that enables creative expression and guided learning using only a webcam and facial movement. The project focuses on accessibility, privacy, and low-cost deployment.
-
----
 
 ## Key Features
 
@@ -28,22 +24,6 @@ EaseL addresses this gap by providing an inclusive, hands-free platform that ena
 - Progressive Web App support with offline functionality
 - Fully client-side processing with no backend dependency
 
----
-
-## System Architecture Overview
-
-EaseL follows a layered client-side architecture:
-
-- Presentation Layer: User interface and accessibility components
-- Interaction Layer: Gesture detection and mode control
-- Processing Layer: Face tracking, smoothing, and drawing logic
-- Data Layer: Local persistence using browser storage
-- External Libraries: MediaPipe FaceMesh, p5.js, and Web APIs
-
-The system does not require a backend server for core functionality.
-
----
-
 ## Technologies Used
 
 - Frontend Framework: React
@@ -54,8 +34,6 @@ The system does not require a backend server for core functionality.
 - APIs: WebRTC getUserMedia and Web Speech API
 - Build Tools: Vite
 
----
-
 ## Getting Started
 
 ### Prerequisites
@@ -63,23 +41,10 @@ The system does not require a backend server for core functionality.
 - Webcam with at least 720p resolution
 - Stable lighting environment
 
-### Installation
+### Running the Application
 
-1. Clone the repository:
-   git clone https://github.com/your-username/EaseL.git
-
-2. Navigate to the project directory:
-   cd EaseL
-
-3. Install dependencies:
-   npm install
-
-4. Start the development server:
-   npm run dev
-
-5. Open the provided local URL in your browser.
-
----
+1. PWA Installation Guide
+2. Browser Guide
 
 ## Usage Overview
 
@@ -91,8 +56,6 @@ The system does not require a backend server for core functionality.
 6. Save or export artwork locally
 7. Explore guided learning modules
 
----
-
 ## Accessibility Considerations
 
 - Large and clearly labeled interface elements
@@ -101,8 +64,6 @@ The system does not require a backend server for core functionality.
 - No requirement for hand or finger input
 - Designed following WCAG 2.1 accessibility principles
 
----
-
 ## Privacy and Security
 
 - All video processing occurs locally in the browser
@@ -110,13 +71,9 @@ The system does not require a backend server for core functionality.
 - No user accounts or cloud storage required
 - Diagnostics and logging are optional and local-only
 
----
-
 ## License
 
 This project is licensed under the MIT License.
-
----
 
 ## Acknowledgments
 
