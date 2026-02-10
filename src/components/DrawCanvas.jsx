@@ -1,7 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { FaceMesh } from "@mediapipe/face_mesh";
-import { Camera } from "@mediapipe/camera_utils";
-import Controls from "./Controls";
 
 export default function DrawCanvas() {
   const canvasRef = useRef(null);
