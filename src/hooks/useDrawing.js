@@ -1,108 +1,97 @@
-// hooks/useDrawing.js
-// Hook for managing canvas drawing with undo/redo functionality
-
 import { useRef, useCallback, useState } from "react";
+import { drawSmoothLine, floodFill } from "../utils/canvasUtils";
 
 export function useDrawing({ canvasRef, brushSize, brushColor, tool }) {
-  const prevPos = useRef({ x: null, y: null });
+  const pointsRef = useRef([]);
   const history = useRef([]);
   const historyStep = useRef(-1);
+  const isDrawing = useRef(false);
+
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
-  const isDrawing = useRef(false);
-  const strokeStarted = useRef(false);
 
   const saveState = useCallback(() => {
-    if (!canvasRef.current) return;
-
     const canvas = canvasRef.current;
-    const imageData = canvas.toDataURL();
+    if (!canvas) return;
 
-    // Remove any redo states when drawing new stroke
+    const image = canvas.toDataURL();
+
     historyStep.current++;
     history.current = history.current.slice(0, historyStep.current);
-    history.current.push(imageData);
-
-    // Limit history to 50 steps
-    if (history.current.length > 50) {
-      history.current.shift();
-      historyStep.current--;
-    }
+    history.current.push(image);
 
     setCanUndo(historyStep.current > 0);
     setCanRedo(false);
   }, [canvasRef]);
 
-  const restoreState = useCallback((imageData) => {
-    if (!canvasRef.current) return;
+  const restoreState = useCallback(
+    (image) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
 
-    img.onload = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-    };
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+      };
 
-    img.src = imageData;
-  }, [canvasRef]);
+      img.src = image;
+    },
+    [canvasRef]
+  );
 
   const startStroke = useCallback(() => {
-    prevPos.current = { x: null, y: null };
-    strokeStarted.current = false;
+    pointsRef.current = [];
     isDrawing.current = true;
   }, []);
 
   const endStroke = useCallback(() => {
-    if (strokeStarted.current) {
-      saveState();
-    }
-    prevPos.current = { x: null, y: null };
-    strokeStarted.current = false;
+    if (!isDrawing.current) return;
+
+    if (pointsRef.current.length > 0) saveState();
+
+    pointsRef.current = [];
     isDrawing.current = false;
   }, [saveState]);
 
-  const draw = useCallback((x, y) => {
-    if (!canvasRef.current || !isDrawing.current) return;
+  const draw = useCallback(
+    (x, y) => {
+      const canvas = canvasRef.current;
+      if (!canvas || !isDrawing.current) return;
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+      const ctx = canvas.getContext("2d");
 
-    ctx.strokeStyle = tool === "eraser" ? "#FFFFFF" : brushColor;
-    ctx.lineWidth = brushSize;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
+      if (tool === "fill") {
+        floodFill(ctx, Math.floor(x), Math.floor(y), brushColor);
+        saveState();
+        isDrawing.current = false;
+        return;
+      }
 
-    if (prevPos.current.x !== null && prevPos.current.y !== null) {
-      // Draw smooth line using quadratic curves
-      ctx.beginPath();
-      const midX = (prevPos.current.x + x) / 2;
-      const midY = (prevPos.current.y + y) / 2;
-      ctx.moveTo(prevPos.current.x, prevPos.current.y);
-      ctx.quadraticCurveTo(prevPos.current.x, prevPos.current.y, midX, midY);
-      ctx.stroke();
-      strokeStarted.current = true;
-    } else {
-      // First point - just draw a dot
-      ctx.beginPath();
-      ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
-      ctx.fill();
-      strokeStarted.current = true;
-    }
+      pointsRef.current.push({ x, y });
 
-    prevPos.current = { x, y };
-  }, [canvasRef, brushSize, brushColor, tool]);
+      const isEraser = tool === "eraser";
+
+      drawSmoothLine(
+        ctx,
+        pointsRef.current,
+        brushColor,
+        brushSize,
+        isEraser
+      );
+    },
+    [canvasRef, brushColor, brushSize, tool, saveState]
+  );
 
   const clear = useCallback(() => {
-    if (!canvasRef.current) return;
-
     const canvas = canvasRef.current;
+    if (!canvas) return;
+
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
     saveState();
-    prevPos.current = { x: null, y: null };
   }, [canvasRef, saveState]);
 
   const undo = useCallback(() => {
@@ -110,10 +99,9 @@ export function useDrawing({ canvasRef, brushSize, brushColor, tool }) {
 
     historyStep.current--;
     restoreState(history.current[historyStep.current]);
-    
+
     setCanUndo(historyStep.current > 0);
     setCanRedo(true);
-    prevPos.current = { x: null, y: null };
   }, [restoreState]);
 
   const redo = useCallback(() => {
@@ -121,19 +109,16 @@ export function useDrawing({ canvasRef, brushSize, brushColor, tool }) {
 
     historyStep.current++;
     restoreState(history.current[historyStep.current]);
-    
+
     setCanUndo(true);
     setCanRedo(historyStep.current < history.current.length - 1);
-    prevPos.current = { x: null, y: null };
   }, [restoreState]);
 
-  // Initialize with blank state
   const initCanvas = useCallback(() => {
-    if (!canvasRef.current) return;
-    
     const canvas = canvasRef.current;
-    const imageData = canvas.toDataURL();
-    history.current = [imageData];
+    if (!canvas) return;
+
+    history.current = [canvas.toDataURL()];
     historyStep.current = 0;
   }, [canvasRef]);
 

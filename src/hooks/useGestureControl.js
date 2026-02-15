@@ -1,16 +1,18 @@
 import { useRef, useCallback } from "react";
 
 export function useGestureControl({
-  onPositionUpdate,
   onPenToggle,
   onButtonHover,
   buttonRefs,
 }) {
-  const currentPos = useRef({ x: 800, y: 500 });
+  const cursorPos = useRef({ x: 800, y: 500 });
   const lastToggleTime = useRef(0);
 
   const processLandmarks = useCallback(
     (landmarks, isPenDown) => {
+      if (!landmarks) return { position: cursorPos.current, hoveredBtn: null };
+
+      /* ================= HEAD POSITION ================= */
       const nose = landmarks[1];
       const leftEar = landmarks[234];
       const rightEar = landmarks[454];
@@ -25,78 +27,48 @@ export function useGestureControl({
       const sensitivity = 80;
       const friction = 0.65;
 
-      let dx = 0;
-      let dy = 0;
+      let dx = Math.abs(yaw) > deadzone ? (yaw - Math.sign(yaw) * deadzone) * sensitivity : 0;
+      let dy = Math.abs(pitch) > deadzone ? (pitch - Math.sign(pitch) * deadzone) * sensitivity : 0;
 
-      if (Math.abs(yaw) > deadzone) {
-        dx = (yaw - Math.sign(yaw) * deadzone) * sensitivity;
-      }
-      if (Math.abs(pitch) > deadzone) {
-        dy = (pitch - Math.sign(pitch) * deadzone) * sensitivity;
-      }
+      cursorPos.current.x -= dx * friction;
+      cursorPos.current.y += dy * friction;
 
-      currentPos.current.x -= dx * friction;
-      currentPos.current.y += dy * friction;
+      cursorPos.current.x = Math.max(0, Math.min(window.innerWidth, cursorPos.current.x));
+      cursorPos.current.y = Math.max(0, Math.min(window.innerHeight, cursorPos.current.y));
 
-      currentPos.current.x = Math.max(
-        0,
-        Math.min(window.innerWidth, currentPos.current.x)
-      );
-      currentPos.current.y = Math.max(
-        0,
-        Math.min(window.innerHeight, currentPos.current.y)
-      );
-
-      // Immediately update cursor using ref value
-      onPositionUpdate?.({
-        x: currentPos.current.x,
-        y: currentPos.current.y,
-      });
-
-      // Hover detection
-      let hovered = null;
+      /* ================= BUTTON HOVER ================= */
+      let hoveredBtn = null;
       Object.keys(buttonRefs.current).forEach((id) => {
         const btn = buttonRefs.current[id];
         if (!btn) return;
-        const b = btn.getBoundingClientRect();
+        const rect = btn.getBoundingClientRect();
+
         if (
-          currentPos.current.x >= b.left &&
-          currentPos.current.x <= b.right &&
-          currentPos.current.y >= b.top &&
-          currentPos.current.y <= b.bottom
+          cursorPos.current.x >= rect.left &&
+          cursorPos.current.x <= rect.right &&
+          cursorPos.current.y >= rect.top &&
+          cursorPos.current.y <= rect.bottom
         ) {
-          hovered = id;
+          hoveredBtn = id;
         }
       });
+      onButtonHover?.(hoveredBtn);
 
-      onButtonHover?.(hovered);
-
-      // Mouth toggle with time based cooldown
+      /* ================= MOUTH → PEN TOGGLE ================= */
       const mouthHeight = Math.abs(landmarks[13].y - landmarks[14].y);
       const isMouthOpen = mouthHeight > 0.045;
-
       const now = performance.now();
       const cooldownMs = 600;
 
-      if (isMouthOpen && now - lastToggleTime.current > cooldownMs) {
-        if (hovered) {
-          return {
-            position: currentPos.current,
-            hoveredBtn: hovered,
-          };
-        } else {
-          onPenToggle?.(!isPenDown);
-          lastToggleTime.current = now;
-        }
+      if (isMouthOpen && now - lastToggleTime.current > cooldownMs && !hoveredBtn) {
+        onPenToggle?.(!isPenDown);
+        lastToggleTime.current = now;
       }
 
-      return {
-        position: currentPos.current,
-        hoveredBtn: null,
-      };
+      return { position: cursorPos.current, hoveredBtn };
     },
-    [buttonRefs, onButtonHover, onPenToggle, onPositionUpdate]
+    [buttonRefs, onButtonHover, onPenToggle]
   );
 
-  return { processLandmarks };
+  return { cursorPos, processLandmarks };
 }
