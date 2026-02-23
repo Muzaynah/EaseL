@@ -5,7 +5,7 @@ const Cursor = forwardRef(({ size, color, isPenDown, tool }, ref) => {
   return (
     <div
       ref={ref}
-      className="fixed pointer-events-none rounded-full border-3 transition-all duration-75 z-[999]"
+      className="fixed pointer-events-none rounded-full border-3 z-[999]"
       style={{
         width: size + 8,
         height: size + 8,

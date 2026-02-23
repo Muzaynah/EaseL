@@ -1,12 +1,17 @@
-
 // hooks/useFaceMesh.js
 // Hook for initializing and managing MediaPipe FaceMesh
 
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
+
+// Set window.EaseL_DEBUG = false in console to disable timing logs
+const DEBUG = typeof window === "undefined" || window.EaseL_DEBUG !== false;
 
 export function useFaceMesh({ videoRef, onResults }) {
   const faceMeshRef = useRef(null);
   const cameraRef = useRef(null);
+  const onResultsRef = useRef(onResults);
+  const debugFrameCountRef = useRef(0);
+  onResultsRef.current = onResults;
 
   const startFaceMesh = useCallback(() => {
     const script1 = document.createElement("script");
@@ -30,8 +35,22 @@ export function useFaceMesh({ videoRef, onResults }) {
         minTrackingConfidence: 0.8,
       });
 
-      faceMesh.onResults(onResults);
+      faceMesh.onResults((results) => {
+        if (DEBUG) {
+          const t0 = performance.now();
+          onResultsRef.current(results);
+          const dt = performance.now() - t0;
+          debugFrameCountRef.current++;
+          if (debugFrameCountRef.current % 60 === 0) {
+            console.log("[EaseL] faceMesh onResults (every 60 frames):", dt.toFixed(2), "ms");
+          }
+        } else {
+          onResultsRef.current(results);
+        }
+      });
       faceMeshRef.current = faceMesh;
+
+      if (DEBUG) console.log("[EaseL] FaceMesh + Camera started (onResults stabilized via ref)");
 
       if (videoRef.current) {
         const camera = new window.Camera(videoRef.current, {
@@ -47,10 +66,11 @@ export function useFaceMesh({ videoRef, onResults }) {
     };
 
     return () => {
+      if (DEBUG) console.log("[EaseL] FaceMesh cleanup (camera stop, faceMesh close)");
       faceMeshRef.current?.close?.();
       cameraRef.current?.stop?.();
     };
-  }, [videoRef, onResults]);
+  }, [videoRef]);
 
   return { startFaceMesh };
 }

@@ -1,3 +1,4 @@
+// utils/canvasUtils.js
 export function getCanvasCoordinates(canvas, clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
 
@@ -25,6 +26,7 @@ export function drawSmoothLine(ctx, points, color, size, isEraser = false) {
   }
 
   ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
 
   for (let i = 0; i < points.length - 1; i++) {
     const midX = (points[i].x + points[i + 1].x) / 2;
@@ -38,24 +40,48 @@ export function drawSmoothLine(ctx, points, color, size, isEraser = false) {
   ctx.globalCompositeOperation = "source-over";
 }
 
+/** Draw a single segment from (fromX, fromY) to (toX, toY) with control point (ctrlX, ctrlY). Used for incremental strokes so segments connect. */
+export function drawSegment(ctx, fromX, fromY, ctrlX, ctrlY, toX, toY, color, size, isEraser = false) {
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.lineWidth = size;
+  if (isEraser) {
+    ctx.globalCompositeOperation = "destination-out";
+  } else {
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = color;
+  }
+  ctx.beginPath();
+  ctx.moveTo(fromX, fromY);
+  ctx.quadraticCurveTo(ctrlX, ctrlY, toX, toY);
+  ctx.stroke();
+  ctx.closePath();
+  ctx.globalCompositeOperation = "source-over";
+}
+
 export function floodFill(ctx, startX, startY, fillColor) {
   const canvas = ctx.canvas;
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const w = canvas.width;
+  const h = canvas.height;
+  if (startX < 0 || startX >= w || startY < 0 || startY >= h) return;
+
+  const imageData = ctx.getImageData(0, 0, w, h);
   const data = imageData.data;
 
   const stack = [[startX, startY]];
-  const targetColor = getColorAtPixel(data, canvas.width, startX, startY);
+  const targetColor = getColorAtPixel(data, w, startX, startY);
   const fill = hexToRgba(fillColor);
 
   if (colorsMatch(targetColor, fill)) return;
 
   while (stack.length) {
     const [x, y] = stack.pop();
-    const currentColor = getColorAtPixel(data, canvas.width, x, y);
+    if (x < 0 || x >= w || y < 0 || y >= h) continue;
+    const currentColor = getColorAtPixel(data, w, x, y);
 
     if (!colorsMatch(currentColor, targetColor)) continue;
 
-    setColorAtPixel(data, canvas.width, x, y, fill);
+    setColorAtPixel(data, w, x, y, fill);
 
     stack.push([x + 1, y]);
     stack.push([x - 1, y]);

@@ -19,7 +19,7 @@ const CanvasControls = React.forwardRef(({
 }, ref) => {
 
   const panelRef = useRef(null);
-  const [position, setPosition] = useState({ x: 40, y: 40 });
+  const [position, setPosition] = useState({ x: 20, y: 100 });
   const [dragging, setDragging] = useState(false);
   const offset = useRef({ x: 0, y: 0 });
 
