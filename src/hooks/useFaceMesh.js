@@ -9,6 +9,7 @@ const DEBUG = typeof window === "undefined" || window.EaseL_DEBUG !== false;
 export function useFaceMesh({ videoRef, onResults }) {
   const faceMeshRef = useRef(null);
   const cameraRef = useRef(null);
+  const cameraStartTimeoutRef = useRef(null);
   const onResultsRef = useRef(onResults);
   const debugFrameCountRef = useRef(0);
   onResultsRef.current = onResults;
@@ -52,21 +53,37 @@ export function useFaceMesh({ videoRef, onResults }) {
 
       if (DEBUG) console.log("[EaseL] FaceMesh + Camera started (onResults stabilized via ref)");
 
-      if (videoRef.current) {
-        const camera = new window.Camera(videoRef.current, {
+      const startCameraWhenVideoReady = () => {
+        if (!videoRef.current) {
+          const t = setTimeout(startCameraWhenVideoReady, 50);
+          cameraStartTimeoutRef.current = t;
+          return;
+        }
+        if (!window.Camera) {
+          const t = setTimeout(startCameraWhenVideoReady, 50);
+          cameraStartTimeoutRef.current = t;
+          return;
+        }
+        if (cameraStartTimeoutRef.current) clearTimeout(cameraStartTimeoutRef.current);
+        cameraStartTimeoutRef.current = null;
+        const video = videoRef.current;
+        const camera = new window.Camera(video, {
           onFrame: async () => {
-            await faceMesh.send({ image: videoRef.current });
+            if (videoRef.current) await faceMesh.send({ image: videoRef.current });
           },
           width: 640,
           height: 480,
         });
         camera.start();
         cameraRef.current = camera;
-      }
+      };
+      startCameraWhenVideoReady();
     };
 
     return () => {
       if (DEBUG) console.log("[EaseL] FaceMesh cleanup (camera stop, faceMesh close)");
+      if (cameraStartTimeoutRef.current) clearTimeout(cameraStartTimeoutRef.current);
+      cameraStartTimeoutRef.current = null;
       faceMeshRef.current?.close?.();
       cameraRef.current?.stop?.();
     };

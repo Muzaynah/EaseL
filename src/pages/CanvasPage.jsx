@@ -136,8 +136,20 @@ export default function CanvasPage() {
         prevSettings.current = { color: brushColor, tool, size: brushSize };
     }, [brushColor, tool, brushSize]);
 
+    // Start face mesh after a short delay so the video element is mounted and ref is set
+    // (avoids cursor not moving on first visit due to ref being null when script onload runs).
     useEffect(() => {
-        startFaceMesh();
+        let cancelled = false;
+        let faceMeshCleanup = null;
+        const timeoutId = setTimeout(() => {
+            if (cancelled) return;
+            faceMeshCleanup = startFaceMesh();
+        }, 150);
+        return () => {
+            cancelled = true;
+            clearTimeout(timeoutId);
+            if (typeof faceMeshCleanup === "function") faceMeshCleanup();
+        };
     }, [startFaceMesh]);
 
     useEffect(() => {
