@@ -7,6 +7,7 @@ import CanvasControls from "../components/CanvasControls";
 import { getCanvasCoordinates } from "../utils/canvasUtils";
 
 import DrawingCanvas from "../components/DrawingCanvas";
+import LayerPanel from "../components/LayerPanel";
 import CameraPreview from "../components/CameraPreview";
 import Cursor from "../components/Cursor";
 import StatusHUD from "../components/StatusHUD";
@@ -32,6 +33,11 @@ export default function CanvasPage() {
 
     const [hoveredButton, setHoveredButton] = useState(null);
 
+    const [layers, setLayers] = useState([
+        { id: "layer_1", name: "Layer 1", visible: true, canvasData: null },
+    ]);
+    const [activeLayerId, setActiveLayerId] = useState("layer_1");
+
     const buttonRefs = useRef({});
     
     // Track previous settings to detect changes
@@ -53,11 +59,14 @@ export default function CanvasPage() {
         canUndo,
         canRedo,
         initCanvas,
+        getLayerCanvasData,
     } = useDrawing({
         canvasRef,
         brushSize,
         brushColor,
         tool,
+        layers,
+        activeLayerId,
     });
 
     const { processLandmarks } = useGestureControl({
@@ -115,6 +124,44 @@ export default function CanvasPage() {
         else if (btnId === "brush") setTool("brush");
         else if (btnId === "eraser") setTool("eraser");
         else if (btnId === "fill") setTool("fill");
+    }
+
+    function handleLayerAdd() {
+        const id = `layer_${Date.now()}`;
+        setLayers((prev) => [
+            ...prev,
+            { id, name: `Layer ${prev.length + 1}`, visible: true, canvasData: null },
+        ]);
+        setActiveLayerId(id);
+    }
+
+    function handleLayerDelete(layerId) {
+        if (layers.length <= 1) return;
+        const next = layers.filter((l) => l.id !== layerId);
+        setLayers(next);
+        if (activeLayerId === layerId) setActiveLayerId(next[0]?.id ?? "layer_1");
+    }
+
+    function handleLayerSelect(layerId) {
+        setActiveLayerId(layerId);
+    }
+
+    function handleLayerToggleVisibility(layerId) {
+        setLayers((prev) =>
+            prev.map((l) => (l.id === layerId ? { ...l, visible: !l.visible } : l))
+        );
+    }
+
+    function handleLayerReorder(layerId, direction) {
+        setLayers((prev) => {
+            const i = prev.findIndex((l) => l.id === layerId);
+            if (i === -1) return prev;
+            const j = direction === "up" ? i - 1 : i + 1;
+            if (j < 0 || j >= prev.length) return prev;
+            const next = [...prev];
+            [next[i], next[j]] = [next[j], next[i]];
+            return next;
+        });
     }
 
     // Detect setting changes and force stroke restart
@@ -272,21 +319,32 @@ export default function CanvasPage() {
                 hoveredButton={hoveredButton}
             />
 
+            <LayerPanel
+                layers={layers}
+                activeLayerId={activeLayerId}
+                getLayerCanvasData={getLayerCanvasData}
+                onLayerSelect={handleLayerSelect}
+                onLayerAdd={handleLayerAdd}
+                onLayerDelete={handleLayerDelete}
+                onLayerToggleVisibility={handleLayerToggleVisibility}
+                onLayerReorder={handleLayerReorder}
+            />
+
             <CameraPreview videoRef={videoRef} />
 
-            {/* Save button: top-right aligned with status bar, with cooldown and feedback */}
-            <div className="absolute top-6 right-6 z-[200] flex flex-col items-end gap-2">
+            {/* Save button: card-aligned with app style */}
+            <div className="absolute top-6 right-6 z-[200] flex flex-col items-end gap-2 p-3 rounded-2xl bg-white/90 backdrop-blur-md shadow-2xl border border-white/50">
                 <button
                     onClick={saveProject}
                     disabled={saveStatus !== "idle"}
                     className={`
-                        px-5 py-2.5 rounded-xl font-semibold text-sm shadow-lg transition-all
+                        min-h-12 px-6 rounded-2xl font-semibold text-sm shadow-lg transition-all
                         flex items-center justify-center gap-2 min-w-[120px]
                         ${saveStatus === "saving"
                             ? "bg-indigo-400 cursor-wait text-white"
                             : saveStatus === "saved"
                                 ? "bg-emerald-600 text-white cursor-default"
-                                : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                                : "bg-gradient-to-br from-indigo-500 to-purple-600 hover:opacity-95 text-white"
                         }
                     `}
                 >
