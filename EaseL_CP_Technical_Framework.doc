@@ -1,0 +1,368 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Calibri;}}
+\fs24
+
+\pard\qc\b\f0\fs40 EaseL\line
+Cerebral Palsy–Specific Technical Framework\line
+\fs28 (Submission-Ready Research + Implementation Guideline)\b0\fs24\par
+
+\pard\qc\fs22
+Primary Target Population: Children and Adolescents with Cerebral Palsy (CP), Under 18\line
+Document Version: 1.0\line
+Date: 24 Feb 2026\par
+
+\pard\fs24\par
+\b 0. Executive Summary\b0\par
+EaseL is a browser-based, client-side assistive drawing and guided visuomotor learning application that enables hands-free interaction via webcam-based facial landmark tracking and facial gesture activation. This document defines a cerebral palsy (CP)–specific, academically defensible framework that aligns EaseL with its intended purpose as a cognitive–motor learning tool for users under 18 years of age. It provides (i) clinical/scientific context specific to CP, (ii) an operational methodology for functional profiling without making unsupported “mental age” claims, (iii) a structured lesson progression model grounded in mastery learning and motor learning principles, (iv) precision-learning adaptation rules based on implicit performance signals, (v) ethics/privacy standards appropriate for pediatric and disability contexts, and (vi) a project-specific implementation checklist that is consistent with EaseL’s current architecture (React PWA, MediaPipe FaceMesh, gesture-controlled drawing).
+\par
+
+\b Scope Statement\b0\par
+Primary validation and evaluation are constrained to CP. The tool may be used by others only under a “functional profile similarity” statement; however, the mapping, grouping, and learning progression defined here are designed and justified for CP.
+\par
+
+\b Non-Medical-Device Statement\b0\par
+EaseL is not intended to diagnose, treat, cure, or prevent any disease. It does not assess clinical cognition or “mental age.” It supports learning and practice activities through adaptive interaction and structured tasks.
+\par
+
+\pard\fs24\par
+\b 1. Clinical and Scientific Background (Cerebral Palsy)\b0\par
+
+\b 1.1 Definition and neurodevelopmental basis\b0\par
+Cerebral palsy (CP) is a group of permanent disorders of movement and posture causing activity limitation, attributed to non-progressive disturbances in the developing fetal or infant brain. While the underlying brain disturbance is non-progressive, the clinical presentation can change over time due to growth, musculoskeletal adaptations, therapy, and environmental factors.
+\par
+
+\b 1.2 CP motor phenotypes and interaction relevance\b0\par
+EaseL’s head-controlled cursor and facial activation must accommodate common CP motor phenotypes and their functional implications:\par
+\pard\li360
+\b Spastic CP\b0 (hypertonia, reduced selective motor control, slower initiation/termination): requires large targets, forgiving endpoints, and stable “stop/go” control.\par
+\b Dyskinetic CP\b0 (dystonia/choreoathetosis, involuntary variability): requires jitter tolerance, dwell-based alternatives, and adaptive smoothing and gating.\par
+\b Ataxic CP\b0 (coordination deficits, overshoot/dysmetria, tremor): requires corridor-tracing support, endpoint magnets, slower cursor gain, and progressive narrowing.\par
+\b Mixed presentations\b0: require performance-based adaptation rather than assumptions from subtype.\par
+\pard\li0
+
+\b 1.3 Associated impairments commonly co-occurring in CP\b0\par
+CP may be associated with impairments that directly influence learning task design and accessibility:\par
+\pard\li360
+\b Vision and visuoperceptual differences\b0: affect path-following and cue interpretation; require high-contrast options, uncluttered visuals, and adjustable cue intensity.\par
+\b Communication limitations\b0 (motor speech impairment or language differences): require icon-first prompts, minimal text, and optional Urdu audio instructions.\par
+\b Epilepsy\b0 (subset): requires low-stimulation options (reduced flashing/rapid animations) and conservative audio/visual feedback.\par
+\b Attention and learning variability\b0: demands short trials, consistent routines, and scaffolding/fading.\par
+\b Fatigue, posture tolerance, and pain\b0: require session time caps, scheduled breaks, and simple error recovery.\par
+\pard\li0
+
+\b 1.4 Functional classification for participant description (recommended)\b0\par
+To strengthen methodological rigor without claiming diagnostic measurement within the app, report participant function using established CP frameworks (caregiver/clinician reported where possible):\par
+\pard\li360
+\b GMFCS\b0: gross motor function context (sitting/posture supports).\par
+\b MACS\b0: manual ability; supports the rationale for hands-free access.\par
+\b CFCS\b0: communication function; dictates instruction modality and caregiver involvement.\par
+\pard\li0
+
+\pard\fs24\par
+\b 2. Target Age Range Justification (Under 18; Lower Bound ~6–7)\b0\par
+
+\b 2.1 Why “under 18”\b0\par
+The project is positioned as pediatric/adolescent CP support because:\par
+\pard\li360
+1) CP is typically diagnosed in early childhood and is a lifelong condition; pediatric contexts are central to educational and therapeutic interventions.\par
+2) Under-18 users commonly engage in structured learning curricula and rehabilitation-oriented practice where measurable progression can be ethically and academically evaluated.\par
+3) Using under-18 participants supports alignment with school-aged cognitive and pre-writing skill development, which guided drawing can meaningfully target.\par
+\pard\li0
+
+\b 2.2 Why set the lower bound around 6–7 years (guideline, not absolute)\b0\par
+The lower bound is justified by developmental readiness and practical constraints in a webcam-based, instruction-following system:\par
+\pard\li360
+\b Instruction comprehension\b0: many children around 6–7 can reliably follow simple 1-step to 2-step instructions (especially when presented as icons and demonstrations) and can participate in short structured trials.\par
+\b Attention and compliance\b0: structured sessions (2–10 minutes) are more feasible when children can sustain attention long enough to complete calibration/screener tasks.\par
+\b Pre-writing/visuomotor readiness\b0: early school age aligns with foundational visuomotor skills (tracking, line following, shape copying) that guided drawing lessons can operationalize.\par
+\b Ethical/assent considerations\b0: obtaining meaningful assent is more feasible at school age; caregiver involvement remains essential.\par
+\b Technical feasibility\b0: stable face landmark tracking and controlled head pose interaction are more consistent when the user can maintain a seated posture and attend to on-screen cues.\par
+\pard\li0
+
+\b 2.3 Functional override principle\b0\par
+Chronological age is a guideline. EaseL should allow younger users only if they pass the in-app functional screener with acceptable safety and caregiver agreement. In reporting, characterize readiness by functional measures rather than age-based assumptions.
+\par
+
+\pard\fs24\par
+\b 3. System Description (Project-Specific)\b0\par
+
+\b 3.1 EaseL architecture (current implementation alignment)\b0\par
+EaseL is implemented as a client-side PWA using React and Tailwind. It uses MediaPipe FaceMesh (web-delivered) to estimate facial landmarks and drives a head-controlled cursor. A facial gesture (currently mouth-open detection) toggles between pointer interaction (click) and drawing (pen down/up). Drawing is performed on an HTML canvas with stroke smoothing and undo/redo history, and projects can be saved locally.\par
+
+\b 3.2 Interaction loop (operational)\b0\par
+\pard\li360
+1) Webcam frames are processed locally to obtain facial landmarks.\par
+2) Landmarks are mapped to cursor movement with deadzone, sensitivity, and friction parameters.\par
+3) Gesture detection triggers either an “activation” event (click) or pen toggle.\par
+4) When pen is down, cursor movement produces stroke segments on the canvas.\par
+5) Performance metrics are computed from cursor/stroke traces and used to adapt task difficulty.\par
+\pard\li0
+
+\b 3.3 Why guided drawing is a cognitive–motor tool in CP\b0\par
+Guided drawing tasks can be designed to train:\par
+\pard\li360
+\b Visuospatial mapping\b0 (following a path, matching shapes)\par
+\b Attention and persistence\b0 (short repeated trials with clear goals)\par
+\b Sequencing\b0 (step-by-step shape construction)\par
+\b Controlled activation\b0 (start/stop and selection reliability)\par
+\b Error monitoring\b0 (recognizing deviation and correcting)\par
+\pard\li0
+These are measurable, repeatable skills that support a defensible learning objective in an academic context.
+\par
+
+\pard\fs24\par
+\b 4. Methodology Overview: Evidence to Design Mapping\b0\par
+
+\b 4.1 Evidence sources\b0\par
+The framework is derived from three evidence streams:\par
+\pard\li360
+\b Literature\b0 on CP motor control characteristics, pediatric learning principles, and motor learning/mastery learning.\par
+\b Clinician interviews\b0 (pediatric physiotherapist/occupational therapist/speech therapist) to validate constructs and safety constraints.\par
+\b Caregiver input\b0 to contextualize comprehension, language, fatigue, and home/school constraints (particularly relevant in Pakistan).\par
+\pard\li0
+
+\b 4.2 Core methodological decision: functional profiling (not “mental age”)\b0\par
+Because CP cognition and motor severity do not map reliably, and because “mental age” claims require clinical testing, EaseL uses a functional classification called the Learning–Interaction Profile (LIP). LIP is assigned using a brief in-app screener plus communication context, then used to gate interface complexity, lesson difficulty, and adaptation thresholds.
+\par
+
+\pard\fs24\par
+\b 5. Functional Profiling: Learning–Interaction Profile (LIP)\b0\par
+
+\b 5.1 In-app screener protocol (5–10 minutes)\b0\par
+The screener is conducted after calibration and optionally repeated over time to account for learning and fatigue changes. Tasks are designed to be short, concrete, and icon/demonstration based.\par
+\par
+\b Screener Tasks (S1–S5)\b0\par
+\pard\li360
+\b S1 Cause→Effect Engagement\b0: user observes cursor movement linked to head movement; objective is attention and basic mapping.\par
+\b S2 Hold-in-Target Stability\b0: user holds cursor inside a large circle for a short duration (e.g., 2–5 seconds) with breaks.\par
+\b S3 Activation Reliability\b0: user triggers the activation method (mouth-open or dwell) repeatedly (e.g., 10–20 trials) and the system counts true vs false triggers.\par
+\b S4 Simple Corridor Trace\b0: user traces a wide “road” (straight line corridor) and the system measures adherence.\par
+\b S5 Fatigue Sensitivity\b0: repeat S2 late in the screener; compare stability drop to estimate session length and break frequency.\par
+\pard\li0
+
+\b 5.2 Screener metrics (computed features)\b0\par
+\pard\li360
+\b Time-to-complete\b0 per task.\par
+\b Stability\b0: time inside target, re-entry count, jitter proxy (cursor velocity variability).\par
+\b Activation reliability\b0: true activation rate, false activation rate, missed activation.\par
+\b Trace adherence\b0: percent of stroke points within corridor; mean deviation.\par
+\b Fatigue index\b0: performance decay from early to late trials.\par
+\pard\li0
+
+\b 5.3 LIP groups (4 profiles)\b0\par
+LIP groups define what the app shows, how instructions are delivered, and how the lesson system adapts.\par
+\par
+\b LIP-1: Engagement & Cause→Effect\b0\par
+\pard\li360
+Functional description: inconsistent control; learning goal is exploration and reinforcement of cause→effect.\par
+UI: single-screen; no layers/tools; minimal navigation; caregiver-facing controls hidden.\par
+Lesson constraints: big targets, “color inside large shape,” matching-by-reaching.\par
+\pard\li0
+
+\b LIP-2: Stop/Go Control\b0\par
+\pard\li360
+Functional description: can initiate/stop activation with support; limited precision.\par
+UI: one-step prompts; step gating; large visuals; limited options.\par
+Lesson constraints: hold-to-fill, short line segments, endpoint magnets.\par
+\pard\li0
+
+\b LIP-3: Guided Tracing\b0\par
+\pard\li360
+Functional description: can follow paths with scaffolding.\par
+UI: step-by-step lesson flow; limited buttons; consistent placement.\par
+Lesson constraints: corridor tracing (straight→curved), closed shapes with guidance.\par
+\pard\li0
+
+\b LIP-4: Sequencing & Construction\b0\par
+\pard\li360
+Functional description: can follow multi-step shape construction and practice systematically.\par
+UI: controlled navigation; optionally unlock more tools; still simplified.\par
+Lesson constraints: combine shapes into objects; patterns; optional symbols where culturally and developmentally appropriate.\par
+\pard\li0
+
+\b 5.4 Independent-use vs Assisted-use rule (ethical gating)\b0\par
+Instead of excluding users, define use mode:\par
+\pard\li360
+\b Independent-use\b0: user meets minimum stability and activation reliability with safe fatigue profile.\par
+\b Assisted-use\b0: caregiver initiates steps and helps interpret prompts; user participates in movement/activation as able.\par
+\pard\li0
+Report Assisted-use as a valid outcome category in evaluation.
+\par
+
+\pard\fs24\par
+\b 6. Lesson System Specification (Baseline Curriculum)\b0\par
+
+\b 6.1 Lesson design principles (CP and pediatric learning)\b0\par
+\pard\li360
+\b One goal at a time\b0: avoid multi-objective screens.\par
+\b Demonstration-first\b0: show “ghost stroke”/animation before asking the user to act.\par
+\b Short trials\b0: 5–20 seconds each; breaks to manage fatigue.\par
+\b Errorless learning option\b0: start with high assistance to guarantee success; fade assistance gradually.\par
+\b Consistent feedback\b0: immediate, simple, non-punitive; icon + optional Urdu audio.\par
+\pard\li0
+
+\b 6.2 Lesson object model (what each lesson must define)\b0\par
+Each lesson consists of steps; each step defines:\par
+\pard\li360
+Target primitive (points, corridor path, region), assistance envelope (corridor width, snapping strength, endpoint magnets), activation rule (mouth/dwell/blink/caregiver), mastery criteria (accuracy/time/stability thresholds), repetition plan (trials per step), progression rule (advance, repeat, or step back).\par
+\pard\li0
+
+\b 6.3 Micro-skill progression ladder (curriculum)\b0\par
+Progression is defined as a ladder of measurable micro-skills:\par
+\pard\li360
+Stage 0: Cause→effect target reach (touch big targets)\par
+Stage 1: Hold/stability (dwell readiness)\par
+Stage 2: Stop/Go activation control (start/stop drawing)\par
+Stage 3: Straight corridor tracing (“road”)\par
+Stage 4: Curved corridor tracing (“rainbow arc”)\par
+Stage 5: Closed shapes (circle, square, triangle)\par
+Stage 6: Sequenced construction (house, kite, sun; culturally familiar)\par
+Stage 7: Patterns/copying (attention + sequencing)\par
+Stage 8 (optional): Functional symbols (only when appropriate; avoid broad claims)\par
+\pard\li0
+
+\pard\fs24\par
+\b 7. Precision Learning and Adaptation (Technical Methodology)\b0\par
+
+\b 7.1 Operational definition of “precision learning” in EaseL\b0\par
+In this project, precision learning means: (i) high-frequency measurement of performance during short trials, (ii) mastery criteria for micro-skills, and (iii) individualized adjustment of task constraints and assistance parameters to maintain a high probability of success while encouraging progression.
+\par
+
+\b 7.2 Per-trial metrics (formal)\b0\par
+For an attempt a with sampled stroke points p_i:\par
+\pard\li360
+Completion time: T_a\par
+Corridor adherence: P_a = (# points within corridor) / (total points)\par
+Mean deviation: d̄_a = average distance to corridor centerline\par
+Stability: jitter proxy via cursor velocity variability\par
+Activation errors: false triggers, missed triggers\par
+Fatigue index: performance drop across session\par
+\pard\li0
+
+\b 7.3 Mastery criteria (profile-dependent)\b0\par
+Define mastery for micro-skill s as meeting accuracy and stability thresholds for k out of last n attempts, optionally with time constraints adjusted by LIP. Example policy:\par
+\pard\li360
+Advance if: P_a ≥ P* for k/n attempts AND jitter ≤ J* AND fatigue acceptable.\par
+Repeat with same difficulty if: improving trend exists but not stable.\par
+Step back/increase assistance if: no improvement + high jitter or high false activations.\par
+\pard\li0
+
+\b 7.4 Adaptation knobs (what the system changes)\b0\par
+When performance is low:\par
+\pard\li360
+Increase corridor width; increase endpoint magnet radius; increase smoothing; reduce cursor gain; shorten segments; add more modeling; switch activation method (mouth → dwell) if false triggers high; increase breaks.\par
+\pard\li0
+When performance is high and stable:\par
+\pard\li360
+Narrow corridor; reduce magnets/snap; lengthen segments; increase sequencing complexity; reduce modeling frequency.\par
+\pard\li0
+
+\pard\fs24\par
+\b 8. Accessibility and UX Requirements (CP-focused)\b0\par
+
+\b 8.1 Discoverability requirement (critical)\b0\par
+Before any free-draw or lesson use, provide a mandatory tutorial that demonstrates:\par
+\pard\li360
+Move head → cursor moves; perform activation → drawing/select occurs.\par
+\pard\li0
+Confirm understanding via a micro-task (reach one target and activate once). Re-trigger tutorial automatically if repeated errors indicate confusion.
+\par
+
+\b 8.2 LIP-based UI gating\b0\par
+\pard\li360
+LIP-1/2: no layers, no complex tool palettes, no dashboards, no filters. Only essential controls (start, next, back, pause).\par
+LIP-3/4: gradually unlock additional options.\par
+\pard\li0
+
+\b 8.3 Language and Pakistan context\b0\par
+Use icon-first prompts and optional Urdu audio. Avoid heavy text dependence. Use culturally familiar objects in later stages to maintain motivation and relevance.
+\par
+
+\pard\fs24\par
+\b 9. Data, Privacy, and Ethics (Pediatric CP)\b0\par
+
+\b 9.1 Data minimization\b0\par
+Default to storing only derived performance metrics. Do not store raw video or biometric templates. Camera processing remains on-device.\par
+
+\b 9.2 Consent model\b0\par
+Caregiver consent is required for data export. Child assent should be obtained where feasible. Provide a clear “export data” function that outputs only the defined metrics and configuration parameters.\par
+
+\b 9.3 Safety constraints\b0\par
+Implement session time caps, mandatory breaks based on fatigue index, and low-stimulation settings for users with sensitivity concerns.
+\par
+
+\pard\fs24\par
+\b 10. Evaluation Plan (Academic Rigor)\b0\par
+
+\b 10.1 Study design (recommended)\b0\par
+Within-subject longitudinal design:\par
+\pard\li360
+Baseline screener and probe trials → repeated sessions over multiple weeks → post-screener and probe trials.\par
+\pard\li0
+Report participant characteristics using GMFCS/MACS/CFCS (as available) and LIP as the primary app-specific grouping variable.\par
+
+\b 10.2 Outcomes\b0\par
+\pard\li360
+Primary: improvement in micro-skill accuracy/time at fixed probe difficulty; reduced required assistance to maintain mastery.\par
+Secondary: activation reliability improvements; fatigue resilience; caregiver usability ratings and engagement metrics.\par
+\pard\li0
+
+\pard\fs24\par
+\b 11. Implementation Guideline (Feature Roadmap Aligned to This Framework)\b0\par
+
+\b 11.1 Priority order (research-critical)\b0\par
+\pard\li360
+1) Implement screener S1–S5 and compute metrics.\par
+2) Implement LIP assignment and LIP-based UI gating (simplify).\par
+3) Implement lesson engine with corridor/region targets and step structure.\par
+4) Implement per-trial metric logging and mastery/adaptation policy.\par
+5) Add alternative activation methods (dwell/blink/caregiver).\par
+6) Add fatigue management (break scheduling, time caps).\par
+7) Add Urdu audio prompt pipeline and icon-first instruction assets.\par
+8) Add caregiver mode and data export.\par
+\pard\li0
+
+\b 11.2 Research integrity constraints\b0\par
+\pard\li360
+Do not claim mental age; use functional profile and communication context.\par
+Do not generalize to non-CP diagnoses; generalize to functional similarity only.\par
+Report assisted-use separately from independent-use.\par
+\pard\li0
+
+\pard\fs24\par
+\b 12. References (suggested foundational sources to cite in thesis)\b0\par
+Include and format per your university style guide (APA/IEEE). Suggested core references:\par
+\pard\li360
+WHO. International Classification of Functioning, Disability and Health (ICF).\par
+Rosenbaum et al. (definition/description of CP).\par
+Palisano et al. (GMFCS).\par
+Eliasson et al. (MACS).\par
+Hidecker et al. (CFCS).\par
+Motor learning and pediatric rehabilitation literature relevant to task practice, feedback, and scaffolding.\par
+\pard\li0
+
+\pard\fs24\par
+\b Appendix A: Clinician Interview Guide (CP-focused)\b0\par
+1) What motor control characteristics most affect head/face-based interaction for your CP patients?\par
+2) Common fatigue/postural limits and safe session lengths?\par
+3) Reliable activation gestures (mouth open, blink, dwell) and likely false trigger sources?\par
+4) Best practices for child-facing instruction (icons, audio, demonstration) and reinforcement?\par
+5) Functional tasks that indicate readiness for guided tracing and sequencing?\par
+6) Safety considerations (vision, epilepsy sensitivity, discomfort) for on-screen cues?\par
+
+\pard\fs24\par
+\b Appendix B: Caregiver Context Questions (Pakistan-relevant)\b0\par
+1) Language preference (Urdu/English) and reading comfort.\par
+2) Typical attention span for structured tasks.\par
+3) Prior exposure to phones/tablets/computers.\par
+4) Preferred rewards (praise, stickers, sounds) and sensitivities.\par
+5) Typical fatigue triggers; best times of day for practice.\par
+
+\pard\fs24\par
+\b Appendix C: Data Dictionary (minimum viable)\b0\par
+User profile: age, language mode, LIP, GMFCS/MACS/CFCS if available.\par
+Calibration: cursor gain, deadzone, smoothing, activation method.\par
+Trial log: lesson id, step id, attempt index, time, accuracy metrics, jitter, activation errors, assistance parameters, outcome.\par
+Session log: duration, breaks, fatigue index, completion status.\par
+
+}
