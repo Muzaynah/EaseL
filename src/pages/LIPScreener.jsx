@@ -6,6 +6,7 @@ import { useAppState } from "../context/AppStateContext";
 import { playSuccessBeep, speakInstruction, stopSpeech } from "../utils/screenerAudio";
 import { updatePositionTilt, createTiltState } from "../utils/cursorMappings";
 import Cursor from "../components/Cursor";
+import LIPScreenerStepAnimation from "../components/LIPScreenerStepAnimation";
 import { Check, Volume2, HelpCircle, X } from "lucide-react";
 
 export default function LIPScreener() {
@@ -479,9 +480,7 @@ export default function LIPScreener() {
         <p className="text-3xl md:text-4xl font-bold text-slate-800 leading-snug text-center">
           {STEP_INSTRUCTIONS[step]}
         </p>
-        <div className="w-full min-h-[120px] rounded-2xl bg-indigo-50 border-2 border-dashed border-indigo-200 flex items-center justify-center">
-          <span className="text-slate-500 font-medium">Animation placeholder</span>
-        </div>
+        <LIPScreenerStepAnimation step={step} />
       </div>
     </div>
   );
@@ -502,9 +501,7 @@ export default function LIPScreener() {
         <p className="text-3xl md:text-4xl font-bold text-slate-800 leading-snug text-center">
           {STEP_INSTRUCTIONS[step]}
         </p>
-        <div className="w-full min-h-[120px] rounded-2xl bg-indigo-50 border-2 border-dashed border-indigo-200 flex items-center justify-center">
-          <span className="text-slate-500 font-medium">Animation placeholder</span>
-        </div>
+        <LIPScreenerStepAnimation step={step} />
       </div>
     </div>
   );
