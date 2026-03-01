@@ -6,8 +6,17 @@ export function useGestureControl({
   onButtonHover,
   onButtonClick,
   buttonRefs,
+  /** When provided, use this ref for cursor position (keeps hit-test in sync with visual cursor). */
+  cursorPosRef: externalCursorPosRef,
+  /** Lower = more sensitive (e.g. 0.018 for screener). Default 0.03 */
+  mouthOpenThreshold = 0.03,
+  /** Fewer frames = quicker trigger (e.g. 1 for screener). Default 3 */
+  framesToConfirm = 3,
+  /** Cooldown between activations in ms. Default 300 */
+  cooldownMs = 300,
 }) {
-  const cursorPos = useRef({ x: 800, y: 500 });
+  const internalCursorPos = useRef({ x: 800, y: 500 });
+  const cursorPos = externalCursorPosRef ?? internalCursorPos;
   const lastToggleTime = useRef(0);
   const mouthOpenFrames = useRef(0);
   const mouthClosedFrames = useRef(0);
@@ -55,17 +64,13 @@ export function useGestureControl({
           ? (pitch - Math.sign(pitch) * deadzone) * sensitivity
           : 0;
 
-      cursorPos.current.x -= dx * friction;
-      cursorPos.current.y += dy * friction;
-
-      cursorPos.current.x = Math.max(
-        0,
-        Math.min(window.innerWidth, cursorPos.current.x)
-      );
-      cursorPos.current.y = Math.max(
-        0,
-        Math.min(window.innerHeight, cursorPos.current.y)
-      );
+      // Only update position when using internal ref; when external ref is passed, caller updates it.
+      if (!externalCursorPosRef) {
+        cursorPos.current.x -= dx * friction;
+        cursorPos.current.y += dy * friction;
+        cursorPos.current.x = Math.max(0, Math.min(window.innerWidth, cursorPos.current.x));
+        cursorPos.current.y = Math.max(0, Math.min(window.innerHeight, cursorPos.current.y));
+      }
 
       // Check for any interactive element at cursor position
       const elementAtCursor = document.elementFromPoint(
@@ -113,16 +118,12 @@ export function useGestureControl({
       
       onButtonHover?.(hoveredBtn);
 
-      // Improved mouth detection with frame counting for stability
+      // Mouth detection (threshold and frame count configurable for accessibility)
       const upperLip = landmarks[13];
       const lowerLip = landmarks[14];
       const mouthHeight = Math.abs(upperLip.y - lowerLip.y);
-      
-      // Adjusted threshold for better detection
-      const mouthOpenThreshold = 0.03;
       const isMouthCurrentlyOpen = mouthHeight > mouthOpenThreshold;
-      
-      // Count consecutive frames
+
       if (isMouthCurrentlyOpen) {
         mouthOpenFrames.current++;
         mouthClosedFrames.current = 0;
@@ -130,14 +131,10 @@ export function useGestureControl({
         mouthClosedFrames.current++;
         mouthOpenFrames.current = 0;
       }
-      
-      // Require 3 consecutive frames for state change
-      const framesToConfirm = 3;
+
       const isMouthOpen = mouthOpenFrames.current >= framesToConfirm;
       const isMouthClosed = mouthClosedFrames.current >= framesToConfirm;
-      
       const now = performance.now();
-      const cooldownMs = 300;
 
       // Trigger on mouth open (not close) with proper cooldown
       if (isMouthOpen && !wasMouthOpen.current && now - lastToggleTime.current > cooldownMs) {
@@ -171,7 +168,7 @@ export function useGestureControl({
 
       return { position: cursorPos.current, hoveredBtn };
     },
-    [buttonRefs, onButtonHover, onPenToggle, onButtonClick]
+    [buttonRefs, onButtonHover, onPenToggle, onButtonClick, mouthOpenThreshold, framesToConfirm, cooldownMs]
   );
 
   return { cursorPos, processLandmarks };

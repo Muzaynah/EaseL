@@ -1,11 +1,57 @@
-import { NavLink, Link } from "react-router-dom";
+import { NavLink, Link, useLocation } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
-import { Menu, X, User, Settings, LogOut, Pencil, BookOpen, Image } from "lucide-react";
+import { Menu, X, User, Settings, LogOut, Pencil, BookOpen, Image, Code2 } from "lucide-react";
+import { useAppState } from "../context/AppStateContext";
+
+const PATH_TO_LABEL = {
+  "/home": "Home",
+  "/canvas": "Draw",
+  "/lessons": "Lessons",
+  "/gallery": "Gallery",
+  "/calibration": "Calibration",
+  "/settings": "Settings",
+  "/profile": "Profile",
+  "/eligibility": "Eligibility",
+  "/screener": "Screener",
+};
+
+function getPageLabel(pathname) {
+  if (PATH_TO_LABEL[pathname]) return PATH_TO_LABEL[pathname];
+  if (pathname.startsWith("/lesson/")) return "Lesson";
+  return pathname === "/" ? "Home" : pathname.slice(1) || "Home";
+}
+
+const DEV_LINKS = [
+  { name: "Home", path: "/home" },
+  { name: "Calibration", path: "/calibration" },
+  { name: "Eligibility", path: "/eligibility" },
+  { name: "Screener", path: "/screener" },
+  { name: "Lessons", path: "/lessons" },
+  { name: "Canvas", path: "/canvas" },
+  { name: "Gallery", path: "/gallery" },
+  { name: "Settings", path: "/settings" },
+  { name: "Profile", path: "/profile" },
+];
+
+function getModeLabel(effectiveLipMode) {
+  if (effectiveLipMode === 1) return "Intent Capture";
+  if (effectiveLipMode === 2) return "Guided Control";
+  return "Not set";
+}
+
+const isDev = import.meta.env.DEV;
 
 export default function Navbar({ isAuthenticated, user, onSignOut }) {
+  const location = useLocation();
+  const { profile, effectiveLipMode, modeOverride, setModeOverride } = useAppState();
+  const pageLabel = getPageLabel(location.pathname);
+  const modeLabel = getModeLabel(effectiveLipMode);
+  const currentStage = profile?.currentStage ?? 0;
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [devMenuOpen, setDevMenuOpen] = useState(false);
   const profileRef = useRef(null);
+  const devMenuRef = useRef(null);
 
   const navLinks = [
     { name: "Home", path: "/home", icon: null },
@@ -16,17 +62,16 @@ export default function Navbar({ isAuthenticated, user, onSignOut }) {
 
   useEffect(() => {
     function handleClickOutside(e) {
-      if (profileRef.current && !profileRef.current.contains(e.target)) {
-        setProfileOpen(false);
-      }
+      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
+      if (devMenuRef.current && !devMenuRef.current.contains(e.target)) setDevMenuOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
-    <nav className="fixed top-0 left-0 w-full min-h-[4rem] h-16 bg-white/80 backdrop-blur-md border-b border-indigo-100/50 z-50 shadow-sm">
-      <div className="max-w-7xl mx-auto px-6 h-full flex justify-between items-center">
+    <nav className="fixed top-0 left-0 w-full bg-white/80 backdrop-blur-md border-b border-indigo-100/50 z-50 shadow-sm">
+      <div className="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
         {/* Logo */}
         <Link
           to={isAuthenticated ? "/home" : "/"}
@@ -125,6 +170,62 @@ export default function Navbar({ isAuthenticated, user, onSignOut }) {
           )}
         </div>
       </div>
+
+      {/* Status row: page, mode, stage, and dev override (when authenticated) */}
+      {isAuthenticated && (
+        <div className="max-w-7xl mx-auto px-6 py-1.5 flex flex-wrap items-center gap-3 text-sm border-t border-indigo-100/50 bg-slate-50/60">
+          <span className="font-medium text-slate-700">{pageLabel}</span>
+          <span className="text-slate-400">·</span>
+          <span className="text-slate-600">Mode: {modeLabel}</span>
+          <span className="text-slate-400">·</span>
+          <span className="text-slate-600">Stage {currentStage}</span>
+          {isDev && (
+            <>
+              <span className="text-slate-400 ml-1">·</span>
+              <label className="flex items-center gap-2 text-slate-600">
+                <span>Test:</span>
+                <select
+                  value={modeOverride === null ? "profile" : String(modeOverride)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setModeOverride(v === "profile" ? null : Number(v));
+                  }}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-slate-700 focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+                >
+                  <option value="profile">Use stored profile</option>
+                  <option value="1">Simulate Mode 1 (Intent Capture)</option>
+                  <option value="2">Simulate Mode 2 (Guided Control)</option>
+                </select>
+              </label>
+              <span className="text-slate-400">·</span>
+              <div className="relative" ref={devMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setDevMenuOpen(!devMenuOpen)}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-slate-600 hover:bg-slate-50"
+                >
+                  <Code2 className="w-4 h-4" />
+                  <span>Dev</span>
+                </button>
+                {devMenuOpen && (
+                  <div className="absolute left-0 top-full mt-1 py-2 min-w-[10rem] bg-white rounded-xl shadow-lg border border-slate-200 z-50">
+                    {DEV_LINKS.map((link) => (
+                      <Link
+                        key={link.path}
+                        to={link.path}
+                        onClick={() => setDevMenuOpen(false)}
+                        className="block px-4 py-2 text-sm text-slate-700 hover:bg-indigo-50"
+                      >
+                        {link.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Mobile menu */}
       {isAuthenticated && (

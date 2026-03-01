@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useState } from "react";
+import { useAppState } from "./context/AppStateContext";
 import Navbar from "./components/Navbar";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -12,14 +13,25 @@ import LessonPlay from "./pages/LessonPlay";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Calibration from "./pages/Calibration";
+import EligibilityGate from "./pages/EligibilityGate";
+import LIPScreener from "./pages/LIPScreener";
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
+  const { hydrated } = useAppState();
 
   const ProtectedRoute = ({ children }) => {
     return isAuthenticated ? children : <Navigate to="/login" />;
   };
+
+  if (isAuthenticated && !hydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+        <p className="text-slate-600 font-medium">Loading…</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -120,6 +132,22 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Calibration />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/eligibility"
+          element={
+            <ProtectedRoute>
+              <EligibilityGate />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/screener"
+          element={
+            <ProtectedRoute>
+              <LIPScreener />
             </ProtectedRoute>
           }
         />
