@@ -9,4 +9,9 @@
 
 export { getYawPitch } from "./getYawPitch.js";
 export { updatePositionFree } from "./free.js";
-export { updatePositionTilt, createTiltState } from "./tilt.js";
+export {
+  updatePositionTilt,
+  createTiltState,
+  updatePositionTiltWithCalibration,
+  createTiltStateWithCalibration,
+} from "./tilt.js";

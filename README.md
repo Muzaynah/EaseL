@@ -1,14 +1,14 @@
 # EaseL
 
-EaseL is a browser-based assistive drawing and learning application designed for individuals with upper-limb motor impairments. The system enables hands-free interaction using head movements and facial gestures, allowing users to draw, practice guided lessons, and engage in creative activities without traditional input devices.
+EaseL is a browser-based web application for assistive drawing and learning, designed for **children with cerebral palsy (CP)** who have upper-limb motor impairments. The system enables hands-free interaction using head movements and facial gestures, allowing users to draw, practice guided lessons, and engage in creative activities without traditional input devices.
 
-EaseL is implemented as a Progressive Web Application (PWA) and runs entirely on the client side to ensure privacy, accessibility, and ease of deployment.
+EaseL runs entirely on the client side as a web app to ensure privacy, accessibility, and ease of deployment.
 
 ## Motivation
 
-Most digital art and learning tools rely on fine motor control through a mouse, keyboard, or touch input. Individuals with neuromotor disabilities often face significant barriers when accessing such systems.
+Most digital art and learning tools rely on fine motor control through a mouse, keyboard, or touch input. Children with cerebral palsy (CP) and other neuromotor disabilities often face significant barriers when accessing such systems.
 
-EaseL addresses this gap by providing an inclusive, hands-free platform that enables creative expression and guided learning using only a webcam and facial movement. The project focuses on accessibility, privacy, and low-cost deployment.
+EaseL addresses this gap by providing an inclusive, hands-free web application that enables creative expression and guided learning using only a webcam and facial movement. The project focuses on accessibility for children with CP, privacy, and low-cost deployment.
 
 ## Key Features
 
@@ -21,7 +21,6 @@ EaseL addresses this gap by providing an inclusive, hands-free platform that ena
 - Adjustable brush size, color, and opacity
 - Guided drawing and learning lessons in English and Urdu
 - Local project saving and export in PNG format
-- Progressive Web App support with offline functionality
 - Fully client-side processing with no backend dependency
 
 ## Technologies Used
@@ -30,11 +29,14 @@ EaseL addresses this gap by providing an inclusive, hands-free platform that ena
 - Styling: Tailwind CSS
 - Creative Coding: p5.js
 - Face Tracking: MediaPipe FaceMesh
-- Storage: IndexedDB and LocalStorage
+- Storage: IndexedDB and LocalStorage; **Firebase** (Auth + Firestore) for accounts and profiles
 - APIs: WebRTC getUserMedia and Web Speech API
 - Build Tools: Vite
 
 ## Getting Started
+
+### Accounts and Firebase (optional)
+Profile and account data are stored in Firebase when configured. Copy `.env.example` to `.env` and add your Firebase project keys (create a project at [Firebase Console](https://console.firebase.google.com), enable **Authentication** and **Firestore**). Without `.env`, the app runs in demo mode (one account stored in the browser).
 
 ### Prerequisites
 - Modern web browser such as Chrome, Firefox, or Edge
@@ -43,8 +45,8 @@ EaseL addresses this gap by providing an inclusive, hands-free platform that ena
 
 ### Running the Application
 
-1. PWA Installation Guide
-2. Browser Guide
+1. **Development:** Run `npm run dev` and open the URL shown in the terminal (e.g. `http://localhost:5173`) in your browser.
+2. **Production build:** Run `npm run build`, then `npm run preview` to test the built app. Deploy the `dist` folder to any static host.
 
 ## Usage Overview
 

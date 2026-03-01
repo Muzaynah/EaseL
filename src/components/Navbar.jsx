@@ -12,6 +12,7 @@ const PATH_TO_LABEL = {
   "/settings": "Settings",
   "/profile": "Profile",
   "/eligibility": "Eligibility",
+  "/tutorial": "Tutorial",
   "/screener": "Screener",
 };
 
@@ -23,8 +24,9 @@ function getPageLabel(pathname) {
 
 const DEV_LINKS = [
   { name: "Home", path: "/home" },
-  { name: "Calibration", path: "/calibration" },
   { name: "Eligibility", path: "/eligibility" },
+  { name: "Calibration", path: "/calibration" },
+  { name: "Tutorial", path: "/tutorial" },
   { name: "Screener", path: "/screener" },
   { name: "Lessons", path: "/lessons" },
   { name: "Canvas", path: "/canvas" },

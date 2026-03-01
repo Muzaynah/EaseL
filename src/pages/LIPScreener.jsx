@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useFaceMesh } from "../hooks/useFaceMesh";
 import { useGestureControl } from "../hooks/useGestureControl";
 import { useAppState } from "../context/AppStateContext";
+import { useAuth } from "../context/AuthContext";
 import { playSuccessBeep, speakInstruction, stopSpeech } from "../utils/screenerAudio";
-import { updatePositionTilt, createTiltState } from "../utils/cursorMappings";
+import { updatePositionTiltWithCalibration, createTiltStateWithCalibration } from "../utils/cursorMappings";
 import Cursor from "../components/Cursor";
 import LIPScreenerStepAnimation from "../components/LIPScreenerStepAnimation";
 import { Check, Volume2, HelpCircle, X } from "lucide-react";
@@ -12,13 +13,16 @@ import { Check, Volume2, HelpCircle, X } from "lucide-react";
 export default function LIPScreener() {
   const navigate = useNavigate();
   const { setProfile } = useAppState();
+  const { profile } = useAuth();
   const videoRef = useRef(null);
   const cursorPosRef = useRef({
     x: typeof window !== "undefined" ? window.innerWidth / 2 : 400,
     y: typeof window !== "undefined" ? window.innerHeight / 2 : 300,
   });
   const cursorRef = useRef(null);
-  const tiltStateRef = useRef(createTiltState());
+  const tiltStateRef = useRef(createTiltStateWithCalibration());
+  const calibrationRef = useRef(null);
+  calibrationRef.current = profile?.calibration ?? null;
   const buttonRefs = useRef({});
   const [step, setStep] = useState(1);
   const [metrics, setMetrics] = useState({
@@ -72,8 +76,12 @@ export default function LIPScreener() {
 
   const processLandmarksRef = useRef(() => {});
   const handleResults = useCallback((results) => {
-    const landmarks = results.multiFaceLandmarks?.[0];
-    updatePositionTilt(landmarks, cursorPosRef, tiltStateRef);
+    try {
+      const landmarks = results?.multiFaceLandmarks?.[0];
+      updatePositionTiltWithCalibration(landmarks, cursorPosRef, tiltStateRef, calibrationRef.current);
+    } catch (e) {
+      if (typeof console !== "undefined" && console.warn) console.warn("[EaseL] LIPScreener handleResults:", e);
+    }
   }, []);
 
   const handleActivate = useCallback((btnId) => {
@@ -130,9 +138,15 @@ export default function LIPScreener() {
   processLandmarksRef.current = processLandmarks;
 
   const onFaceResults = useCallback((results) => {
-    handleResults(results);
-    const landmarks = results.multiFaceLandmarks?.[0];
-    if (landmarks) processLandmarksRef.current(landmarks, false);
+    try {
+      handleResults(results);
+      const landmarks = results?.multiFaceLandmarks?.[0];
+      if (landmarks && typeof processLandmarksRef.current === "function") {
+        processLandmarksRef.current(landmarks, false);
+      }
+    } catch (e) {
+      if (typeof console !== "undefined" && console.warn) console.warn("[EaseL] LIPScreener onFaceResults:", e);
+    }
   }, [handleResults]);
 
   const { startFaceMesh } = useFaceMesh({ videoRef, onResults: onFaceResults });
@@ -246,7 +260,7 @@ export default function LIPScreener() {
   // Keep cursor responsive in steps 3–5: reset tilt smoothing when task view is shown for that step
   useEffect(() => {
     if (instructionAcknowledged && (step === 3 || step === 4 || step === 5)) {
-      tiltStateRef.current = createTiltState();
+      tiltStateRef.current = createTiltStateWithCalibration();
     }
   }, [instructionAcknowledged, step]);
 
@@ -390,7 +404,7 @@ export default function LIPScreener() {
     }
   }, [step, s5Phase, s5Round1Start, s5Round2Start, metrics]);
 
-  const saveProfileAndNavigate = useCallback((path) => {
+  const saveProfileAndNavigate = useCallback(async (path) => {
     const payload = pendingProfileSaveRef.current;
     if (payload) {
       setProfile((p) => ({ ...p, lipMode: payload.lipMode, screenerMetrics: payload.screenerMetrics }));

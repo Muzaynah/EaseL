@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useFaceMesh } from "../hooks/useFaceMesh";
 import { updatePositionTilt, createTiltState } from "../utils/cursorMappings";
 import Cursor from "../components/Cursor";
+import { useAuth } from "../context/AuthContext";
 
 const ATTEMPTS_TOTAL = 3;
 const TIME_LIMIT_SEC = 15;
@@ -11,6 +12,7 @@ const CIRCLE_RADIUS = 120;
 
 export default function EligibilityGate() {
   const navigate = useNavigate();
+  const { updateProfile } = useAuth();
   const videoRef = useRef(null);
   const cursorPosRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
   const tiltStateRef = useRef(createTiltState());
@@ -98,8 +100,12 @@ export default function EligibilityGate() {
   }, [attemptsWon]);
 
   useEffect(() => {
-    if (passed) navigate("/calibration", { replace: true });
-  }, [passed, navigate]);
+    if (!passed) return;
+    (async () => {
+      await updateProfile((p) => ({ ...p, eligibilityPassed: true }));
+      navigate("/calibration", { replace: true });
+    })();
+  }, [passed, navigate, updateProfile]);
 
   useEffect(() => {
     let raf;
@@ -131,7 +137,10 @@ export default function EligibilityGate() {
             A caregiver can help adjust the setup or try again later. This does not prevent using other parts of EaseL.
           </p>
           <button
-            onClick={() => navigate("/home", { replace: true })}
+            onClick={async () => {
+              await updateProfile((p) => ({ ...p, eligibilityPassed: false }));
+              navigate("/home", { replace: true });
+            }}
             className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95 transition-all"
           >
             Return to Home

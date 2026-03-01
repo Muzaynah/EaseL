@@ -1,19 +1,30 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
-export default function Login({ setAuth, setUser }) {
+export default function Login() {
   const navigate = useNavigate();
+  const { signIn, setError, error, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    setAuth(true);
-    setUser({ name: "Muzaynah", email: email || "muzaynah@example.com" });
-    navigate("/home");
+    setError(null);
+    if (!email.trim() || !password) return;
+    setSubmitting(true);
+    try {
+      const nextPath = await signIn(email.trim(), password);
+      navigate(nextPath || "/home", { replace: true });
+    } catch (err) {
+      setError(err.message || "Sign in failed");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -27,6 +38,12 @@ export default function Login({ setAuth, setUser }) {
             Enter your credentials to continue
           </p>
 
+          {error && (
+            <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
@@ -37,6 +54,7 @@ export default function Login({ setAuth, setUser }) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
                 className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                 placeholder="you@example.com"
                 autoComplete="email"
@@ -53,6 +71,7 @@ export default function Login({ setAuth, setUser }) {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
                   className="w-full h-12 px-4 pr-12 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   placeholder="••••••••"
                   autoComplete="current-password"
@@ -83,9 +102,10 @@ export default function Login({ setAuth, setUser }) {
 
             <button
               type="submit"
-              className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-95 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
+              disabled={submitting || loading}
+              className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-95 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 disabled:opacity-60"
             >
-              Sign In
+              {submitting ? "Signing in…" : "Sign In"}
             </button>
           </form>
 

@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate } from "react-router-dom";
-import { useState } from "react";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { useAuth } from "./context/AuthContext";
 import { useAppState } from "./context/AppStateContext";
 import Navbar from "./components/Navbar";
 import Landing from "./pages/Landing";
@@ -15,15 +16,36 @@ import Settings from "./pages/Settings";
 import Calibration from "./pages/Calibration";
 import EligibilityGate from "./pages/EligibilityGate";
 import LIPScreener from "./pages/LIPScreener";
+import Tutorial from "./pages/Tutorial";
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+  const { user, profile, loading: authLoading, signOut, getNextSetupStep } = useAuth();
   const { hydrated } = useAppState();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const isAuthenticated = !!user;
 
   const ProtectedRoute = ({ children }) => {
-    return isAuthenticated ? children : <Navigate to="/login" />;
+    if (!isAuthenticated) return <Navigate to="/login" replace />;
+    return children;
   };
+
+  useEffect(() => {
+    if (!isAuthenticated || !profile || !hydrated) return;
+    const next = getNextSetupStep();
+    if (next !== "/home" && location.pathname === "/home") {
+      navigate(next, { replace: true });
+    }
+  }, [isAuthenticated, profile, hydrated, getNextSetupStep, location.pathname, navigate]);
+
+  if (authLoading && !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+        <p className="text-slate-600 font-medium">Loading…</p>
+      </div>
+    );
+  }
 
   if (isAuthenticated && !hydrated) {
     return (
@@ -39,10 +61,7 @@ export default function App() {
         <Navbar
           isAuthenticated={isAuthenticated}
           user={user}
-          onSignOut={() => {
-            setIsAuthenticated(false);
-            setUser(null);
-          }}
+          onSignOut={signOut}
         />
       )}
       <Routes>
@@ -52,24 +71,8 @@ export default function App() {
             !isAuthenticated ? <Landing /> : <Navigate to="/home" replace />
           }
         />
-        <Route
-          path="/login"
-          element={
-            <Login
-              setAuth={setIsAuthenticated}
-              setUser={setUser}
-            />
-          }
-        />
-        <Route
-          path="/signup"
-          element={
-            <SignUp
-              setAuth={setIsAuthenticated}
-              setUser={setUser}
-            />
-          }
-        />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<SignUp />} />
 
         <Route
           path="/home"
@@ -115,7 +118,7 @@ export default function App() {
           path="/profile"
           element={
             <ProtectedRoute>
-              <Profile user={user} onSignOut={() => { setIsAuthenticated(false); setUser(null); }} />
+              <Profile user={user} onSignOut={signOut} />
             </ProtectedRoute>
           }
         />
@@ -140,6 +143,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <EligibilityGate />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tutorial"
+          element={
+            <ProtectedRoute>
+              <Tutorial />
             </ProtectedRoute>
           }
         />

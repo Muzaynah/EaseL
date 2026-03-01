@@ -7,18 +7,27 @@
  *   Tilt left → negative; tilt right → positive. Use this for true “head tilt” left/right.
  */
 
+function num(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function getYawPitch(landmarks) {
-  if (!landmarks) return { yaw: 0, pitch: 0, tilt: 0 };
-  const nose = landmarks[1];
-  const leftEar = landmarks[234];
-  const rightEar = landmarks[454];
-  if (!nose || !leftEar || !rightEar) return { yaw: 0, pitch: 0, tilt: 0 };
-  const midX = (leftEar.x + rightEar.x) / 2;
-  const midY = (leftEar.y + rightEar.y) / 2;
-  const yaw = nose.x - midX;
-  const pitch = nose.y - midY - 0.04;
-  const dx = rightEar.x - leftEar.x;
-  const dy = rightEar.y - leftEar.y;
-  const tilt = Math.atan2(dy, dx);
-  return { yaw, pitch, tilt };
+  if (!landmarks || !Array.isArray(landmarks)) return { yaw: 0, pitch: 0, tilt: 0 };
+  try {
+    const nose = landmarks[1];
+    const leftEar = landmarks[234];
+    const rightEar = landmarks[454];
+    if (!nose || !leftEar || !rightEar) return { yaw: 0, pitch: 0, tilt: 0 };
+    const midX = (num(leftEar.x) + num(rightEar.x)) / 2;
+    const midY = (num(leftEar.y) + num(rightEar.y)) / 2;
+    const yaw = num(nose.x) - midX;
+    const pitch = num(nose.y) - midY - 0.04;
+    const dx = num(rightEar.x) - num(leftEar.x);
+    const dy = num(rightEar.y) - num(leftEar.y);
+    const tilt = Math.atan2(dy, dx);
+    return { yaw, pitch, tilt };
+  } catch {
+    return { yaw: 0, pitch: 0, tilt: 0 };
+  }
 }

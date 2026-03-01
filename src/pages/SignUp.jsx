@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import {
+  DISABILITY_LEVEL_OPTIONS,
+  LANGUAGE_OPTIONS,
+  SESSION_LENGTH_OPTIONS,
+} from "../utils/profileSchema";
 
 function passwordStrength(pwd) {
   if (!pwd) return 0;
@@ -11,23 +17,47 @@ function passwordStrength(pwd) {
   return Math.min(3, s);
 }
 
-export default function SignUp({ setAuth, setUser }) {
+export default function SignUp() {
   const navigate = useNavigate();
+  const { signUp, setError, error, loading } = useAuth();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [createdBy, setCreatedBy] = useState("");
+  const [disabilityLevel, setDisabilityLevel] = useState("");
+  const [language, setLanguage] = useState("en");
+  const [sessionLengthPreference, setSessionLengthPreference] = useState(15);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const strength = passwordStrength(password);
   const match = !confirmPassword || password === confirmPassword;
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
-    setAuth(true);
-    setUser({ name: displayName || "User", email });
-    navigate("/calibration");
+    setError(null);
+    if (!email.trim() || !password) return;
+    if (password !== confirmPassword) return;
+    setSubmitting(true);
+    try {
+      const nextPath = await signUp(email.trim(), password, {
+        name: displayName.trim() || "User",
+        email: email.trim(),
+        createdBy: createdBy.trim() || null,
+        caregiverReported: {
+          disabilityLevel: disabilityLevel || null,
+          language,
+          sessionLengthPreference: Number(sessionLengthPreference) || 15,
+        },
+      });
+      navigate(nextPath || "/eligibility", { replace: true });
+    } catch (err) {
+      setError(err.message || "Sign up failed");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -35,16 +65,22 @@ export default function SignUp({ setAuth, setUser }) {
       <div className="w-full max-w-md">
         <div className="bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl border border-white/50 p-8">
           <h1 className="text-3xl font-bold text-slate-800 text-center mb-2">
-            Create your account
+            Create an account
           </h1>
           <p className="text-slate-600 text-center mb-8">
-            Join EaseL to start drawing
+            Caregiver or user: set up the account and important details for EaseL.
           </p>
+
+          {error && (
+            <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleSignup} className="space-y-5">
             <div>
               <label htmlFor="displayName" className="block text-sm font-medium text-slate-700 mb-2">
-                Display Name
+                Child / user name
               </label>
               <input
                 id="displayName"
@@ -52,20 +88,21 @@ export default function SignUp({ setAuth, setUser }) {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                placeholder="Your name"
+                placeholder="Name"
                 autoComplete="name"
               />
             </div>
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
-                Email
+                Email (login)
               </label>
               <input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
                 className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                 placeholder="you@example.com"
                 autoComplete="email"
@@ -82,6 +119,8 @@ export default function SignUp({ setAuth, setUser }) {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={8}
                   className="w-full h-12 px-4 pr-12 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   placeholder="••••••••"
                   autoComplete="new-password"
@@ -137,11 +176,81 @@ export default function SignUp({ setAuth, setUser }) {
               )}
             </div>
 
+            <div>
+              <label htmlFor="createdBy" className="block text-sm font-medium text-slate-700 mb-2">
+                Created by (optional)
+              </label>
+              <input
+                id="createdBy"
+                type="text"
+                value={createdBy}
+                onChange={(e) => setCreatedBy(e.target.value)}
+                className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                placeholder="Caregiver name or note"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="disabilityLevel" className="block text-sm font-medium text-slate-700 mb-2">
+                Disability level (optional)
+              </label>
+              <select
+                id="disabilityLevel"
+                value={disabilityLevel}
+                onChange={(e) => setDisabilityLevel(e.target.value)}
+                className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              >
+                <option value="">Not specified</option>
+                {DISABILITY_LEVEL_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label} — {opt.description}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="language" className="block text-sm font-medium text-slate-700 mb-2">
+                Language preference
+              </label>
+              <select
+                id="language"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              >
+                {LANGUAGE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="sessionLength" className="block text-sm font-medium text-slate-700 mb-2">
+                Session length preference
+              </label>
+              <select
+                id="sessionLength"
+                value={sessionLengthPreference}
+                onChange={(e) => setSessionLengthPreference(Number(e.target.value))}
+                className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              >
+                {SESSION_LENGTH_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <button
               type="submit"
-              className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-95 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
+              disabled={submitting || loading}
+              className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-95 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 disabled:opacity-60"
             >
-              Create Account
+              {submitting ? "Creating…" : "Create account"}
             </button>
           </form>
 
