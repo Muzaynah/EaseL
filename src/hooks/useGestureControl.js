@@ -8,12 +8,18 @@ export function useGestureControl({
   buttonRefs,
   /** When provided, use this ref for cursor position (keeps hit-test in sync with visual cursor). */
   cursorPosRef: externalCursorPosRef,
+  /** "click" | "mouth" = mouth open triggers; "dwell" = cursor hold triggers */
+  activationMethod = "mouth",
   /** Lower = more sensitive (e.g. 0.018 for screener). Default 0.03 */
   mouthOpenThreshold = 0.03,
   /** Fewer frames = quicker trigger (e.g. 1 for screener). Default 3 */
   framesToConfirm = 3,
   /** Cooldown between activations in ms. Default 300 */
   cooldownMs = 300,
+  /** For activationMethod "dwell": ms cursor must stay within radius to trigger. Default 800 */
+  dwellMs = 800,
+  /** For activationMethod "dwell": max px movement to count as "holding". Default 15 */
+  dwellRadius = 15,
 }) {
   const internalCursorPos = useRef({ x: 800, y: 500 });
   const cursorPos = externalCursorPosRef ?? internalCursorPos;
@@ -21,6 +27,8 @@ export function useGestureControl({
   const mouthOpenFrames = useRef(0);
   const mouthClosedFrames = useRef(0);
   const wasMouthOpen = useRef(false);
+  const dwellStartRef = useRef(null);
+  const dwellPosRef = useRef(null);
 
   const dispatchPointerEvent = (type, target) => {
     if (!target) return;
@@ -118,57 +126,75 @@ export function useGestureControl({
       
       onButtonHover?.(hoveredBtn);
 
-      // Mouth detection (threshold and frame count configurable for accessibility)
-      const upperLip = landmarks[13];
-      const lowerLip = landmarks[14];
-      const mouthHeight = Math.abs(upperLip.y - lowerLip.y);
-      const isMouthCurrentlyOpen = mouthHeight > mouthOpenThreshold;
-
-      if (isMouthCurrentlyOpen) {
-        mouthOpenFrames.current++;
-        mouthClosedFrames.current = 0;
-      } else {
-        mouthClosedFrames.current++;
-        mouthOpenFrames.current = 0;
-      }
-
-      const isMouthOpen = mouthOpenFrames.current >= framesToConfirm;
-      const isMouthClosed = mouthClosedFrames.current >= framesToConfirm;
       const now = performance.now();
+      const useMouthActivation = activationMethod === "click" || activationMethod === "mouth" || !activationMethod;
 
-      // Trigger on mouth open (not close) with proper cooldown
-      if (isMouthOpen && !wasMouthOpen.current && now - lastToggleTime.current > cooldownMs) {
-        lastToggleTime.current = now;
-        
-        // If hovering over any interactive element, click it
-        if (isOverInteractive) {
-          if (hoveredElement) {
-            dispatchPointerEvent("pointerdown", hoveredElement);
-            dispatchPointerEvent("pointerup", hoveredElement);
-            dispatchPointerEvent("click", hoveredElement);
-            onButtonClick?.(hoveredBtn);
-          } else if (elementAtCursor) {
-            // Click the element under cursor
-            dispatchPointerEvent("pointerdown", elementAtCursor);
-            dispatchPointerEvent("pointerup", elementAtCursor);
-            dispatchPointerEvent("click", elementAtCursor);
+      if (useMouthActivation) {
+        const upperLip = landmarks[13];
+        const lowerLip = landmarks[14];
+        const mouthHeight = Math.abs(upperLip.y - lowerLip.y);
+        const isMouthCurrentlyOpen = mouthHeight > mouthOpenThreshold;
+
+        if (isMouthCurrentlyOpen) {
+          mouthOpenFrames.current++;
+          mouthClosedFrames.current = 0;
+        } else {
+          mouthClosedFrames.current++;
+          mouthOpenFrames.current = 0;
+        }
+
+        const isMouthOpen = mouthOpenFrames.current >= framesToConfirm;
+        const isMouthClosed = mouthClosedFrames.current >= framesToConfirm;
+
+        if (isMouthOpen && !wasMouthOpen.current && now - lastToggleTime.current > cooldownMs) {
+          lastToggleTime.current = now;
+          if (isOverInteractive) {
+            if (hoveredElement) {
+              dispatchPointerEvent("pointerdown", hoveredElement);
+              dispatchPointerEvent("pointerup", hoveredElement);
+              dispatchPointerEvent("click", hoveredElement);
+              onButtonClick?.(hoveredBtn);
+            } else if (elementAtCursor) {
+              dispatchPointerEvent("pointerdown", elementAtCursor);
+              dispatchPointerEvent("pointerup", elementAtCursor);
+              dispatchPointerEvent("click", elementAtCursor);
+            }
+          } else {
+            onPenToggle?.(!isPenDown);
+          }
+        }
+        if (isMouthOpen) wasMouthOpen.current = true;
+        else if (isMouthClosed) wasMouthOpen.current = false;
+      } else if (activationMethod === "dwell") {
+        const x = cursorPos.current.x;
+        const y = cursorPos.current.y;
+        const prev = dwellPosRef.current;
+        const dist = prev
+          ? Math.hypot(x - prev.x, y - prev.y)
+          : dwellRadius + 1;
+        if (dist <= dwellRadius) {
+          if (dwellStartRef.current === null) dwellStartRef.current = now;
+          if (now - dwellStartRef.current >= dwellMs && now - lastToggleTime.current > cooldownMs) {
+            lastToggleTime.current = now;
+            dwellStartRef.current = null;
+            if (isOverInteractive && hoveredElement) {
+              dispatchPointerEvent("pointerdown", hoveredElement);
+              dispatchPointerEvent("pointerup", hoveredElement);
+              dispatchPointerEvent("click", hoveredElement);
+              onButtonClick?.(hoveredBtn);
+            } else {
+              onPenToggle?.(!isPenDown);
+            }
           }
         } else {
-          // Not over an interactive element, toggle pen state
-          onPenToggle?.(!isPenDown);
+          dwellStartRef.current = null;
         }
-      }
-      
-      // Update state for next frame
-      if (isMouthOpen) {
-        wasMouthOpen.current = true;
-      } else if (isMouthClosed) {
-        wasMouthOpen.current = false;
+        dwellPosRef.current = { x, y };
       }
 
       return { position: cursorPos.current, hoveredBtn };
     },
-    [buttonRefs, onButtonHover, onPenToggle, onButtonClick, mouthOpenThreshold, framesToConfirm, cooldownMs]
+    [buttonRefs, onButtonHover, onPenToggle, onButtonClick, mouthOpenThreshold, framesToConfirm, cooldownMs, activationMethod, dwellMs, dwellRadius]
   );
 
   return { cursorPos, processLandmarks };

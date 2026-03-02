@@ -11,6 +11,8 @@ import CanvasPage from "./pages/CanvasPage";
 import Gallery from "./pages/Gallery";
 import LessonSelect from "./pages/LessonSelect";
 import LessonPlay from "./pages/LessonPlay";
+import Mode1Lesson from "./screens/Mode1Lesson";
+import Mode2Lesson from "./screens/Mode2Lesson";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Calibration from "./pages/Calibration";
@@ -103,6 +105,22 @@ export default function App() {
           element={
             <ProtectedRoute>
               <LessonPlay />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/lesson-mode1"
+          element={
+            <ProtectedRoute>
+              <Mode1Lesson />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/lesson-mode2"
+          element={
+            <ProtectedRoute>
+              <Mode2Lesson />
             </ProtectedRoute>
           }
         />
