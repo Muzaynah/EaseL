@@ -31,6 +31,7 @@ const defaultSettings = {
   audioFeedback: true,
   highContrast: false,
   brushSize: "M",
+  defaultBrushColor: "#000000",
   canvasBg: "white",
   layers: false,
   profileVisibility: "private",

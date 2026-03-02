@@ -59,20 +59,13 @@ export default function App() {
 
   return (
     <>
-      {isAuthenticated && (
-        <Navbar
-          isAuthenticated={isAuthenticated}
-          user={user}
-          onSignOut={signOut}
-        />
-      )}
+      <Navbar
+        isAuthenticated={isAuthenticated}
+        user={user}
+        onSignOut={signOut}
+      />
       <Routes>
-        <Route
-          path="/"
-          element={
-            !isAuthenticated ? <Landing /> : <Navigate to="/home" replace />
-          }
-        />
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
 

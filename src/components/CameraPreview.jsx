@@ -5,8 +5,8 @@ import React from "react";
 
 function CameraPreview({ videoRef }) {
   return (
-    <div className="absolute bottom-6 justify-center rounded-2xl border-4 border-white/80 shadow-2xl overflow-hidden bg-slate-900 z-[100]">
-      <div className="relative w-44 h-32">
+    <div className="absolute left-6 bottom-6 rounded-xl border-2 border-white/80 shadow-xl overflow-hidden bg-slate-900 z-[100]">
+      <div className="relative w-28 h-20">
         <video
           ref={videoRef}
           className="w-full h-full object-cover scale-x-[-1]"

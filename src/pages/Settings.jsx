@@ -1,10 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Save, RotateCcw } from "lucide-react";
+import { useAppState } from "../context/AppStateContext";
 
 const tabs = ["General", "Accessibility", "Drawing", "Privacy", "Account"];
 
+const DEFAULT_COLORS = [
+  "#000000",
+  "#ef4444",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+];
+
 export default function Settings() {
+  const { settings: persistedSettings, setSettings } = useAppState();
+
   const [activeTab, setActiveTab] = useState("General");
   const [theme, setTheme] = useState("light");
   const [autoSave, setAutoSave] = useState(true);
@@ -15,21 +29,33 @@ export default function Settings() {
   const [audioFeedback, setAudioFeedback] = useState(true);
   const [highContrast, setHighContrast] = useState(false);
   const [brushSize, setBrushSize] = useState("M");
+  const [defaultBrushColor, setDefaultBrushColor] = useState("#000000");
   const [canvasBg, setCanvasBg] = useState("white");
   const [layers, setLayers] = useState(false);
   const [profileVisibility, setProfileVisibility] = useState("private");
   const [dataCollection, setDataCollection] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState(null);
 
-  const colors = [
-    "#000000",
-    "#ef4444",
-    "#f97316",
-    "#eab308",
-    "#22c55e",
-    "#3b82f6",
-    "#8b5cf6",
-    "#ec4899",
-  ];
+  // Sync local state from persisted settings when they load/change
+  useEffect(() => {
+    if (!persistedSettings) return;
+    setTheme(persistedSettings.theme ?? "light");
+    setAutoSave(persistedSettings.autoSave ?? true);
+    setSoundEffects(persistedSettings.soundEffects ?? true);
+    setHeadSensitivity(persistedSettings.headSensitivity ?? 75);
+    setGestureSensitivity(persistedSettings.gestureSensitivity ?? 50);
+    setDeadZone(persistedSettings.deadZone ?? 25);
+    setAudioFeedback(persistedSettings.audioFeedback ?? true);
+    setHighContrast(persistedSettings.highContrast ?? false);
+    setBrushSize(persistedSettings.brushSize ?? "M");
+    setDefaultBrushColor(persistedSettings.defaultBrushColor ?? "#000000");
+    setCanvasBg(persistedSettings.canvasBg ?? "white");
+    setLayers(persistedSettings.layers ?? false);
+    setProfileVisibility(persistedSettings.profileVisibility ?? "private");
+    setDataCollection(persistedSettings.dataCollection ?? false);
+  }, [persistedSettings]);
+
+  const colors = DEFAULT_COLORS;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pt-24 pb-16 px-6">
@@ -214,12 +240,18 @@ export default function Settings() {
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Default color
                   </label>
+                  <p className="text-slate-500 text-sm mb-2">Used as the initial brush color on the drawing page.</p>
                   <div className="flex gap-2 flex-wrap">
                     {colors.map((c) => (
                       <button
                         key={c}
                         type="button"
-                        className="w-12 h-12 rounded-2xl border-2 border-slate-200 hover:border-indigo-500 transition-colors"
+                        onClick={() => setDefaultBrushColor(c)}
+                        className={`w-12 h-12 rounded-2xl border-2 transition-colors ${
+                          defaultBrushColor === c
+                            ? "border-indigo-500 ring-2 ring-indigo-200 ring-offset-2"
+                            : "border-slate-200 hover:border-indigo-400"
+                        }`}
                         style={{ backgroundColor: c }}
                         aria-label={`Color ${c}`}
                       />
@@ -323,9 +355,29 @@ export default function Settings() {
           </div>
         </div>
 
-        <div className="flex gap-4 mt-8">
+        <div className="flex gap-4 mt-8 items-center">
           <button
             type="button"
+            onClick={() => {
+              setSettings({
+                theme,
+                autoSave,
+                soundEffects,
+                headSensitivity,
+                gestureSensitivity,
+                deadZone,
+                audioFeedback,
+                highContrast,
+                brushSize,
+                defaultBrushColor,
+                canvasBg,
+                layers,
+                profileVisibility,
+                dataCollection,
+              });
+              setSaveFeedback("Saved");
+              setTimeout(() => setSaveFeedback(null), 2000);
+            }}
             className="inline-flex items-center justify-center gap-2 min-h-12 px-8 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95 transition-all"
           >
             <Save className="w-5 h-5" />
@@ -333,11 +385,48 @@ export default function Settings() {
           </button>
           <button
             type="button"
+            onClick={() => {
+              setTheme("light");
+              setAutoSave(true);
+              setSoundEffects(true);
+              setHeadSensitivity(75);
+              setGestureSensitivity(50);
+              setDeadZone(25);
+              setAudioFeedback(true);
+              setHighContrast(false);
+              setBrushSize("M");
+              setDefaultBrushColor("#000000");
+              setCanvasBg("white");
+              setLayers(false);
+              setProfileVisibility("private");
+              setDataCollection(false);
+              setSettings({
+                theme: "light",
+                autoSave: true,
+                soundEffects: true,
+                headSensitivity: 75,
+                gestureSensitivity: 50,
+                deadZone: 25,
+                audioFeedback: true,
+                highContrast: false,
+                brushSize: "M",
+                defaultBrushColor: "#000000",
+                canvasBg: "white",
+                layers: false,
+                profileVisibility: "private",
+                dataCollection: false,
+              });
+              setSaveFeedback("Reset to defaults");
+              setTimeout(() => setSaveFeedback(null), 2000);
+            }}
             className="inline-flex items-center justify-center gap-2 min-h-12 px-6 rounded-2xl border-2 border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition-all"
           >
             <RotateCcw className="w-5 h-5" />
             Reset to Defaults
           </button>
+          {saveFeedback && (
+            <span className="text-emerald-600 font-medium text-sm">{saveFeedback}</span>
+          )}
         </div>
       </div>
     </div>

@@ -76,7 +76,7 @@ export default function Navbar({ isAuthenticated, user, onSignOut }) {
       <div className="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
         {/* Logo */}
         <Link
-          to={isAuthenticated ? "/home" : "/"}
+          to="/"
           className="flex items-center min-h-12 min-w-[4rem] justify-center"
         >
           <span className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent transition-all duration-300 hover:opacity-90">
@@ -109,16 +109,22 @@ export default function Navbar({ isAuthenticated, user, onSignOut }) {
           </div>
         )}
 
-        {/* Right: Profile or Login */}
-        <div className="flex items-center min-h-12">
+        {/* Right: Profile or Auth links */}
+        <div className="flex items-center min-h-12 gap-2">
           {isAuthenticated ? (
             <div className="relative" ref={profileRef}>
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-700 hover:from-indigo-500/30 hover:to-purple-500/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-700 hover:from-indigo-500/30 hover:to-purple-500/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 font-semibold text-lg"
                 aria-label="Profile menu"
               >
-                <User className="w-6 h-6" />
+                {user?.name || user?.email ? (
+                  <span className="uppercase">
+                    {(user.name || user.email || "U").charAt(0)}
+                  </span>
+                ) : (
+                  <User className="w-6 h-6" />
+                )}
               </button>
               {profileOpen && (
                 <div className="absolute right-0 top-full mt-2 w-56 py-2 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
@@ -152,12 +158,20 @@ export default function Navbar({ isAuthenticated, user, onSignOut }) {
               )}
             </div>
           ) : (
-            <Link
-              to="/login"
-              className="min-h-12 px-6 flex items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-95 transition-all duration-300"
-            >
-              Login
-            </Link>
+            <>
+              <Link
+                to="/signup"
+                className="min-h-10 px-4 flex items-center justify-center rounded-2xl border-2 border-indigo-500 text-indigo-600 font-semibold hover:bg-indigo-50 transition-all duration-300"
+              >
+                Get started
+              </Link>
+              <Link
+                to="/login"
+                className="min-h-10 px-5 flex items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-95 transition-all duration-300"
+              >
+                Sign in
+              </Link>
+            </>
           )}
 
           {/* Mobile menu toggle - when authenticated */}

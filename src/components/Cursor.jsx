@@ -1,12 +1,17 @@
 // components/Cursor.jsx
 import React, { forwardRef } from "react";
 
-const Cursor = forwardRef(({ size, color, isPenDown, tool }, ref) => {
+const Cursor = forwardRef(({ size, color, isPenDown, tool, left, top }, ref) => {
+  const positionStyle =
+    left != null && top != null
+      ? { left: typeof left === "number" ? `${left}px` : left, top: typeof top === "number" ? `${top}px` : top }
+      : {};
   return (
     <div
       ref={ref}
       className="fixed pointer-events-none rounded-full border-3 z-[999]"
       style={{
+        ...positionStyle,
         width: size + 8,
         height: size + 8,
         transform: "translate(-50%, -50%)",

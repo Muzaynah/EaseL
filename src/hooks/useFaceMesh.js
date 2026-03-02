@@ -15,15 +15,32 @@ export function useFaceMesh({ videoRef, onResults }) {
   onResultsRef.current = onResults;
 
   const startFaceMesh = useCallback(() => {
-    const script1 = document.createElement("script");
-    script1.src = "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js";
-    const script2 = document.createElement("script");
-    script2.src = "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js";
+    function startCameraWhenVideoReady(faceMesh) {
+      if (!videoRef.current || !videoRef.current.isConnected) {
+        const t = setTimeout(() => startCameraWhenVideoReady(faceMesh), 50);
+        cameraStartTimeoutRef.current = t;
+        return;
+      }
+      if (!window.Camera) {
+        const t = setTimeout(() => startCameraWhenVideoReady(faceMesh), 50);
+        cameraStartTimeoutRef.current = t;
+        return;
+      }
+      if (cameraStartTimeoutRef.current) clearTimeout(cameraStartTimeoutRef.current);
+      cameraStartTimeoutRef.current = null;
+      const video = videoRef.current;
+      const camera = new window.Camera(video, {
+        onFrame: async () => {
+          if (videoRef.current) await faceMesh.send({ image: videoRef.current });
+        },
+        width: 640,
+        height: 480,
+      });
+      camera.start();
+      cameraRef.current = camera;
+    }
 
-    document.head.appendChild(script1);
-    document.head.appendChild(script2);
-
-    script1.onload = () => {
+    function createFaceMeshAndStart() {
       const faceMesh = new window.FaceMesh({
         locateFile: (file) =>
           `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${file}`,
@@ -52,33 +69,20 @@ export function useFaceMesh({ videoRef, onResults }) {
       faceMeshRef.current = faceMesh;
 
       if (DEBUG) console.log("[EaseL] FaceMesh + Camera started (onResults stabilized via ref)");
+      startCameraWhenVideoReady(faceMesh);
+    }
 
-      const startCameraWhenVideoReady = () => {
-        if (!videoRef.current) {
-          const t = setTimeout(startCameraWhenVideoReady, 50);
-          cameraStartTimeoutRef.current = t;
-          return;
-        }
-        if (!window.Camera) {
-          const t = setTimeout(startCameraWhenVideoReady, 50);
-          cameraStartTimeoutRef.current = t;
-          return;
-        }
-        if (cameraStartTimeoutRef.current) clearTimeout(cameraStartTimeoutRef.current);
-        cameraStartTimeoutRef.current = null;
-        const video = videoRef.current;
-        const camera = new window.Camera(video, {
-          onFrame: async () => {
-            if (videoRef.current) await faceMesh.send({ image: videoRef.current });
-          },
-          width: 640,
-          height: 480,
-        });
-        camera.start();
-        cameraRef.current = camera;
-      };
-      startCameraWhenVideoReady();
-    };
+    if (typeof window !== "undefined" && window.FaceMesh && window.Camera) {
+      createFaceMeshAndStart();
+    } else {
+      const script1 = document.createElement("script");
+      script1.src = "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js";
+      const script2 = document.createElement("script");
+      script2.src = "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js";
+      document.head.appendChild(script1);
+      document.head.appendChild(script2);
+      script1.onload = createFaceMeshAndStart;
+    }
 
     return () => {
       if (DEBUG) console.log("[EaseL] FaceMesh cleanup (camera stop, faceMesh close)");

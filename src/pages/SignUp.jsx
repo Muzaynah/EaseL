@@ -61,7 +61,7 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center px-6 py-16">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center px-6 pt-28 pb-16">
       <div className="w-full max-w-md">
         <div className="bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl border border-white/50 p-8">
           <h1 className="text-3xl font-bold text-slate-800 text-center mb-2">

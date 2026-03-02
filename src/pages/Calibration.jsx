@@ -164,7 +164,7 @@ export default function Calibration() {
     const neutral = neutralPositionRef.current;
     if (currentStep === 3 && neutral) {
       const relTilt = st - neutral.tilt;
-      setTiltDetected((d) => ({ ...d, left: d.left || relTilt < TILT_LEFT, right: d.right || relTilt > TILT_RIGHT }));
+      setTiltDetected((d) => ({ ...d, left: d.left || relTilt > TILT_RIGHT, right: d.right || relTilt < TILT_LEFT }));
       setMovementRange((r) => ({
         ...r,
         minTilt: Math.min(r.minTilt, relTilt),
@@ -174,7 +174,7 @@ export default function Calibration() {
 
     if (currentStep === 4 && neutral) {
       const relYaw = sy - neutral.yaw;
-      setTurnDetected((d) => ({ ...d, left: d.left || relYaw < YAW_LEFT, right: d.right || relYaw > YAW_RIGHT }));
+      setTurnDetected((d) => ({ ...d, left: d.left || relYaw > YAW_RIGHT, right: d.right || relYaw < YAW_LEFT }));
       setMovementRange((r) => ({
         ...r,
         minYaw: Math.min(r.minYaw, relYaw),
@@ -418,7 +418,7 @@ export default function Calibration() {
               </p>
               <div className="space-y-4 mb-6">
                 <LiveBar
-                  value={neutralPosition ? live.tilt - neutralPosition.tilt : live.tilt}
+                  value={neutralPosition ? -(live.tilt - neutralPosition.tilt) : -live.tilt}
                   leftLabel="Tilt left"
                   rightLabel="Tilt right"
                   detectedLeft={tiltDetected.left}
@@ -463,7 +463,7 @@ export default function Calibration() {
               </p>
               <div className="space-y-4 mb-6">
                 <LiveBar
-                  value={neutralPosition ? live.yaw - neutralPosition.yaw : live.yaw}
+                  value={neutralPosition ? -(live.yaw - neutralPosition.yaw) : -live.yaw}
                   leftLabel="Turn left"
                   rightLabel="Turn right"
                   detectedLeft={turnDetected.left}
@@ -508,7 +508,7 @@ export default function Calibration() {
               </p>
               <div className="space-y-4 mb-6">
                 <LiveBar
-                  value={neutralPosition ? -(live.pitch - neutralPosition.pitch) : -live.pitch}
+                  value={neutralPosition ? (live.pitch - neutralPosition.pitch) : live.pitch}
                   leftLabel="Look up"
                   rightLabel="Look down"
                   detectedLeft={pitchDetected.up}

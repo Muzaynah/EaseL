@@ -1,8 +1,10 @@
 // CanvasPage.jsx
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useFaceMesh } from "../hooks/useFaceMesh";
 import { useDrawing } from "../hooks/useDrawing";
 import { useGestureControl } from "../hooks/useGestureControl";
+import { useCalibratedCursor } from "../hooks/useCalibratedCursor";
+import { useAppState } from "../context/AppStateContext";
 import CanvasControls from "../components/CanvasControls";
 import { getCanvasCoordinates } from "../utils/canvasUtils";
 
@@ -12,17 +14,26 @@ import CameraPreview from "../components/CameraPreview";
 import Cursor from "../components/Cursor";
 import StatusHUD from "../components/StatusHUD";
 
+const BRUSH_SIZE_MAP = { S: 8, M: 20, L: 32, XL: 48 };
+
+function getInitialBrushSize(settings) {
+    const size = settings?.brushSize ?? "M";
+    return BRUSH_SIZE_MAP[size] ?? 20;
+}
+
 export default function CanvasPage() {
+    const { profile, settings } = useAppState();
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
-    const cursorRef = useRef(null); 
+    const cursorRef = useRef(null);
 
-    const [brushSize, setBrushSize] = useState(20);
-    const [brushColor, setBrushColor] = useState("#000000");
+    const [brushSize, setBrushSize] = useState(() => getInitialBrushSize(settings));
+    const [brushColor, setBrushColor] = useState(() => settings?.defaultBrushColor ?? "#000000");
     const [tool, setTool] = useState("brush");
     const [isPenDown, setIsPenDown] = useState(false);
 
-    const cursorPos = useRef({ x: 800, y: 500 });
+    const { cursorPosRef, updateCursorFromLandmarks } = useCalibratedCursor(profile);
+    const cursorPos = cursorPosRef;
     // Refs mirror state so gesture/callbacks always see latest (avoids stale tool/color)
     const toolRef = useRef(tool);
     const colorRef = useRef(brushColor);
@@ -39,14 +50,9 @@ export default function CanvasPage() {
     const [activeLayerId, setActiveLayerId] = useState("layer_1");
 
     const buttonRefs = useRef({});
-    
+
     // Track previous settings to detect changes
     const prevSettings = useRef({ color: brushColor, tool, size: brushSize });
-
-    const { startFaceMesh } = useFaceMesh({
-        videoRef,
-        onResults: handleFaceMeshResults,
-    });
 
     const {
         draw,
@@ -74,6 +80,50 @@ export default function CanvasPage() {
         onButtonHover: setHoveredButton,
         onButtonClick: handleButtonClick,
         buttonRefs,
+        cursorPosRef: cursorPosRef,
+    });
+
+    const handleFaceMeshResults = useCallback(
+        (results) => {
+            if (!results.multiFaceLandmarks?.[0]) return;
+
+            const landmarks = results.multiFaceLandmarks[0];
+
+            // Calibrated cursor position (tilt, neutral, movement range - same as Tutorial/Screener)
+            updateCursorFromLandmarks(landmarks);
+            // Pen toggle and button hover/click using same cursor position
+            processLandmarks(landmarks, isPenDownRef.current);
+
+            const position = cursorPos.current;
+
+            // Drawing logic - use ref so we have latest pen state from gesture
+            if (isPenDownRef.current && canvasRef.current) {
+                const canvas = canvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+
+                const inside =
+                    position.x >= rect.left &&
+                    position.x <= rect.right &&
+                    position.y >= rect.top &&
+                    position.y <= rect.bottom;
+
+                if (inside) {
+                    const { x, y } = getCanvasCoordinates(
+                        canvas,
+                        position.x,
+                        position.y
+                    );
+
+                    draw(x, y);
+                }
+            }
+        },
+        [updateCursorFromLandmarks, processLandmarks, draw]
+    );
+
+    const { startFaceMesh } = useFaceMesh({
+        videoRef,
+        onResults: handleFaceMeshResults,
     });
 
     function handlePenToggle(newPenState) {
@@ -119,6 +169,7 @@ export default function CanvasPage() {
         if (btnId === "clear") clear();
         else if (btnId === "undo") undo();
         else if (btnId === "redo") redo();
+        else if (btnId === "save") saveProject();
         else if (btnId.startsWith("col-"))
             setBrushColor(btnId.replace("col-", ""));
         else if (btnId === "brush") setTool("brush");
@@ -228,42 +279,6 @@ export default function CanvasPage() {
         return () => cancelAnimationFrame(animationFrameId);
     }, []);
 
-    function handleFaceMeshResults(results) {
-        if (!results.multiFaceLandmarks?.[0]) return;
-
-        const landmarks = results.multiFaceLandmarks[0];
-
-        const { position } = processLandmarks(
-            landmarks,
-            isPenDownRef.current
-        );
-
-        // Update ref-based cursor position
-        cursorPos.current = position;
-        
-        // Drawing logic - use ref so we have latest pen state from gesture
-        if (isPenDownRef.current && canvasRef.current) {
-            const canvas = canvasRef.current;
-            const rect = canvas.getBoundingClientRect();
-
-            const inside =
-                position.x >= rect.left &&
-                position.x <= rect.right &&
-                position.y >= rect.top &&
-                position.y <= rect.bottom;
-
-            if (inside) {
-                const { x, y } = getCanvasCoordinates(
-                    canvas,
-                    position.x,
-                    position.y
-                );
-
-                draw(x, y);
-            }
-        }
-    }
-
     const [saveStatus, setSaveStatus] = useState("idle"); // 'idle' | 'saving' | 'saved'
 
     async function saveProject() {
@@ -287,16 +302,20 @@ export default function CanvasPage() {
         setTimeout(() => setSaveStatus("idle"), 2500);
     }
 
+    const canvasBg = settings?.canvasBg ?? "white";
+
     return (
-        <div className="relative w-screen h-screen pt-20 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center overflow-hidden font-sans select-none">
+        <div className="relative w-screen h-screen pt-20 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 overflow-hidden font-sans select-none">
+            <div className="absolute inset-0 flex pt-20 items-center justify-center">
+                <DrawingCanvas canvasRef={canvasRef} canvasBg={canvasBg} />
+            </div>
 
             <StatusHUD isPenDown={isPenDown} />
 
-            <DrawingCanvas canvasRef={canvasRef} />
-
             <Cursor
-                ref={cursorRef} 
-                position={cursorPos.current}
+                ref={cursorRef}
+                left={cursorPos.current.x}
+                top={cursorPos.current.y}
                 size={brushSize}
                 color={brushColor}
                 isPenDown={isPenDown}
@@ -317,6 +336,8 @@ export default function CanvasPage() {
                 canUndo={canUndo}
                 canRedo={canRedo}
                 hoveredButton={hoveredButton}
+                onSaveProject={saveProject}
+                saveStatus={saveStatus}
             />
 
             <LayerPanel
@@ -331,58 +352,6 @@ export default function CanvasPage() {
             />
 
             <CameraPreview videoRef={videoRef} />
-
-            {/* Save button: card-aligned with app style */}
-            <div className="absolute top-6 right-6 z-[200] flex flex-col items-end gap-2 p-3 rounded-2xl bg-white/90 backdrop-blur-md shadow-2xl border border-white/50">
-                <button
-                    onClick={saveProject}
-                    disabled={saveStatus !== "idle"}
-                    className={`
-                        min-h-12 px-6 rounded-2xl font-semibold text-sm shadow-lg transition-all
-                        flex items-center justify-center gap-2 min-w-[120px]
-                        ${saveStatus === "saving"
-                            ? "bg-indigo-400 cursor-wait text-white"
-                            : saveStatus === "saved"
-                                ? "bg-emerald-600 text-white cursor-default"
-                                : "bg-gradient-to-br from-indigo-500 to-purple-600 hover:opacity-95 text-white"
-                        }
-                    `}
-                >
-                    {saveStatus === "saving" ? (
-                        <>
-                            <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            Saving…
-                        </>
-                    ) : (
-                        "Save Project"
-                    )}
-                </button>
-
-                {/* Progress bar shown while saving (animates 0% -> 100%) */}
-                {saveStatus === "saving" && (
-                    <div className="w-full max-w-[140px] h-1.5 bg-indigo-200 rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-indigo-600 rounded-full transition-all duration-[400ms] ease-out"
-                            style={{ width: "0%" }}
-                            ref={(el) => {
-                                if (!el) return;
-                                requestAnimationFrame(() => {
-                                    requestAnimationFrame(() => {
-                                        el.style.width = "100%";
-                                    });
-                                });
-                            }}
-                        />
-                    </div>
-                )}
-
-                {/* Toast: Painting saved */}
-                {saveStatus === "saved" && (
-                    <div className="absolute top-full mt-2 right-0 px-4 py-3 bg-emerald-600 text-white rounded-xl shadow-xl text-sm font-medium">
-                        Painting saved!
-                    </div>
-                )}
-            </div>
         </div>
     );
 }
