@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFaceMesh } from "../hooks/useFaceMesh";
 import { updatePositionTilt, createTiltState } from "../utils/cursorMappings";
+import { speakInstruction, stopSpeech } from "../utils/screenerAudio";
 import Cursor from "../components/Cursor";
 import { useAuth } from "../context/AuthContext";
 
@@ -43,6 +44,21 @@ export default function EligibilityGate() {
       if (typeof cleanup === "function") cleanup();
     };
   }, [startFaceMesh]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      speakInstruction("Tilt your head toward the circle and hold it there.");
+    }, 600);
+    return () => {
+      clearTimeout(t);
+      stopSpeech();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (attempt === 1 || passed || failed) return;
+    speakInstruction("Try again. Tilt toward the circle.");
+  }, [attempt, passed, failed]);
 
   useEffect(() => {
     if (passed || failed) return;
@@ -131,20 +147,46 @@ export default function EligibilityGate() {
   if (failed) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pt-24 px-6">
-        <div className="max-w-md w-full bg-white/90 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/50 text-center">
-          <h1 className="text-2xl font-bold text-slate-800 mb-4">Eligibility not met</h1>
-          <p className="text-slate-600 mb-6">
-            A caregiver can help adjust the setup or try again later. This does not prevent using other parts of EaseL.
+        <div className="max-w-lg w-full bg-white/90 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/50">
+          <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-2">
+            Message for the caregiver
           </p>
-          <button
-            onClick={async () => {
-              await updateProfile((p) => ({ ...p, eligibilityPassed: false }));
-              navigate("/home", { replace: true });
-            }}
-            className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95 transition-all"
-          >
-            Return to Home
-          </button>
+          <h1 className="text-2xl font-bold text-slate-800 mb-3">
+            The child may need additional support to use EaseL right now.
+          </h1>
+          <p className="text-slate-600 mb-4">
+            During this short check, the child wasn't able to reliably move a cursor toward a
+            target using head tilt. Framework §2.2 requires this minimum control before
+            continuing.
+          </p>
+          <ul className="list-disc list-inside text-slate-600 space-y-1 mb-6 text-sm">
+            <li>Ensure good lighting and that the face is clearly visible to the camera.</li>
+            <li>Support the head/neck if needed so small tilts are possible.</li>
+            <li>Try again in a calm, low-stimulation moment.</li>
+          </ul>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={() => {
+                setFailed(false);
+                setAttempt(1);
+                setTimeLeft(TIME_LIMIT_SEC);
+                setHoldStart(null);
+                setAttemptsWon(0);
+              }}
+              className="flex-1 min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95 transition-all"
+            >
+              Try again
+            </button>
+            <button
+              onClick={async () => {
+                await updateProfile((p) => ({ ...p, eligibilityPassed: false }));
+                navigate("/", { replace: true });
+              }}
+              className="flex-1 min-h-12 rounded-2xl border-2 border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition-all"
+            >
+              Exit for now
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -155,7 +197,8 @@ export default function EligibilityGate() {
       <video ref={videoRef} className="hidden" autoPlay muted playsInline />
       <p className="text-slate-700 font-medium mb-2">Attempt {attempt} of {ATTEMPTS_TOTAL}</p>
       <p className="text-slate-600 text-sm mb-2">Time left: {timeLeft}s</p>
-      <p className="text-slate-600 mb-8">Tilt your head toward the circle.</p>
+      <p className="text-slate-700 text-xl font-semibold mb-2">Tilt your head toward the circle.</p>
+      <p className="text-slate-500 text-sm mb-8">Hold your cursor on the circle for 2 seconds.</p>
       <div
         className="fixed rounded-full border-4 border-indigo-400 bg-indigo-100/50"
         style={{

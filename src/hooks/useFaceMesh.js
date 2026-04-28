@@ -1,7 +1,7 @@
 // hooks/useFaceMesh.js
 // Hook for initializing and managing MediaPipe FaceMesh
 
-import { useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback } from "react";
 
 // Set window.EaseL_DEBUG = false in console to disable timing logs
 const DEBUG = typeof window === "undefined" || window.EaseL_DEBUG !== false;

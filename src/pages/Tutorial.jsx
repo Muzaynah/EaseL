@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useAppState } from "../context/AppStateContext";
 import { useFaceMesh } from "../hooks/useFaceMesh";
 import { updatePositionTiltWithCalibration, createTiltStateWithCalibration } from "../utils/cursorMappings";
 import { speakInstruction, stopSpeech } from "../utils/screenerAudio";
@@ -22,6 +23,7 @@ function getInitialCursorPosition() {
 export default function Tutorial() {
   const navigate = useNavigate();
   const { updateProfile, profile } = useAuth();
+  const { settings } = useAppState();
   const videoRef = useRef(null);
   const cursorPosRef = useRef(getInitialCursorPosition());
   const tiltStateRef = useRef(createTiltStateWithCalibration());
@@ -36,15 +38,20 @@ export default function Tutorial() {
     calibrationRef.current = profile?.calibration ?? null;
   }, [profile?.calibration]);
 
+  const sensitivityOptions = {
+    headSensitivity: settings?.headSensitivity ?? 75,
+    deadZone: settings?.deadZone ?? 25,
+  };
+
   const handleResults = useCallback((results) => {
     try {
       const landmarks = results?.multiFaceLandmarks?.[0];
       if (!landmarks) return;
-      updatePositionTiltWithCalibration(landmarks, cursorPosRef, tiltStateRef, calibrationRef.current);
+      updatePositionTiltWithCalibration(landmarks, cursorPosRef, tiltStateRef, calibrationRef.current, sensitivityOptions);
     } catch (e) {
       if (typeof console !== "undefined" && console.warn) console.warn("[EaseL] Tutorial handleResults:", e);
     }
-  }, []);
+  }, [settings?.headSensitivity, settings?.deadZone]);
 
   const { startFaceMesh } = useFaceMesh({ videoRef, onResults: handleResults });
 

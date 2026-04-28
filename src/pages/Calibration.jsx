@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import { SkipForward, ArrowRight, Check, Circle, ArrowUp, ArrowDown, ArrowLeft, ArrowRight as ArrowRightIcon } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { SkipForward, ArrowRight, Check, Circle, ArrowUp, ArrowDown, ArrowLeft, ArrowRight as ArrowRightIcon, Loader2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useAppState } from "../context/AppStateContext";
 import { useFaceMesh } from "../hooks/useFaceMesh";
 import { getYawPitch } from "../utils/cursorMappings/getYawPitch";
 
@@ -61,7 +62,13 @@ function LiveBar({ value, leftLabel, rightLabel, detectedLeft, detectedRight }) 
 
 export default function Calibration() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { updateProfile, profile } = useAuth();
+  const { setCalibration: syncCalibrationToApp } = useAppState();
+  const fromSettings = location.state?.fromSettings === true;
+  const isFirstTime = !profile?.calibration?.lastCalibratedAt;
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
   const videoRef = useRef(null);
   const [step, setStep] = useState(1);
   const [neutralDetected, setNeutralDetected] = useState(false);
@@ -263,37 +270,79 @@ export default function Calibration() {
 
   const allDirectionStepsDone = tiltDone && turnDone && pitchDone;
   const handleCalibrationDone = async () => {
+    setSaveError(null);
+    setSaving(true);
     const existing = profile?.calibration ?? {};
-    await updateProfile((p) => ({
-      ...p,
-      calibration: {
-        ...existing,
-        neutralPosition: neutralPosition ?? existing.neutralPosition,
-        movementRange:
-          allDirectionStepsDone
-            ? movementRange
-            : existing.movementRange,
-        lastCalibratedAt: Date.now(),
-      },
-    }));
-    navigate("/tutorial", { replace: true });
+    const newCalibration = {
+      ...existing,
+      neutralPosition: neutralPosition ?? existing.neutralPosition,
+      movementRange:
+        allDirectionStepsDone
+          ? movementRange
+          : existing.movementRange,
+      lastCalibratedAt: Date.now(),
+      activationMethod: existing.activationMethod ?? "mouth",
+    };
+    try {
+      await updateProfile((p) => ({
+        ...p,
+        calibration: newCalibration,
+      }));
+      syncCalibrationToApp(newCalibration);
+      setSaving(false);
+      await new Promise((r) => setTimeout(r, 0));
+      if (fromSettings) {
+        navigate("/settings", { replace: true });
+      } else if (isFirstTime) {
+        navigate("/tutorial", { replace: true });
+      } else {
+        navigate("/settings", { replace: true });
+      }
+    } catch (e) {
+      setSaveError(e?.message ?? "Failed to save calibration");
+      setSaving(false);
+    }
   };
 
   if (step === 7) {
+    const goToTutorial = !fromSettings && isFirstTime;
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center px-6 pt-24 pb-16">
         <div className="max-w-md w-full bg-white/90 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/50 text-center">
           <div className="w-20 h-20 mx-auto rounded-full bg-emerald-100 flex items-center justify-center mb-6">
             <Check className="w-10 h-10 text-emerald-600" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">All Set!</h1>
-          <p className="text-slate-600 mb-2">Your controls are calibrated.</p>
-          <p className="text-slate-500 text-sm mb-8">Next: a short tutorial, then the LIP screener. You can recalibrate anytime in Settings.</p>
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">
+            {fromSettings ? "Calibration complete" : "All Set!"}
+          </h1>
+          <p className="text-slate-600 mb-2">
+            {fromSettings
+              ? "Your cursor and controls are updated everywhere—tutorial, canvas, and screener will use the new calibration."
+              : "Your controls are calibrated."}
+          </p>
+          {!fromSettings && (
+            <p className="text-slate-500 text-sm mb-8">
+              You can recalibrate anytime in Settings.
+            </p>
+          )}
+          {saveError && (
+            <p className="text-red-600 text-sm mb-4">{saveError}</p>
+          )}
           <button
             onClick={handleCalibrationDone}
-            className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95 transition-all"
+            disabled={saving}
+            className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            Continue to Tutorial
+            {saving ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Updating calibration…
+              </>
+            ) : goToTutorial ? (
+              "Continue to Tutorial"
+            ) : (
+              "Back to Settings"
+            )}
           </button>
         </div>
       </div>

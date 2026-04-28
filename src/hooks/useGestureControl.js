@@ -5,10 +5,20 @@ export function useGestureControl({
   onPenToggle,
   onButtonHover,
   onButtonClick,
+  /** Called when user activates (mouth/dwell) but cursor is not over any registered button. */
+  onActivateOutside,
+  /** Fires for every mouth-open event even if it was rejected (for false-positive tracking). */
+  onMouthEvent,
   buttonRefs,
   /** When provided, use this ref for cursor position (keeps hit-test in sync with visual cursor). */
   cursorPosRef: externalCursorPosRef,
-  /** "click" | "mouth" = mouth open triggers; "dwell" = cursor hold triggers */
+  /**
+   * "click" | "mouth" = mouth open triggers; "dwell" = cursor hold triggers.
+   * Framework §3.4: dwell fallback is automatic when the profile sets
+   * `useDwellActivation` or when the S3 false-positive rate crosses its
+   * threshold. The caller should resolve that outside and pass the effective
+   * method here.
+   */
   activationMethod = "mouth",
   /** Lower = more sensitive (e.g. 0.018 for screener). Default 0.03 */
   mouthOpenThreshold = 0.03,
@@ -146,21 +156,28 @@ export function useGestureControl({
         const isMouthOpen = mouthOpenFrames.current >= framesToConfirm;
         const isMouthClosed = mouthClosedFrames.current >= framesToConfirm;
 
-        if (isMouthOpen && !wasMouthOpen.current && now - lastToggleTime.current > cooldownMs) {
+        if (isMouthOpen && !wasMouthOpen.current) {
+          const accepted = now - lastToggleTime.current > cooldownMs;
+          onMouthEvent?.({ accepted, ts: now });
+          if (!accepted) {
+            wasMouthOpen.current = true;
+            return { position: cursorPos.current, hoveredBtn };
+          }
           lastToggleTime.current = now;
-          if (isOverInteractive) {
-            if (hoveredElement) {
-              dispatchPointerEvent("pointerdown", hoveredElement);
-              dispatchPointerEvent("pointerup", hoveredElement);
-              dispatchPointerEvent("click", hoveredElement);
-              onButtonClick?.(hoveredBtn);
-            } else if (elementAtCursor) {
+          if (isOverInteractive && hoveredElement) {
+            dispatchPointerEvent("pointerdown", hoveredElement);
+            dispatchPointerEvent("pointerup", hoveredElement);
+            dispatchPointerEvent("click", hoveredElement);
+            onButtonClick?.(hoveredBtn);
+          } else {
+            if (!hoveredElement) onActivateOutside?.();
+            if (isOverInteractive && elementAtCursor) {
               dispatchPointerEvent("pointerdown", elementAtCursor);
               dispatchPointerEvent("pointerup", elementAtCursor);
               dispatchPointerEvent("click", elementAtCursor);
+            } else {
+              onPenToggle?.(!isPenDown);
             }
-          } else {
-            onPenToggle?.(!isPenDown);
           }
         }
         if (isMouthOpen) wasMouthOpen.current = true;
@@ -183,6 +200,7 @@ export function useGestureControl({
               dispatchPointerEvent("click", hoveredElement);
               onButtonClick?.(hoveredBtn);
             } else {
+              if (!hoveredElement) onActivateOutside?.();
               onPenToggle?.(!isPenDown);
             }
           }
@@ -194,7 +212,7 @@ export function useGestureControl({
 
       return { position: cursorPos.current, hoveredBtn };
     },
-    [buttonRefs, onButtonHover, onPenToggle, onButtonClick, mouthOpenThreshold, framesToConfirm, cooldownMs, activationMethod, dwellMs, dwellRadius]
+    [buttonRefs, onButtonHover, onPenToggle, onButtonClick, onActivateOutside, mouthOpenThreshold, framesToConfirm, cooldownMs, activationMethod, dwellMs, dwellRadius]
   );
 
   return { cursorPos, processLandmarks };

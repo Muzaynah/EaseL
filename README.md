@@ -1,84 +1,98 @@
 # EaseL
 
-EaseL is a browser-based web application for assistive drawing and learning, designed for **children with cerebral palsy (CP)** who have upper-limb motor impairments. The system enables hands-free interaction using head movements and facial gestures, allowing users to draw, practice guided lessons, and engage in creative activities without traditional input devices.
+EaseL is a browser-based assistive platform that helps children with motor impairments draw and learn hands-free using head movement and facial gestures.
 
-EaseL runs entirely on the client side as a web app to ensure privacy, accessibility, and ease of deployment.
+It is built for accessibility first: low-friction setup, webcam-only interaction, guided practice, and caregiver-friendly progress tracking.
 
-## Motivation
+## What EaseL Provides
 
-Most digital art and learning tools rely on fine motor control through a mouse, keyboard, or touch input. Children with cerebral palsy (CP) and other neuromotor disabilities often face significant barriers when accessing such systems.
+- Hands-free cursor control using MediaPipe FaceMesh
+- Gesture-based activation (mouth-open / dwell style controls)
+- Structured onboarding flow: eligibility, calibration, tutorial, and path assignment screener
+- Guided lessons with Path -> Level -> Lesson -> Step progression and reinforcement feedback
+- Creative canvas mode with local save/export
+- Caregiver progress dashboard and metric export
+- English/Urdu support
 
-EaseL addresses this gap by providing an inclusive, hands-free web application that enables creative expression and guided learning using only a webcam and facial movement. The project focuses on accessibility for children with CP, privacy, and low-cost deployment.
+## High-Level Flow
 
-## Key Features
+1. Sign up or log in (or demo mode without Firebase config)
+2. Complete setup sequence:
+   - Eligibility
+   - Calibration
+   - Tutorial
+   - Path Assignment Screener
+3. Enter core app:
+   - Home
+   - Canvas
+   - Lessons (Path 1 / Path 2)
+   - Gallery
+   - Caregiver pages (Profile, Settings, Progress)
 
-- Head-movement-based cursor control using facial landmarks
-- Gesture-based drawing activation such as blinking or mouth opening
-- Two interaction modes:
-  - Precise Mode for accurate cursor mapping
-  - Directional Mode for velocity-based movement
-- Real-time stroke smoothing and predictive assistance
-- Adjustable brush size, color, and opacity
-- Guided drawing and learning lessons in English and Urdu
-- Local project saving and export in PNG format
-- Fully client-side processing with no backend dependency
+## Tech Stack
 
-## Technologies Used
+- React + Vite
+- Tailwind CSS
+- MediaPipe FaceMesh + camera_utils
+- Firebase Auth + Firestore (optional; app supports demo/local mode)
+- LocalStorage/IndexedDB-backed persistence utilities
 
-- Frontend Framework: React
-- Styling: Tailwind CSS
-- Creative Coding: p5.js
-- Face Tracking: MediaPipe FaceMesh
-- Storage: IndexedDB and LocalStorage; **Firebase** (Auth + Firestore) for accounts and profiles
-- APIs: WebRTC getUserMedia and Web Speech API
-- Build Tools: Vite
+## Quick Start
 
-## Getting Started
+### 1) Install
 
-### Accounts and Firebase (optional)
-Profile and account data are stored in Firebase when configured. Copy `.env.example` to `.env` and add your Firebase project keys (create a project at [Firebase Console](https://console.firebase.google.com), enable **Authentication** and **Firestore**). Without `.env`, the app runs in demo mode (one account stored in the browser).
+```bash
+npm install
+```
 
-### Prerequisites
-- Modern web browser such as Chrome, Firefox, or Edge
-- Webcam with at least 720p resolution
-- Stable lighting environment
+### 2) Optional Firebase setup
 
-### Running the Application
+If you want real accounts + cloud profile storage:
 
-1. **Development:** Run `npm run dev` and open the URL shown in the terminal (e.g. `http://localhost:5173`) in your browser.
-2. **Production build:** Run `npm run build`, then `npm run preview` to test the built app. Deploy the `dist` folder to any static host.
+- Copy `.env.example` to `.env`
+- Add Firebase project config values
+- Enable Firebase Authentication and Firestore
 
-## Usage Overview
+Without `.env`, EaseL runs in local demo mode.
 
-1. Allow camera access when prompted
-2. Complete the calibration process
-3. Select a drawing mode
-4. Use head movements to control the cursor
-5. Perform gestures to start or stop drawing
-6. Save or export artwork locally
-7. Explore guided learning modules
+### 3) Run
 
-## Accessibility Considerations
+```bash
+npm run dev
+```
 
-- Large and clearly labeled interface elements
-- High-contrast visuals for improved visibility
-- Minimal text with optional audio guidance
-- No requirement for hand or finger input
-- Designed following WCAG 2.1 accessibility principles
+Open the local URL shown in terminal (usually `http://localhost:5173`).
 
-## Privacy and Security
+### 4) Build + preview
 
-- All video processing occurs locally in the browser
-- No camera data or personal information is transmitted
-- No user accounts or cloud storage required
-- Diagnostics and logging are optional and local-only
+```bash
+npm run build
+npm run preview
+```
+
+## Project Structure (important folders)
+
+- `src/pages` - route-level pages (Landing, Home, Calibration, Screener, etc.)
+- `src/assets` - static images and media (imported; bundled by Vite)
+- `src/screens` - lesson runtime screens (`Path1Lesson`, `Path2Lesson`)
+- `src/components` - reusable UI blocks
+- `src/hooks` - behavior hooks (face mesh, gesture control, timers, reinforcement)
+- `src/utils` - pure logic and data helpers (paths, levels, lesson flow, persistence, adaptation)
+- `src/context` - global app/auth state providers
+- `src/firebase` - Firebase config and profile helpers
+- `src/theme` - shared palette and theme assets
+
+## Accessibility and Privacy
+
+- No mouse/keyboard requirement during core interaction
+- Large UI elements and high-contrast visual design cues
+- Optional spoken guidance for key tasks
+- Video is processed client-side; no raw camera stream is uploaded by default app flow
 
 ## License
 
-This project is licensed under the MIT License.
+MIT
 
-## Acknowledgments
+## Acknowledgment
 
-Developed as a Final Year Project under the Department of Computing,  
-School of Electrical Engineering and Computer Science,  
-National University of Sciences and Technology (NUST).
+Developed as a Final Year Project at NUST (SEECS), Department of Computing.

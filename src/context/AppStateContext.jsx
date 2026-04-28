@@ -17,7 +17,7 @@ export function AppStateProvider({ children }) {
   const [settings, setSettingsState] = useState(getSettings);
   const [calibration, setCalibrationState] = useState(getCalibration);
   const [hydrated, setHydrated] = useState(false);
-  /** Session-only override for testing: null = use profile, 1 = simulate Intent Capture, 2 = simulate Guided Control */
+  /** Session-only override for testing: null = use profile, 1 = simulate Path 1, 2 = simulate Path 2 */
   const [modeOverride, setModeOverride] = useState(null);
 
   const profile = user && authProfile != null ? authProfile : localProfile;
@@ -26,7 +26,10 @@ export function AppStateProvider({ children }) {
     setHydrated(true);
   }, []);
 
-  const effectiveLipMode = modeOverride !== null ? modeOverride : (profile?.lipMode ?? null);
+  const effectivePathId =
+    modeOverride !== null
+      ? modeOverride
+      : (profile?.pathId ?? profile?.lipMode ?? null);
 
   const setProfile = useCallback(
     (next) => {
@@ -61,7 +64,9 @@ export function AppStateProvider({ children }) {
     setCalibration,
     modeOverride,
     setModeOverride,
-    effectiveLipMode,
+    effectivePathId,
+    // Legacy compatibility alias.
+    effectiveLipMode: effectivePathId,
   };
 
   return (
@@ -71,6 +76,7 @@ export function AppStateProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAppState() {
   const ctx = useContext(AppStateContext);
   if (!ctx) {

@@ -1,0 +1,189 @@
+/**
+ * EaseL — main color palette (edit values here; used app-wide via CSS variables)
+ * Pair with src/theme/paletteTokens.js if you need the same values in JavaScript.
+ */
+:root {
+  /* Page & surfaces (lavender + cream — high contrast with text) */
+  --easeL-bg-page: #ebe4f5;
+  --easeL-bg-cream: #f7f4ef;
+  --easeL-bg-section: #ffffff;
+  --easeL-bg-section-alt: #e2daf0;
+  --easeL-bg-card-mint: #e4f5f1;
+  --easeL-bg-card-coral: #fce8e4;
+  --easeL-bg-card-butter: #fdf6d9;
+  --easeL-bg-footer: #25232e;
+  /* Text */
+  --easeL-text: #1a1526;
+  --easeL-text-muted: #3f3850;
+  --easeL-text-on-dark: #f7f4ff;
+  --easeL-text-on-dark-muted: #c8c0dc;
+  /* Brand & accents */
+  --easeL-primary: #3d1f7a;
+  --easeL-primary-mid: #5c3d9e;
+  --easeL-primary-light: #7b5fc4;
+  --easeL-accent-mint: #0f7a6e;
+  --easeL-accent-coral: #c4503d;
+  --easeL-accent-butter: #c9a227;
+  --easeL-accent-rose: #b84d7a;
+  /* UI */
+  --easeL-border: #b5a4cf;
+  --easeL-border-subtle: #d9cfe8;
+  --easeL-nav-bg: color-mix(in srgb, #ffffff 92%, transparent);
+  --easeL-nav-border: #d3c6e4;
+  --easeL-focus-ring: #3d1f7a;
+  --easeL-link: #3d1f7a;
+  --easeL-link-hover: #2a1454;
+  /* Overlays & decorative */
+  --easeL-hero-glow-1: color-mix(in srgb, var(--easeL-primary-mid) 22%, transparent);
+  --easeL-hero-glow-2: color-mix(in srgb, var(--easeL-accent-rose) 18%, transparent);
+  --easeL-hero-glow-3: color-mix(in srgb, var(--easeL-accent-mint) 16%, transparent);
+  --easeL-shadow-soft: 0 14px 48px color-mix(in srgb, var(--easeL-primary) 14%, transparent);
+  --easeL-radius-sm: 0.75rem;
+  --easeL-radius-md: 1.125rem;
+  --easeL-radius-lg: 1.5rem;
+  --easeL-radius-xl: 2rem;
+}
+
+/* Nav bar (modular: apply class on <nav>) */
+.easeL-nav {
+  background: var(--easeL-nav-bg);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--easeL-nav-border);
+}
+
+/* Logo gradient uses theme tokens */
+.easeL-logo {
+  background: linear-gradient(
+    105deg,
+    var(--easeL-primary) 0%,
+    var(--easeL-primary-light) 45%,
+    var(--easeL-accent-rose) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* --- Shared page & form patterns (use across routes) --- */
+.easeL-page-bg {
+  min-height: 100vh;
+  background: var(--easeL-bg-page);
+  color: var(--easeL-text);
+}
+
+.easeL-loading-screen {
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  background: var(--easeL-bg-page);
+  color: var(--easeL-text-muted);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.easeL-auth-card {
+  background: color-mix(in srgb, var(--easeL-bg-section) 94%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 2px solid var(--easeL-border-subtle);
+  border-radius: var(--easeL-radius-xl);
+  box-shadow: var(--easeL-shadow-soft);
+}
+
+.easeL-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  width: 100%;
+  border-radius: var(--easeL-radius-lg);
+  background: var(--easeL-primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.0625rem;
+  box-shadow: var(--easeL-shadow-soft);
+  transition: opacity 0.2s;
+}
+
+.easeL-btn-primary:hover:not(:disabled) {
+  opacity: 0.95;
+}
+
+.easeL-btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.easeL-input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0 1rem;
+  border-radius: var(--easeL-radius-lg);
+  border: 2px solid var(--easeL-border-subtle);
+  background: var(--easeL-bg-section);
+  color: var(--easeL-text);
+  font-size: 1rem;
+}
+
+.easeL-input:focus {
+  outline: none;
+  border-color: var(--easeL-primary-mid);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--easeL-focus-ring) 28%, transparent);
+}
+
+.easeL-link {
+  color: var(--easeL-link);
+  font-weight: 600;
+}
+
+.easeL-link:hover {
+  text-decoration: underline;
+  color: var(--easeL-link-hover);
+}
+
+.easeL-checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.35rem;
+  accent-color: var(--easeL-primary);
+}
+
+/* Desktop nav pills (NavLink adds .is-active via class) */
+.easeL-nav-pill {
+  border-radius: var(--easeL-radius-lg);
+  transition: background 0.2s, color 0.2s;
+}
+
+.easeL-nav-pill.is-active {
+  background: color-mix(in srgb, var(--easeL-primary) 16%, white);
+  color: var(--easeL-primary);
+}
+
+.easeL-nav-pill:not(.is-active) {
+  color: var(--easeL-text-muted);
+}
+
+.easeL-nav-pill:not(.is-active):hover {
+  background: color-mix(in srgb, white 82%, var(--easeL-bg-section-alt));
+  color: var(--easeL-text);
+}
+
+.easeL-avatar-btn {
+  background: color-mix(in srgb, var(--easeL-primary) 14%, white);
+  color: var(--easeL-primary);
+}
+
+.easeL-avatar-btn:hover {
+  background: color-mix(in srgb, var(--easeL-primary) 22%, white);
+}
+
+.easeL-dropdown {
+  border-color: var(--easeL-border-subtle);
+}
+
+/* Links only — sign out keeps its own hover */
+.easeL-dropdown a[href]:hover {
+  background: color-mix(in srgb, var(--easeL-primary) 8%, white);
+}

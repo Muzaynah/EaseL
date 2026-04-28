@@ -61,41 +61,53 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center px-6 pt-28 pb-16">
+    <div className="easeL-page-bg flex items-center justify-center px-4 pb-20 pt-28 sm:px-6">
       <div className="w-full max-w-md">
-        <div className="bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl border border-white/50 p-8">
-          <h1 className="text-3xl font-bold text-slate-800 text-center mb-2">
+        <div className="easeL-auth-card p-8 sm:p-10">
+          <h1
+            className="mb-2 text-center text-3xl font-bold sm:text-4xl"
+            style={{ color: "var(--easeL-text)" }}
+          >
             Create an account
           </h1>
-          <p className="text-slate-600 text-center mb-8">
-            Caregiver or user: set up the account and important details for EaseL.
+          <p className="mb-8 text-center text-lg" style={{ color: "var(--easeL-text-muted)" }}>
+            For a child or young person: caregiver creates the account and can record preferences
+            used during setup and lessons.
           </p>
 
           {error && (
-            <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+            <div className="mb-4 rounded-2xl border-2 border-red-200 bg-red-50 p-4 text-base text-red-800">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSignup} className="space-y-5">
             <div>
-              <label htmlFor="displayName" className="block text-sm font-medium text-slate-700 mb-2">
-                Child / user name
+              <label
+                htmlFor="displayName"
+                className="mb-2 block text-base font-semibold"
+                style={{ color: "var(--easeL-text)" }}
+              >
+                Child or young person’s name
               </label>
               <input
                 id="displayName"
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className="easeL-input"
                 placeholder="Name"
                 autoComplete="name"
               />
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
-                Email (login)
+              <label
+                htmlFor="email"
+                className="mb-2 block text-base font-semibold"
+                style={{ color: "var(--easeL-text)" }}
+              >
+                Email (used to sign in)
               </label>
               <input
                 id="email"
@@ -103,14 +115,18 @@ export default function SignUp() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className="easeL-input"
                 placeholder="you@example.com"
                 autoComplete="email"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
+              <label
+                htmlFor="password"
+                className="mb-2 block text-base font-semibold"
+                style={{ color: "var(--easeL-text)" }}
+              >
                 Password
               </label>
               <div className="relative">
@@ -121,34 +137,43 @@ export default function SignUp() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={8}
-                  className="w-full h-12 px-4 pr-12 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  className="easeL-input pr-14"
                   placeholder="••••••••"
                   autoComplete="new-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-500 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 rounded-xl"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl p-3"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? (
+                    <EyeOff className="h-6 w-6" style={{ color: "var(--easeL-text-muted)" }} />
+                  ) : (
+                    <Eye className="h-6 w-6" style={{ color: "var(--easeL-text-muted)" }} />
+                  )}
                 </button>
               </div>
-              <div className="flex gap-1 mt-2">
+              <div className="mt-2 flex gap-1">
                 {[1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className={`h-1.5 flex-1 rounded-full transition-colors ${
-                      i <= strength ? "bg-indigo-500" : "bg-slate-200"
-                    }`}
+                    className="h-2 flex-1 rounded-full transition-colors"
+                    style={{
+                      background: i <= strength ? "var(--easeL-primary)" : "var(--easeL-border-subtle)",
+                    }}
                   />
                 ))}
               </div>
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 mb-2">
-                Confirm Password
+              <label
+                htmlFor="confirmPassword"
+                className="mb-2 block text-base font-semibold"
+                style={{ color: "var(--easeL-text)" }}
+              >
+                Confirm password
               </label>
               <div className="relative">
                 <input
@@ -156,28 +181,39 @@ export default function SignUp() {
                   type={showConfirm ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={`w-full h-12 px-4 pr-12 rounded-2xl border bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${
-                    confirmPassword && !match ? "border-red-400" : "border-slate-200"
-                  }`}
+                  className="easeL-input pr-14"
+                  style={
+                    confirmPassword && !match
+                      ? { borderColor: "var(--easeL-accent-coral)" }
+                      : undefined
+                  }
                   placeholder="••••••••"
                   autoComplete="new-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirm(!showConfirm)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-500 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 rounded-xl"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl p-3"
                   aria-label={showConfirm ? "Hide password" : "Show password"}
                 >
-                  {showConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showConfirm ? (
+                    <EyeOff className="h-6 w-6" style={{ color: "var(--easeL-text-muted)" }} />
+                  ) : (
+                    <Eye className="h-6 w-6" style={{ color: "var(--easeL-text-muted)" }} />
+                  )}
                 </button>
               </div>
               {confirmPassword && !match && (
-                <p className="text-sm text-red-600 mt-1">Passwords do not match</p>
+                <p className="mt-2 text-base text-red-700">Passwords do not match</p>
               )}
             </div>
 
             <div>
-              <label htmlFor="createdBy" className="block text-sm font-medium text-slate-700 mb-2">
+              <label
+                htmlFor="createdBy"
+                className="mb-2 block text-base font-semibold"
+                style={{ color: "var(--easeL-text)" }}
+              >
                 Created by (optional)
               </label>
               <input
@@ -185,20 +221,24 @@ export default function SignUp() {
                 type="text"
                 value={createdBy}
                 onChange={(e) => setCreatedBy(e.target.value)}
-                className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                placeholder="Caregiver name or note"
+                className="easeL-input"
+                placeholder="e.g. parent or clinician name"
               />
             </div>
 
             <div>
-              <label htmlFor="disabilityLevel" className="block text-sm font-medium text-slate-700 mb-2">
+              <label
+                htmlFor="disabilityLevel"
+                className="mb-2 block text-base font-semibold"
+                style={{ color: "var(--easeL-text)" }}
+              >
                 Disability level (optional)
               </label>
               <select
                 id="disabilityLevel"
                 value={disabilityLevel}
                 onChange={(e) => setDisabilityLevel(e.target.value)}
-                className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className="easeL-input"
               >
                 <option value="">Not specified</option>
                 {DISABILITY_LEVEL_OPTIONS.map((opt) => (
@@ -210,14 +250,18 @@ export default function SignUp() {
             </div>
 
             <div>
-              <label htmlFor="language" className="block text-sm font-medium text-slate-700 mb-2">
+              <label
+                htmlFor="language"
+                className="mb-2 block text-base font-semibold"
+                style={{ color: "var(--easeL-text)" }}
+              >
                 Language preference
               </label>
               <select
                 id="language"
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className="easeL-input"
               >
                 {LANGUAGE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -228,14 +272,18 @@ export default function SignUp() {
             </div>
 
             <div>
-              <label htmlFor="sessionLength" className="block text-sm font-medium text-slate-700 mb-2">
+              <label
+                htmlFor="sessionLength"
+                className="mb-2 block text-base font-semibold"
+                style={{ color: "var(--easeL-text)" }}
+              >
                 Session length preference
               </label>
               <select
                 id="sessionLength"
                 value={sessionLengthPreference}
                 onChange={(e) => setSessionLengthPreference(Number(e.target.value))}
-                className="w-full h-12 px-4 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className="easeL-input"
               >
                 {SESSION_LENGTH_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -245,18 +293,14 @@ export default function SignUp() {
               </select>
             </div>
 
-            <button
-              type="submit"
-              disabled={submitting || loading}
-              className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-95 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 disabled:opacity-60"
-            >
+            <button type="submit" disabled={submitting || loading} className="easeL-btn-primary">
               {submitting ? "Creating…" : "Create account"}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-slate-600">
+          <p className="mt-6 text-center text-base" style={{ color: "var(--easeL-text-muted)" }}>
             Already have an account?{" "}
-            <Link to="/login" className="font-semibold text-indigo-600 hover:underline">
+            <Link to="/login" className="easeL-link">
               Sign in
             </Link>
           </p>

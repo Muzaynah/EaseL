@@ -1,62 +1,73 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Eye, Pencil, Trash2, Palette } from "lucide-react";
+import { Plus, Pencil, Trash2, Palette } from "lucide-react";
 
-const mockDrawings = [
-  { id: 1, title: "Sunset Landscape", date: "2 days ago", type: "free", thumbnail: "" },
-  { id: 2, title: "Circle Practice", date: "3 days ago", type: "lesson", thumbnail: "" },
-  { id: 3, title: "Mountain Scene", date: "1 week ago", type: "free", thumbnail: "" },
-  { id: 4, title: "Square Lesson", date: "1 week ago", type: "lesson", thumbnail: "" },
-  { id: 5, title: "Abstract Art", date: "2 weeks ago", type: "free", thumbnail: "" },
-  { id: 6, title: "Line Practice", date: "2 weeks ago", type: "lesson", thumbnail: "" },
-];
+function formatRelative(ms) {
+  if (!ms) return "Saved";
+  const diff = Date.now() - ms;
+  const day = 86_400_000;
+  if (diff < day) return "Today";
+  if (diff < 2 * day) return "Yesterday";
+  if (diff < 7 * day) return `${Math.floor(diff / day)} days ago`;
+  return new Date(ms).toLocaleDateString();
+}
 
+/**
+ * Gallery shows only real saved drawings (canvas + lesson captures).
+ * Backed by localStorage keys:
+ *   - "gesture-projects": array of data URLs (legacy free-draw saves)
+ *   - "easeL_gallery":    array of { thumbnail, type, createdAt, title } (framework format)
+ * We merge both so existing saves are not lost.
+ */
 export default function Gallery() {
-  const [projects, setProjects] = useState([]);
-  const [filter, setFilter] = useState("all"); // all | lessons | free
-  const [sort, setSort] = useState("recent"); // recent | name | date
+  const [items, setItems] = useState([]);
+  const [filter, setFilter] = useState("all");
 
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("gesture-projects") || "[]");
-    setProjects(saved.reverse());
+    try {
+      const legacy = JSON.parse(localStorage.getItem("gesture-projects") || "[]");
+      const structured = JSON.parse(localStorage.getItem("easeL_gallery") || "[]");
+      const legacyMapped = legacy.map((img, i) => ({
+        id: `legacy-${i}`,
+        title: `Drawing ${legacy.length - i}`,
+        createdAt: null,
+        type: "free",
+        thumbnail: img,
+        _legacyIndex: i,
+      }));
+      const structuredMapped = (Array.isArray(structured) ? structured : []).map((d, i) => ({
+        id: `saved-${i}`,
+        title: d.title || `Drawing ${i + 1}`,
+        createdAt: d.createdAt || null,
+        type: d.type === "lesson" ? "lesson" : "free",
+        thumbnail: d.thumbnail || "",
+        _structuredIndex: i,
+      }));
+      const merged = [...structuredMapped, ...legacyMapped].sort(
+        (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+      );
+      setItems(merged);
+    } catch {
+      setItems([]);
+    }
   }, []);
-
-  const savedAsDrawings = projects.map((img, i) => ({
-    id: `saved-${i}`,
-    title: `Project ${projects.length - i}`,
-    date: "Recently",
-    type: "free",
-    thumbnail: img,
-    isSaved: true,
-    projectIndex: i,
-  }));
-
-  const allDrawings = [
-    ...savedAsDrawings,
-    ...mockDrawings.map((d) => ({ ...d, isSaved: false })),
-  ];
 
   const filtered =
     filter === "all"
-      ? allDrawings
-      : allDrawings.filter((d) => d.type === (filter === "lessons" ? "lesson" : "free"));
-  const sorted = [...filtered].sort((a, b) => {
-    if (sort === "name") return (a.title || "").localeCompare(b.title || "");
-    if (sort === "date") return 0;
-    return 0;
-  });
-
-  function deleteProject(index) {
-    const updated = [...projects];
-    updated.splice(index, 1);
-    setProjects(updated);
-    localStorage.setItem("gesture-projects", JSON.stringify([...updated].reverse()));
-  }
+      ? items
+      : items.filter((d) => d.type === (filter === "lessons" ? "lesson" : "free"));
 
   function handleDelete(drawing) {
-    if (drawing.isSaved && drawing.projectIndex != null) {
-      deleteProject(drawing.projectIndex);
+    if (drawing._legacyIndex != null) {
+      const legacy = JSON.parse(localStorage.getItem("gesture-projects") || "[]");
+      legacy.splice(drawing._legacyIndex, 1);
+      localStorage.setItem("gesture-projects", JSON.stringify(legacy));
+    } else if (drawing._structuredIndex != null) {
+      const structured = JSON.parse(localStorage.getItem("easeL_gallery") || "[]");
+      structured.splice(drawing._structuredIndex, 1);
+      localStorage.setItem("easeL_gallery", JSON.stringify(structured));
     }
+    setItems((prev) => prev.filter((d) => d.id !== drawing.id));
   }
 
   const filters = [
@@ -68,7 +79,6 @@ export default function Gallery() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pt-24 pb-16 px-6">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <h1 className="text-3xl font-bold text-slate-800">My Gallery</h1>
           <div className="flex flex-wrap items-center gap-3">
@@ -87,49 +97,39 @@ export default function Gallery() {
                 </button>
               ))}
             </div>
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-              className="min-h-12 px-4 rounded-2xl bg-white/90 backdrop-blur-md border border-white/50 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            >
-              <option value="recent">Recent</option>
-              <option value="name">Name</option>
-              <option value="date">Date</option>
-            </select>
             <Link
               to="/canvas"
               className="inline-flex items-center justify-center gap-2 min-h-12 px-6 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-95 transition-all"
             >
               <Plus className="w-5 h-5" />
-              New Drawing
+              New drawing
             </Link>
           </div>
         </div>
 
-        {/* Content */}
-        {sorted.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="bg-white/90 backdrop-blur-md rounded-3xl p-12 text-center shadow-2xl border border-white/50">
             <div className="w-24 h-24 mx-auto rounded-full bg-slate-100 flex items-center justify-center mb-6">
               <Palette className="w-12 h-12 text-slate-400" />
             </div>
             <h2 className="text-2xl font-bold text-slate-800 mb-2">No drawings yet</h2>
-            <p className="text-slate-600 mb-6">Start creating your first piece.</p>
+            <p className="text-slate-600 mb-6">Saved lessons and canvas drawings appear here.</p>
             <Link
               to="/canvas"
               className="inline-flex items-center justify-center min-h-12 px-8 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95 transition-all"
             >
-              Start Creating
+              Start creating
             </Link>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {sorted.map((drawing, i) => (
+            {filtered.map((drawing) => (
               <div
                 key={drawing.id}
                 className="bg-white/90 backdrop-blur-md rounded-3xl overflow-hidden shadow-2xl border border-white/50 hover:shadow-indigo-100/50 hover:scale-[1.02] transition-all duration-300"
               >
                 <div className="relative w-full aspect-square bg-slate-100 border-b border-slate-100">
-                  {drawing.thumbnail && typeof drawing.thumbnail === "string" ? (
+                  {drawing.thumbnail ? (
                     <img
                       src={drawing.thumbnail}
                       alt={drawing.title}
@@ -140,17 +140,11 @@ export default function Gallery() {
                       <Palette className="w-16 h-16 text-slate-400" />
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 hover:opacity-100 transition-opacity flex items-end justify-center gap-2 p-3">
-                    <button
-                      className="w-10 h-10 rounded-xl bg-white/90 flex items-center justify-center text-slate-700 hover:bg-white"
-                      title="View"
-                    >
-                      <Eye className="w-5 h-5" />
-                    </button>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 hover:opacity-100 transition-opacity flex items-end justify-end gap-2 p-3">
                     <Link
                       to="/canvas"
                       className="w-10 h-10 rounded-xl bg-white/90 flex items-center justify-center text-slate-700 hover:bg-white"
-                      title="Edit"
+                      title="Open in canvas"
                     >
                       <Pencil className="w-5 h-5" />
                     </Link>
@@ -164,10 +158,8 @@ export default function Gallery() {
                   </div>
                 </div>
                 <div className="p-4">
-                  <h3 className="font-semibold text-slate-800 truncate">
-                    {drawing.title}
-                  </h3>
-                  <p className="text-sm text-slate-500 mt-0.5">{drawing.date}</p>
+                  <h3 className="font-semibold text-slate-800 truncate">{drawing.title}</h3>
+                  <p className="text-sm text-slate-500 mt-0.5">{formatRelative(drawing.createdAt)}</p>
                   <span
                     className={`inline-block mt-2 px-2 py-0.5 rounded-lg text-xs font-medium ${
                       drawing.type === "lesson"
@@ -175,7 +167,7 @@ export default function Gallery() {
                         : "bg-indigo-100 text-indigo-800"
                     }`}
                   >
-                    {drawing.type === "lesson" ? "Lesson" : "Free Draw"}
+                    {drawing.type === "lesson" ? "Lesson" : "Free draw"}
                   </span>
                 </div>
               </div>

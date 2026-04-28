@@ -234,7 +234,7 @@ function Step4Animation() {
   );
 }
 
-export default function LIPScreenerStepAnimation({ step }) {
+export default function PathScreenerStepAnimation({ step }) {
   const content =
     step === 1 ? (
       <Step1Animation />

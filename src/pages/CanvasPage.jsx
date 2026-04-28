@@ -7,12 +7,15 @@ import { useCalibratedCursor } from "../hooks/useCalibratedCursor";
 import { useAppState } from "../context/AppStateContext";
 import CanvasControls from "../components/CanvasControls";
 import { getCanvasCoordinates } from "../utils/canvasUtils";
+import { resolveActivationConfig } from "../utils/activationConfig";
+import { appendTelemetryLog } from "../utils/persistence";
 
 import DrawingCanvas from "../components/DrawingCanvas";
 import LayerPanel from "../components/LayerPanel";
 import CameraPreview from "../components/CameraPreview";
 import Cursor from "../components/Cursor";
 import StatusHUD from "../components/StatusHUD";
+import TroubleshootAssist from "../components/TroubleshootAssist";
 
 const BRUSH_SIZE_MAP = { S: 8, M: 20, L: 32, XL: 48 };
 
@@ -31,8 +34,18 @@ export default function CanvasPage() {
     const [brushColor, setBrushColor] = useState(() => settings?.defaultBrushColor ?? "#000000");
     const [tool, setTool] = useState("brush");
     const [isPenDown, setIsPenDown] = useState(false);
+    const [strokeState, setStrokeState] = useState("idle");
+    const [stateReason, setStateReason] = useState("");
+    const [debugStats, setDebugStats] = useState({
+        activationAttempts: 0,
+        activationAccepted: 0,
+        falsePositives: 0,
+        pauseCount: 0,
+        strokeStartLatencyMs: null,
+    });
 
-    const { cursorPosRef, updateCursorFromLandmarks } = useCalibratedCursor(profile);
+    const activationConfig = resolveActivationConfig(profile, "canvas");
+    const { cursorPosRef, updateCursorFromLandmarks, freezeRecalibrationRef } = useCalibratedCursor(profile);
     const cursorPos = cursorPosRef;
     // Refs mirror state so gesture/callbacks always see latest (avoids stale tool/color)
     const toolRef = useRef(tool);
@@ -43,6 +56,8 @@ export default function CanvasPage() {
     isPenDownRef.current = isPenDown;
 
     const [hoveredButton, setHoveredButton] = useState(null);
+    const activationTsRef = useRef(null);
+    const wasInsideRef = useRef(false);
 
     const [layers, setLayers] = useState([
         { id: "layer_1", name: "Layer 1", visible: true, canvasData: null },
@@ -79,8 +94,28 @@ export default function CanvasPage() {
         onPenToggle: handlePenToggle,
         onButtonHover: setHoveredButton,
         onButtonClick: handleButtonClick,
+        onMouthEvent: ({ accepted }) => {
+            setDebugStats((s) => ({
+                ...s,
+                activationAttempts: s.activationAttempts + 1,
+                activationAccepted: s.activationAccepted + (accepted ? 1 : 0),
+            }));
+            if (!accepted) {
+                setStateReason("mouth-not-confirmed");
+            }
+        },
+        onActivateOutside: () => {
+            setDebugStats((s) => ({ ...s, falsePositives: s.falsePositives + 1 }));
+            setStateReason("activate-outside");
+        },
         buttonRefs,
         cursorPosRef: cursorPosRef,
+        activationMethod: activationConfig.activationMethod,
+        mouthOpenThreshold: activationConfig.mouthOpenThreshold,
+        framesToConfirm: activationConfig.framesToConfirm,
+        cooldownMs: activationConfig.cooldownMs,
+        dwellMs: activationConfig.dwellMs,
+        dwellRadius: activationConfig.dwellRadius,
     });
 
     const handleFaceMeshResults = useCallback(
@@ -97,7 +132,7 @@ export default function CanvasPage() {
             const position = cursorPos.current;
 
             // Drawing logic - use ref so we have latest pen state from gesture
-            if (isPenDownRef.current && canvasRef.current) {
+            if (canvasRef.current) {
                 const canvas = canvasRef.current;
                 const rect = canvas.getBoundingClientRect();
 
@@ -107,7 +142,7 @@ export default function CanvasPage() {
                     position.y >= rect.top &&
                     position.y <= rect.bottom;
 
-                if (inside) {
+                if (isPenDownRef.current && inside) {
                     const { x, y } = getCanvasCoordinates(
                         canvas,
                         position.x,
@@ -116,6 +151,17 @@ export default function CanvasPage() {
 
                     draw(x, y);
                 }
+                if (isPenDownRef.current && !inside && wasInsideRef.current) {
+                    setStrokeState("paused");
+                    setStateReason("out-of-canvas");
+                    setDebugStats((s) => ({ ...s, pauseCount: s.pauseCount + 1 }));
+                    appendTelemetryLog({ area: "canvas", event: "stroke-paused", reason: "out-of-canvas" });
+                } else if (isPenDownRef.current && inside && !wasInsideRef.current) {
+                    setStrokeState("drawing");
+                    setStateReason("resumed");
+                    appendTelemetryLog({ area: "canvas", event: "stroke-resumed" });
+                }
+                wasInsideRef.current = inside;
             }
         },
         [updateCursorFromLandmarks, processLandmarks, draw]
@@ -148,13 +194,37 @@ export default function CanvasPage() {
             return;
         }
         if (newPenState && !isPenDownRef.current) {
+            activationTsRef.current = performance.now();
             startStroke();
             isPenDownRef.current = true;
             setIsPenDown(true);
+            if (freezeRecalibrationRef) freezeRecalibrationRef.current = true;
+            setStrokeState("drawing");
+            setStateReason("activation-detected");
+            appendTelemetryLog({
+                area: "canvas",
+                event: "stroke-start",
+                activationMethod: activationConfig.activationMethod,
+            });
+            setDebugStats((s) => ({
+                ...s,
+                strokeStartLatencyMs:
+                    activationTsRef.current != null
+                        ? Math.round(performance.now() - activationTsRef.current)
+                        : s.strokeStartLatencyMs,
+            }));
         } else if (!newPenState && isPenDownRef.current) {
             endStroke();
             isPenDownRef.current = false;
             setIsPenDown(false);
+            if (freezeRecalibrationRef) freezeRecalibrationRef.current = false;
+            setStrokeState("complete");
+            setStateReason("manual-stop");
+            appendTelemetryLog({ area: "canvas", event: "stroke-stop", reason: "toggle-up" });
+            setTimeout(() => {
+                setStrokeState("idle");
+                setStateReason("");
+            }, 700);
         }
     }
 
@@ -164,6 +234,9 @@ export default function CanvasPage() {
             endStroke();
             isPenDownRef.current = false;
             setIsPenDown(false);
+            if (freezeRecalibrationRef) freezeRecalibrationRef.current = false;
+            setStrokeState("idle");
+            setStateReason("control-click");
         }
         
         if (btnId === "clear") clear();
@@ -225,10 +298,9 @@ export default function CanvasPage() {
         if (settingsChanged && isPenDown) {
             // End current stroke immediately
             endStroke();
-            // Restart with new settings
-            setTimeout(() => {
-                startStroke();
-            }, 0);
+            startStroke();
+            setStrokeState("drawing");
+            setStateReason("settings-updated");
         }
         
         prevSettings.current = { color: brushColor, tool, size: brushSize };
@@ -310,7 +382,13 @@ export default function CanvasPage() {
                 <DrawingCanvas canvasRef={canvasRef} canvasBg={canvasBg} />
             </div>
 
-            <StatusHUD isPenDown={isPenDown} />
+            <StatusHUD isPenDown={isPenDown} strokeState={strokeState} stateReason={stateReason} />
+            <div className="absolute top-38 left-1/2 -translate-x-1/2 z-[200] rounded-xl bg-white/90 border border-slate-200 px-3 py-1 text-[11px] text-slate-600 font-semibold">
+                activations {debugStats.activationAccepted}/{debugStats.activationAttempts} · false+ {debugStats.falsePositives} · pauses {debugStats.pauseCount}
+            </div>
+            <div className="absolute top-24 right-4 z-[220]">
+                <TroubleshootAssist />
+            </div>
 
             <Cursor
                 ref={cursorRef}

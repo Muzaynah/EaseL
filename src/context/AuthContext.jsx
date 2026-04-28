@@ -12,7 +12,7 @@ import {
   createProfileInFirestore,
 } from "../firebase/profile";
 import { getNextSetupStep } from "../utils/setupFlow";
-import { createDefaultProfile } from "../utils/profileSchema";
+import { createDefaultProfile, normaliseProfile } from "../utils/profileSchema";
 
 const DEMO_USER_KEY = "easeL_demoUser";
 const DEMO_PROFILE_KEY = "easeL_demoProfile";
@@ -25,16 +25,48 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const loadProfile = useCallback(async (uid, email, displayName) => {
+  const loadProfile = useCallback(async (uid) => {
     if (hasConfig && uid) {
-      const p = await getProfileFromFirestore(uid);
+      const raw = await getProfileFromFirestore(uid);
+      const p = normaliseProfile(raw);
       setProfileState(p);
+      // Persist the auto-correction so Firestore mirrors the in-memory shape
+      // and the user's recent-trials query in the lessons reads correctly.
+      if (
+        p &&
+        raw &&
+        (p.currentStage !== raw.currentStage ||
+          p.currentLevel !== raw.currentLevel ||
+          p.pathId !== raw.pathId ||
+          p.pathLevel !== raw.pathLevel)
+      ) {
+        try {
+          await setProfileInFirestore(uid, p);
+        } catch (e) {
+          console.warn("profile auto-heal persist failed", e);
+        }
+      }
       return p;
     }
     try {
       const raw = localStorage.getItem(DEMO_PROFILE_KEY);
-      const p = raw ? JSON.parse(raw) : null;
+      const parsed = raw ? JSON.parse(raw) : null;
+      const p = normaliseProfile(parsed);
       setProfileState(p);
+      if (
+        p &&
+        parsed &&
+        (p.currentStage !== parsed.currentStage ||
+          p.currentLevel !== parsed.currentLevel ||
+          p.pathId !== parsed.pathId ||
+          p.pathLevel !== parsed.pathLevel)
+      ) {
+        try {
+          localStorage.setItem(DEMO_PROFILE_KEY, JSON.stringify(p));
+        } catch (e) {
+          console.warn("demo profile auto-heal persist failed", e);
+        }
+      }
       return p;
     } catch {
       setProfileState(null);
@@ -71,7 +103,7 @@ export function AuthProvider({ children }) {
         try {
           const u = JSON.parse(raw);
           setUser(u);
-          loadProfile(null, u.email, u.displayName);
+          loadProfile(null);
         } catch {
           setUser(null);
           setProfileState(null);
@@ -93,11 +125,7 @@ export function AuthProvider({ children }) {
         email: firebaseUser.email ?? "",
         name: firebaseUser.displayName ?? firebaseUser.email ?? "User",
       });
-      await loadProfile(
-        firebaseUser.uid,
-        firebaseUser.email,
-        firebaseUser.displayName
-      );
+      await loadProfile(firebaseUser.uid);
       setLoading(false);
     });
 
@@ -151,13 +179,28 @@ export function AuthProvider({ children }) {
     setError(null);
     if (hasConfig && auth) {
       const cred = await signInWithEmailAndPassword(auth, email, password);
-      const p = await getProfileFromFirestore(cred.user.uid);
+      const raw = await getProfileFromFirestore(cred.user.uid);
+      const p = normaliseProfile(raw);
       setUser({
         uid: cred.user.uid,
         email: cred.user.email ?? "",
         name: p?.name ?? cred.user.displayName ?? cred.user.email ?? "User",
       });
       setProfileState(p);
+      if (
+        p &&
+        raw &&
+        (p.currentStage !== raw.currentStage ||
+          p.currentLevel !== raw.currentLevel ||
+          p.pathId !== raw.pathId ||
+          p.pathLevel !== raw.pathLevel)
+      ) {
+        try {
+          await setProfileInFirestore(cred.user.uid, p);
+        } catch (e) {
+          console.warn("profile auto-heal persist failed", e);
+        }
+      }
       return getNextSetupStep(p);
     }
     const raw = localStorage.getItem(DEMO_USER_KEY);
@@ -167,7 +210,8 @@ export function AuthProvider({ children }) {
         if (u.email === email) {
           setUser(u);
           const pr = localStorage.getItem(DEMO_PROFILE_KEY);
-          const p = pr ? JSON.parse(pr) : null;
+          const parsed = pr ? JSON.parse(pr) : null;
+          const p = normaliseProfile(parsed);
           setProfileState(p);
           return getNextSetupStep(p);
         }
@@ -215,6 +259,7 @@ export function AuthProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) {

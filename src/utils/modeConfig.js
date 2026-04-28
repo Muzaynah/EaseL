@@ -6,6 +6,7 @@ export const MODE_1_TIERS = {
     targetCount: 1,
     requiredAccuracy: 60,
     trialsForMastery: 5,
+    pathStepPoints: 8,
   },
   1: {
     name: "Reduced Assistance",
@@ -14,6 +15,7 @@ export const MODE_1_TIERS = {
     targetCount: 2,
     requiredAccuracy: 70,
     trialsForMastery: 5,
+    pathStepPoints: 4,
   },
   2: {
     name: "Minimal Assistance",
@@ -22,6 +24,7 @@ export const MODE_1_TIERS = {
     targetCount: 4,
     requiredAccuracy: 80,
     trialsForMastery: 5,
+    pathStepPoints: 2,
   },
 };
 

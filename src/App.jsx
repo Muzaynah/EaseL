@@ -1,8 +1,9 @@
-import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import { useAppState } from "./context/AppStateContext";
+import { getNextSetupStep, isSetupRoute } from "./utils/setupFlow";
 import Navbar from "./components/Navbar";
+import DevMenu from "./components/DevMenu";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
@@ -10,65 +11,108 @@ import Home from "./pages/Home";
 import CanvasPage from "./pages/CanvasPage";
 import Gallery from "./pages/Gallery";
 import LessonSelect from "./pages/LessonSelect";
-import LessonPlay from "./pages/LessonPlay";
-import Mode1Lesson from "./screens/Mode1Lesson";
-import Mode2Lesson from "./screens/Mode2Lesson";
+import Path1Lesson from "./screens/Path1Lesson";
+import Path2Lesson from "./screens/Path2Lesson";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Calibration from "./pages/Calibration";
 import EligibilityGate from "./pages/EligibilityGate";
-import LIPScreener from "./pages/LIPScreener";
+import PathScreener from "./pages/PathScreener";
 import Tutorial from "./pages/Tutorial";
+import CaregiverProgress from "./pages/CaregiverProgress";
 
 export default function App() {
-  const { user, profile, loading: authLoading, signOut, getNextSetupStep } = useAuth();
+  const { user, profile, loading: authLoading, signOut } = useAuth();
   const { hydrated } = useAppState();
-  const navigate = useNavigate();
   const location = useLocation();
 
   const isAuthenticated = !!user;
 
-  const ProtectedRoute = ({ children }) => {
+  /**
+   * ProtectedRoute: requires authentication + enforces setup order.
+   * When the user's next required step isn't the current page, redirect to it.
+   * Accepts `allowDuringSetup` for the setup pages themselves (eligibility/calibration/etc.),
+   * and `caregiver` for pages caregivers may access anytime (settings/profile).
+   */
+  const ProtectedRoute = ({ children, allowDuringSetup = false, caregiver = false }) => {
     if (!isAuthenticated) return <Navigate to="/login" replace />;
-    return children;
+    if (!profile || !hydrated) return null;
+    const next = getNextSetupStep(profile);
+    const setupComplete = next === "/home";
+    if (setupComplete) return children;
+    if (allowDuringSetup && location.pathname === next) return children;
+    if (caregiver) return children;
+    return <Navigate to={next} replace />;
   };
-
-  useEffect(() => {
-    if (!isAuthenticated || !profile || !hydrated) return;
-    const next = getNextSetupStep();
-    if (next !== "/home" && location.pathname === "/home") {
-      navigate(next, { replace: true });
-    }
-  }, [isAuthenticated, profile, hydrated, getNextSetupStep, location.pathname, navigate]);
 
   if (authLoading && !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
-        <p className="text-slate-600 font-medium">Loading…</p>
+      <div className="easeL-loading-screen" role="status" aria-live="polite">
+        <p>Loading…</p>
       </div>
     );
   }
 
   if (isAuthenticated && !hydrated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
-        <p className="text-slate-600 font-medium">Loading…</p>
+      <div className="easeL-loading-screen" role="status" aria-live="polite">
+        <p>Loading…</p>
       </div>
     );
   }
+
+  const inSetup = isSetupRoute(location.pathname);
 
   return (
     <>
       <Navbar
         isAuthenticated={isAuthenticated}
         user={user}
+        profile={profile}
+        inSetup={inSetup}
         onSignOut={signOut}
       />
+      <DevMenu />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
 
+        {/* Setup flow routes — reachable only in the correct order */}
+        <Route
+          path="/eligibility"
+          element={
+            <ProtectedRoute allowDuringSetup>
+              <EligibilityGate />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/calibration"
+          element={
+            <ProtectedRoute allowDuringSetup caregiver>
+              <Calibration />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tutorial"
+          element={
+            <ProtectedRoute allowDuringSetup>
+              <Tutorial />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/screener"
+          element={
+            <ProtectedRoute allowDuringSetup>
+              <PathScreener />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Post-setup app routes — all blocked until setup is complete */}
         <Route
           path="/home"
           element={
@@ -94,29 +138,23 @@ export default function App() {
           }
         />
         <Route
-          path="/lesson/:id"
+          path="/lesson-path1"
           element={
             <ProtectedRoute>
-              <LessonPlay />
+              <Path1Lesson />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/lesson-mode1"
+          path="/lesson-path2"
           element={
             <ProtectedRoute>
-              <Mode1Lesson />
+              <Path2Lesson />
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/lesson-mode2"
-          element={
-            <ProtectedRoute>
-              <Mode2Lesson />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/lesson-mode1" element={<Navigate to="/lesson-path1" replace />} />
+        <Route path="/lesson-mode2" element={<Navigate to="/lesson-path2" replace />} />
         <Route
           path="/gallery"
           element={
@@ -128,7 +166,7 @@ export default function App() {
         <Route
           path="/profile"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute caregiver>
               <Profile user={user} onSignOut={signOut} />
             </ProtectedRoute>
           }
@@ -136,40 +174,16 @@ export default function App() {
         <Route
           path="/settings"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute caregiver>
               <Settings />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/calibration"
+          path="/progress"
           element={
-            <ProtectedRoute>
-              <Calibration />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/eligibility"
-          element={
-            <ProtectedRoute>
-              <EligibilityGate />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/tutorial"
-          element={
-            <ProtectedRoute>
-              <Tutorial />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/screener"
-          element={
-            <ProtectedRoute>
-              <LIPScreener />
+            <ProtectedRoute caregiver>
+              <CaregiverProgress />
             </ProtectedRoute>
           }
         />

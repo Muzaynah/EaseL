@@ -10,11 +10,17 @@ export const TRIAL_LOG = "easeL_trialLog";
 export const SESSION_LOG = "easeL_sessionLog";
 export const CANVAS_PROJECTS = "easeL_canvasProjects";
 export const GALLERY = "easeL_gallery";
+export const TELEMETRY_LOG = "easeL_telemetryLog";
 
 const defaultProfile = {
   eligibilityPassed: null,
+  pathId: null,
+  pathLevel: null,
   lipMode: null,
   lipTier: null,
+  independentUse: null,
+  screenerMetrics: null,
+  currentLevel: 0,
   currentStage: 0,
   sessionLengthPreference: 15,
   useDwellActivation: false,
@@ -22,20 +28,21 @@ const defaultProfile = {
 };
 
 const defaultSettings = {
-  theme: "light",
   autoSave: true,
   soundEffects: true,
   headSensitivity: 75,
   gestureSensitivity: 50,
   deadZone: 25,
+  // Framework §3.3 — 0 disables rolling-neutral recalibration, 100 is
+  // aggressive.  25 is a gentle default that catches slow drift without
+  // interfering with deliberate strokes.
+  rollingNeutralStrength: 25,
   audioFeedback: true,
   highContrast: false,
   brushSize: "M",
   defaultBrushColor: "#000000",
   canvasBg: "white",
   layers: false,
-  profileVisibility: "private",
-  dataCollection: false,
   activationMethod: "click",
 };
 
@@ -107,8 +114,27 @@ export function getTrialLog() {
 export function appendTrialLog(entry) {
   const log = getTrialLog();
   log.push({ ...entry, timestamp: entry.timestamp ?? Date.now() });
-  write(TRIAL_LOG, log);
-  return log;
+  const bounded = log.slice(-800);
+  write(TRIAL_LOG, bounded);
+  return bounded;
+}
+
+export function getTelemetryLog() {
+  const value = read(TELEMETRY_LOG, []);
+  return Array.isArray(value) ? value : [];
+}
+
+export function appendTelemetryLog(entry) {
+  const log = getTelemetryLog();
+  log.push({ ...entry, timestamp: entry.timestamp ?? Date.now() });
+  const bounded = log.slice(-2000);
+  write(TELEMETRY_LOG, bounded);
+  return bounded;
+}
+
+export function clearTelemetryLog() {
+  write(TELEMETRY_LOG, []);
+  return [];
 }
 
 export function getSessionLog() {
@@ -119,6 +145,7 @@ export function getSessionLog() {
 export function appendSessionLog(entry) {
   const log = getSessionLog();
   log.push({ ...entry, timestamp: entry.timestamp ?? Date.now() });
-  write(SESSION_LOG, log);
-  return log;
+  const bounded = log.slice(-400);
+  write(SESSION_LOG, bounded);
+  return bounded;
 }
