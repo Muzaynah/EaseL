@@ -127,7 +127,7 @@ export default function GlobalEaseLCursor() {
       ref={cursorElRef}
       variant="lesson"
       size={28}
-      isPenDown
+      isPenDown={false}
       tool="brush"
       left={initialCursorPosition.x}
       top={initialCursorPosition.y}

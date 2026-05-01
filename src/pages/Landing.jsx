@@ -4,11 +4,9 @@ import {
   BookOpen,
   Camera,
   CheckCircle2,
-  Heart,
   LayoutGrid,
   Monitor,
   Move,
-  Shield,
   Smile,
   UserRound,
 } from "lucide-react";
@@ -34,16 +32,19 @@ const INTERACTION = [
     icon: Move,
     title: "Lateral head tilt",
     text: "The cursor is driven mainly from side-to-side head tilt, so the learner can keep their eyes on the screen; turning and strong nodding are de-emphasised in the design.",
+    tone: "lavender",
   },
   {
     icon: Smile,
     title: "Mouth open or dwell",
     text: "A deliberate mouth-open (with timing rules to reduce false triggers) or dwell-at-target activation can be used, depending on what the in-app screener suggests for that person.",
+    tone: "coral",
   },
   {
     icon: LayoutGrid,
     title: "Rolling neutral",
     text: "Resting head position can drift. The system keeps updating a soft baseline in the background so small tilts still map clearly without repeated manual resets.",
+    tone: "ash",
   },
 ];
 
@@ -53,14 +54,14 @@ const MODES = [
     when: "For learners who need stronger support for intent-first interaction.",
     body:
       "Path 1 contains progressive levels and lessons where intent is prioritized and support is higher. Complex lessons are broken into clear steps.",
-    cardClass: "bg-[color:var(--easeL-bg-card-butter)] border-[color:var(--easeL-border)]",
+    cardClass: "easeL-surface-lavender border-[color:var(--easeL-border-subtle)]",
   },
   {
     name: "Path 2 — Guided Control",
     when: "For learners ready for more direct cursor guidance with scaffolding.",
     body:
       "Path 2 contains levels and lessons focused on guided control. Complex shapes are taught step-by-step so progress is visible and motivating.",
-    cardClass: "bg-[color:var(--easeL-bg-card-mint)] border-[color:var(--easeL-border)]",
+    cardClass: "easeL-surface-coral border-[color:var(--easeL-border-subtle)]",
   },
 ];
 
@@ -85,63 +86,33 @@ export default function Landing() {
 
   return (
     <div
-      className="min-h-screen pb-16"
+      className="min-h-screen pb-0"
       style={{
         color: "var(--easeL-text)",
         background: "var(--easeL-bg-page)",
       }}
     >
-      {/* Ambient orbs (decorative) */}
-      <div
-        className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
-        aria-hidden
-      >
-        <div
-          className="absolute -left-20 top-0 h-80 w-80 rounded-full opacity-90 blur-3xl animate-float-slow"
-          style={{ background: "var(--easeL-hero-glow-1)" }}
-        />
-        <div
-          className="absolute -right-16 top-40 h-96 w-96 rounded-full opacity-80 blur-3xl animate-float-slower"
-          style={{ background: "var(--easeL-hero-glow-2)" }}
-        />
-        <div
-          className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full opacity-75 blur-3xl animate-float-slow"
-          style={{ background: "var(--easeL-hero-glow-3)" }}
-        />
-      </div>
-
-      <main className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <main className="relative w-full">
         {/* Hero */}
         <section
-          className="grid items-center gap-10 pt-28 md:pt-32 lg:grid-cols-2 lg:gap-14"
+          className="easeL-full-bleed-panel pt-28 pb-14 md:pt-32 md:pb-16"
+          style={{ background: "var(--easeL-bg-card-coral)" }}
           aria-labelledby="easeL-hero-heading"
         >
-          <div>
-            <p
-              className="landing-hero-line mb-4 inline-flex min-h-12 items-center gap-2 rounded-full border-2 px-4 py-2 text-base font-semibold"
-              style={{
-                lineHeight: 1.3,
-                borderColor: "var(--easeL-border)",
-                background: "var(--easeL-bg-section)",
-                color: "var(--easeL-primary)",
-                ["--line-delay"]: "0.05s",
-              }}
-            >
-              <span className="text-[color:var(--easeL-text)]">
-                Visuomotor learning for children with cerebral palsy
-              </span>
-            </p>
+          <div className="easeL-panel-inner grid items-center gap-0 lg:grid-cols-2">
+          <div className="flex items-center px-6 sm:px-8 lg:px-12">
+            <div className="w-full max-w-[640px]">
             <h1
               id="easeL-hero-heading"
-              className="landing-hero-line font-easeL-display text-4xl leading-[1.12] sm:text-4xl lg:text-5xl"
-              style={{ color: "var(--easeL-text)", ["--line-delay"]: "0.12s" }}
+              className="landing-hero-line font-easeL-display text-4xl leading-[1.02] sm:text-5xl lg:text-6xl"
+              style={{ color: "var(--easeL-accent-coral)", ["--line-delay"]: "0.05s", maxWidth: "13ch" }}
             >
               Every child deserves creative expression.
               
             </h1>
             <p
               className="landing-hero-line mt-5 text-lg sm:text-xl"
-              style={{ color: "var(--easeL-text-muted)", maxWidth: "38ch", ["--line-delay"]: "0.2s" }}
+              style={{ color: "var(--easeL-text-muted)", maxWidth: "32ch", ["--line-delay"]: "0.2s" }}
             >
               EaseL is an assistive, hands-free learning and drawing platform for children with cerebral palsy and other motor challenges, controlled by head movement and facial gestures.
               It allows children to create, learn, and progress independently.
@@ -170,24 +141,25 @@ export default function Landing() {
                 <ArrowRight className="h-5 w-5 shrink-0" strokeWidth={2.5} />
               </Link>
             </div>
+            </div>
           </div>
 
           {/* Photo carousel: large, accessible controls */}
           <div
-            className="landing-enter relative w-full"
+            className="landing-enter relative flex w-full items-center px-6 sm:px-8 lg:px-12"
             style={{ ["--enter-delay"]: "0.15s" }}
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
           >
             <div
-              className="overflow-hidden rounded-[var(--easeL-radius-xl)] border-2 p-2 shadow-2xl"
+              className="mx-auto w-full max-w-[560px] overflow-hidden rounded-[var(--easeL-radius-xl)] border-2 bg-[color:var(--easeL-bg-section)] p-3 lg:ml-auto"
               style={{
-                borderColor: "var(--easeL-border-subtle)",
-                background: "var(--easeL-bg-section)",
-                boxShadow: "var(--easeL-shadow-soft)",
+                borderColor: "var(--easeL-border-strong)",
+                boxShadow:
+                  "0 8px 0 color-mix(in srgb, var(--easeL-border-strong) 22%, transparent), 0 20px 26px color-mix(in srgb, var(--easeL-primary) 16%, transparent)",
               }}
             >
-              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[1.5rem] bg-black/5">
+              <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[1.2rem] border-2" style={{ borderColor: "var(--easeL-border-subtle)" }}>
                 <div key={s.src} className="easeL-carousel-panel h-full w-full">
                   <img
                     src={s.src}
@@ -200,7 +172,12 @@ export default function Landing() {
                 <div
                   className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-5 text-white"
                 >
-                  <p className="text-base font-semibold sm:text-lg">{s.detail}</p>
+                  <p
+                    className="text-base font-semibold sm:text-lg"
+                    style={{ color: "var(--easeL-text-on-dark)" }}
+                  >
+                    {s.detail}
+                  </p>
                 </div>
               </div>
               <div className="mt-4 mb-2 flex flex-wrap items-center justify-center">
@@ -224,26 +201,27 @@ export default function Landing() {
               </div>
             </div>
           </div>
+          </div>
         </section>
 
         {/* Who it is for */}
         <section
-          className="landing-enter -mx-4 mt-20 rounded-3xl border-2 p-6 sm:mx-0 sm:p-10"
+          className="landing-enter easeL-full-bleed-panel easeL-panel-divider mt-0 py-14 md:py-16"
           style={{
-            borderColor: "var(--easeL-border)",
             background: "var(--easeL-bg-section-alt)",
             ["--enter-delay"]: "0.25s",
           }}
           aria-labelledby="easeL-who"
         >
-          <h2
-            id="easeL-who"
-            className="font-easeL-display text-3xl sm:text-4xl"
-            style={{ color: "var(--easeL-text)" }}
-          >
-            Who it is for
-          </h2>
-          <ul className="mt-6 space-y-4 text-lg sm:text-xl" style={{ color: "var(--easeL-text-muted)" }}>
+          <div className="easeL-panel-inner">
+            <h2
+              id="easeL-who"
+              className="font-easeL-display text-3xl sm:text-4xl"
+              style={{ color: "var(--easeL-text)" }}
+            >
+              <span className="easeL-heading-highlight easeL-highlight-coral">Who it is for</span>
+            </h2>
+            <ul className="mt-6 space-y-4 text-lg sm:text-xl" style={{ color: "var(--easeL-text-muted)" }}>
             <li className="flex gap-3">
               <CheckCircle2 className="h-7 w-7 shrink-0" style={{ color: "var(--easeL-accent-mint)" }} />
               <span>
@@ -262,21 +240,23 @@ export default function Landing() {
                 Therapists and educators who are looking for a tool to help children with motor challenges.
               </span>
             </li>
-          </ul>
+            </ul>
+          </div>
         </section>
 
         {/* How interaction is designed */}
         <section
-          className="landing-enter mt-16"
-          style={{ ["--enter-delay"]: "0.32s" }}
+          className="landing-enter easeL-full-bleed-panel easeL-panel-divider mt-0 py-14 md:py-16"
+          style={{ ["--enter-delay"]: "0.32s", background: "var(--easeL-bg-section)" }}
           aria-labelledby="easeL-interaction"
         >
+          <div className="easeL-panel-inner">
           <h2
             id="easeL-interaction"
             className="font-easeL-display text-3xl sm:text-4xl"
             style={{ color: "var(--easeL-text)" }}
           >
-            How control is designed
+            <span className="easeL-heading-highlight easeL-highlight-mint">How control is designed</span>
           </h2>
           <p className="mt-3 max-w-3xl text-lg sm:text-xl" style={{ color: "var(--easeL-text-muted)" }}>
             The interaction model in EaseL follows the cerebral palsy–specific framework: tilt-led
@@ -288,10 +268,15 @@ export default function Landing() {
               return (
                 <article
                   key={item.title}
-                  className="min-h-[12rem] rounded-2xl border-2 p-6 sm:p-7"
+                  className="min-h-[12rem] rounded-2xl border p-6 sm:p-7"
                   style={{
-                    background: "var(--easeL-bg-section)",
-                    borderColor: "var(--easeL-border)",
+                    background:
+                      item.tone === "coral"
+                        ? "var(--easeL-bg-card-coral)"
+                        : item.tone === "ash"
+                        ? "var(--easeL-bg-card-mint)"
+                        : "var(--easeL-bg-card-butter)",
+                    borderColor: "var(--easeL-border-subtle)",
                     boxShadow: "var(--easeL-shadow-soft)",
                   }}
                 >
@@ -311,20 +296,22 @@ export default function Landing() {
               );
             })}
           </div>
+          </div>
         </section>
 
         {/* Learning paths */}
         <section
-          className="landing-enter mt-16"
-          style={{ ["--enter-delay"]: "0.38s" }}
+          className="landing-enter easeL-full-bleed-panel easeL-panel-divider mt-0 py-14 md:py-16"
+          style={{ ["--enter-delay"]: "0.38s", background: "var(--easeL-bg-card-mint)" }}
           aria-labelledby="easeL-modes"
         >
+          <div className="easeL-panel-inner">
           <h2
             id="easeL-modes"
             className="font-easeL-display text-3xl sm:text-4xl"
             style={{ color: "var(--easeL-text)" }}
           >
-            Learning paths, levels, and lessons
+            <span className="easeL-heading-highlight easeL-highlight-lavender">Learning paths, levels, and lessons</span>
           </h2>
           <p className="mt-3 max-w-3xl text-lg sm:text-xl" style={{ color: "var(--easeL-text-muted)" }}>
             A short in-app screener assigns the learner to the best path. Each path has levels;
@@ -334,7 +321,7 @@ export default function Landing() {
             {MODES.map((m) => (
               <article
                 key={m.name}
-                className={`min-h-[14rem] rounded-2xl border-2 p-6 sm:p-8 ${m.cardClass}`}
+                className={`min-h-[14rem] rounded-2xl border p-6 sm:p-8 ${m.cardClass}`}
               >
                 <h3 className="text-2xl font-bold" style={{ color: "var(--easeL-text)" }}>
                   {m.name}
@@ -348,18 +335,19 @@ export default function Landing() {
               </article>
             ))}
           </div>
+          </div>
         </section>
 
         {/* Sessions, reinforcement, what EaseL does not claim */}
         <section
-          className="landing-enter mt-16 rounded-3xl border-2 p-6 sm:p-10"
+          className="landing-enter easeL-full-bleed-panel easeL-panel-divider mt-0 py-14 md:py-16"
           style={{
             background: "var(--easeL-bg-section)",
-            borderColor: "var(--easeL-border)",
             ["--enter-delay"]: "0.44s",
           }}
           aria-labelledby="easeL-sessions"
         >
+          <div className="easeL-panel-inner rounded-3xl border-2 p-6 sm:p-10" style={{ borderColor: "var(--easeL-border)" }}>
           <h2
             id="easeL-sessions"
             className="font-easeL-display text-3xl sm:text-4xl"
@@ -399,16 +387,17 @@ export default function Landing() {
               families and care teams.
             </p>
           </div>
+          </div>
         </section>
 
         {/* Privacy + caregiving row */}
-        <div className="mt-16 grid gap-5 lg:grid-cols-2">
-          <section
-            className="landing-enter rounded-2xl border-2 p-6 sm:p-8"
+        <section className="landing-enter easeL-full-bleed-panel easeL-panel-divider mt-0 py-14 md:py-16" style={{ ["--enter-delay"]: "0.5s", background: "var(--easeL-bg-page)" }}>
+          <div className="easeL-panel-inner grid gap-5 lg:grid-cols-2">
+            <section
+            className="rounded-2xl border-2 p-6 sm:p-8"
             style={{
               background: "var(--easeL-bg-section)",
               borderColor: "var(--easeL-border)",
-              ["--enter-delay"]: "0.5s",
             }}
             aria-labelledby="easeL-privacy"
           >
@@ -429,11 +418,10 @@ export default function Landing() {
             </p>
           </section>
           <section
-            className="landing-enter rounded-2xl border-2 p-6 sm:p-8"
+            className="rounded-2xl border-2 p-6 sm:p-8"
             style={{
               background: "var(--easeL-bg-cream)",
               borderColor: "var(--easeL-border)",
-              ["--enter-delay"]: "0.55s",
             }}
             aria-labelledby="easeL-caregiver"
           >
@@ -463,18 +451,25 @@ export default function Landing() {
               </li>
             </ul>
           </section>
-        </div>
+          </div>
+        </section>
 
         {/* CTA */}
         <section
-          className="landing-enter mt-16 rounded-3xl p-8 sm:p-12"
+          className="landing-enter easeL-full-bleed-panel easeL-panel-divider mt-0 py-14 md:py-16"
           style={{
             background: "var(--easeL-primary)",
             color: "var(--easeL-text-on-dark)",
             ["--enter-delay"]: "0.6s",
           }}
         >
-          <h2 className="font-easeL-display text-3xl sm:text-4xl">Ready to try the setup flow?</h2>
+          <div className="easeL-panel-inner p-8 sm:p-12">
+          <h2
+            className="font-easeL-display text-3xl sm:text-4xl"
+            style={{ color: "var(--easeL-text-on-dark)" }}
+          >
+            Ready to try the setup flow?
+          </h2>
           <p className="mt-4 max-w-2xl text-lg sm:text-xl" style={{ color: "var(--easeL-text-on-dark-muted)" }}>
             Create an account to walk through sign-up, then calibration, tutorial, and
             path assignment. Progress is shown as path, level, lesson, and step.
@@ -482,8 +477,12 @@ export default function Landing() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               to="/signup"
-              className="inline-flex min-h-14 min-w-[10rem] items-center justify-center rounded-2xl bg-white px-8 text-lg font-semibold transition hover:brightness-95"
-              style={{ color: "var(--easeL-primary)" }}
+              className="inline-flex min-h-14 min-w-[10rem] items-center justify-center rounded-2xl border-2 px-8 text-lg font-semibold transition hover:brightness-105"
+              style={{
+                color: "var(--easeL-text-on-dark)",
+                borderColor: "var(--easeL-text-on-dark)",
+                background: "color-mix(in srgb, white 14%, transparent)",
+              }}
             >
               Create account
             </Link>
@@ -494,41 +493,9 @@ export default function Landing() {
               I already have an account
             </Link>
           </div>
+          </div>
         </section>
 
-        {/* Footer */}
-        <footer
-          className="landing-enter mt-20 border-t-2 pt-12"
-          style={{ borderColor: "var(--easeL-border)", ["--enter-delay"]: "0.65s" }}
-        >
-          <div
-            className="grid gap-10 rounded-3xl p-8 sm:p-10 lg:grid-cols-2"
-            style={{ background: "var(--easeL-bg-footer)", color: "var(--easeL-text-on-dark-muted)" }}
-          >
-            <div>
-              <p className="font-easeL-display text-4xl text-[color:var(--easeL-text-on-dark)]">
-                EaseL
-              </p>
-              <p className="mt-3 text-lg leading-relaxed">
-                CP-focused visuomotor learning in the browser, with care for how movement, time on
-                task, and family context actually work.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-[color:var(--easeL-text-on-dark)]">Remember</h3>
-              <ul className="mt-3 space-y-2 text-lg">
-                <li className="flex gap-2">
-                  <Heart className="h-6 w-6 shrink-0 text-[color:var(--easeL-accent-rose)]" />
-                  The aim is practice and a sense of control, not a contest for a steady hand.
-                </li>
-                <li className="flex gap-2">
-                  <Shield className="h-6 w-6 shrink-0 text-[color:var(--easeL-text-on-dark)]" />
-                  EaseL is not a medical device. Use is not a replacement for professional advice.
-                </li>
-              </ul>
-            </div>
-          </div>
-        </footer>
       </main>
     </div>
   );

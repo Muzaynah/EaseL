@@ -8,11 +8,9 @@ import {
   Trash2,
   Save
 } from 'lucide-react';
+import { UI_TOKENS } from "../theme/uiTokens";
 
-const colors = [
-  '#e60c2d', '#3fd611', '#ffe119', '#2c53e0', '#ff8f3f', '#9d49f0', 
-  '#85f1f1', '#f282d0', '#854f11', '#686868', '#ffffff', '#000000'
-];
+const colors = UI_TOKENS.brush.palette;
 
 const CanvasControls = React.forwardRef(({
   tool, setTool, color, setColor, brushSize, setBrushSize,
@@ -53,7 +51,7 @@ const CanvasControls = React.forwardRef(({
   }, [dragging]);
 
   const btnClass = (isActive, buttonId) => `
-    p-3 rounded-xl transition-all duration-200
+    p-3 rounded-xl easeL-transition-standard
     flex items-center justify-center
     border border-slate-200/80 bg-white/95
     ${isActive
@@ -135,7 +133,7 @@ const CanvasControls = React.forwardRef(({
               ref={el => register(`col-${c}`, el)}
               onClick={() => setColor(c)}
               className={`
-                w-10 h-10 rounded-full transition-all duration-200 border-2
+                w-10 h-10 rounded-full easeL-transition-standard border-2
                 ${color === c ? 'scale-110 ring-2 ring-indigo-400 ring-offset-2 ring-offset-white border-indigo-500' : 'border-slate-200 hover:border-slate-300 hover:scale-105'}
                 ${hoveredButton === `col-${c}` ? 'ring-2 ring-indigo-400 ring-offset-2' : ''}
               `}
@@ -167,7 +165,7 @@ const CanvasControls = React.forwardRef(({
           <button
             ref={el => register('clear', el)}
             onClick={onClear}
-            className="p-3 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-all duration-200"
+            className="easeL-transition-standard p-3 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
           >
             <Trash2 size={18} />
           </button>
@@ -180,6 +178,7 @@ const CanvasControls = React.forwardRef(({
             onClick={onSaveProject}
             disabled={saveStatus !== 'idle'}
             className={`
+              easeL-transition-standard
               w-full min-h-11 rounded-xl font-semibold text-sm transition-all
               flex items-center justify-center gap-2
               ${saveStatus === 'saving'

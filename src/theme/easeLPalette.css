@@ -4,65 +4,112 @@
  */
 :root {
   /* Page & surfaces (lavender + cream — high contrast with text) */
-  --easeL-bg-page: #ebe4f5;
-  --easeL-bg-cream: #f7f4ef;
+  --easeL-bg-page: #f7f7f2;
+  --easeL-bg-cream: #f8c0b8;
   --easeL-bg-section: #ffffff;
-  --easeL-bg-section-alt: #e2daf0;
-  --easeL-bg-card-mint: #e4f5f1;
-  --easeL-bg-card-coral: #fce8e4;
-  --easeL-bg-card-butter: #fdf6d9;
-  --easeL-bg-footer: #25232e;
+  --easeL-bg-section-alt: #d7d9f8;
+  --easeL-bg-card-mint: #baf0de;
+  --easeL-bg-card-coral: #f8c0b8;
+  --easeL-bg-card-butter: #c8c9ff;
+  --easeL-bg-footer: #35627a;
   /* Text */
-  --easeL-text: #1a1526;
-  --easeL-text-muted: #3f3850;
-  --easeL-text-on-dark: #f7f4ff;
-  --easeL-text-on-dark-muted: #c8c0dc;
+  --easeL-text: #0b1220;
+  --easeL-text-muted: #1e2a3b;
+  --easeL-text-on-dark: #ffffff;
+  --easeL-text-on-dark-muted: #e8e8e8;
   /* Brand & accents */
-  --easeL-primary: #3d1f7a;
-  --easeL-primary-mid: #5c3d9e;
-  --easeL-primary-light: #7b5fc4;
-  --easeL-accent-mint: #0f7a6e;
-  --easeL-accent-coral: #c4503d;
-  --easeL-accent-butter: #c9a227;
-  --easeL-accent-rose: #b84d7a;
+  --easeL-primary: #2f6f95;
+  --easeL-primary-mid: #3f82ad;
+  --easeL-primary-light: #a6a9d0;
+  --easeL-accent-mint: #22b892;
+  --easeL-accent-coral: #e45b43;
+  --easeL-accent-butter: #f8c0b8;
+  --easeL-accent-rose: #8f74ff;
+  --easeL-heading-highlight-mint: #8cefd9;
+  --easeL-heading-highlight-coral: #ffb3a8;
+  --easeL-heading-highlight-lavender: #bfc2ff;
   /* UI */
-  --easeL-border: #b5a4cf;
-  --easeL-border-subtle: #d9cfe8;
-  --easeL-nav-bg: color-mix(in srgb, #ffffff 92%, transparent);
-  --easeL-nav-border: #d3c6e4;
-  --easeL-focus-ring: #3d1f7a;
-  --easeL-link: #3d1f7a;
-  --easeL-link-hover: #2a1454;
+  --easeL-border: #6c8ea2;
+  --easeL-border-subtle: #b9c2ea;
+  --easeL-border-strong: #3f6b83;
+  --easeL-nav-bg: color-mix(in srgb, #ffffff 74%, var(--easeL-bg-section-alt));
+  --easeL-nav-border: #9ba8ef;
+  --easeL-focus-ring: #2f6f95;
+  --easeL-link: #2f6f95;
+  --easeL-link-hover: #e45b43;
+  /* Drawing + lesson semantic colors */
+  --easeL-brush-default: #000000;
+  --easeL-lesson-canvas-bg: #f5f5f5;
+  --easeL-lesson-trace: #2f6f95;
+  --easeL-lesson-trace-strong: #235875;
+  --easeL-lesson-start: #8f74ff;
+  --easeL-lesson-start-soft: #22b892;
+  --easeL-lesson-end: #e45b43;
+  --easeL-lesson-danger: #e45b43;
+  --easeL-lesson-neutral: #6c8ea2;
+  --easeL-lesson-ghost: #8f74ff;
   /* Overlays & decorative */
   --easeL-hero-glow-1: color-mix(in srgb, var(--easeL-primary-mid) 22%, transparent);
   --easeL-hero-glow-2: color-mix(in srgb, var(--easeL-accent-rose) 18%, transparent);
   --easeL-hero-glow-3: color-mix(in srgb, var(--easeL-accent-mint) 16%, transparent);
-  --easeL-shadow-soft: 0 14px 48px color-mix(in srgb, var(--easeL-primary) 14%, transparent);
-  --easeL-radius-sm: 0.75rem;
-  --easeL-radius-md: 1.125rem;
-  --easeL-radius-lg: 1.5rem;
-  --easeL-radius-xl: 2rem;
+  --easeL-shadow-soft: 0 14px 48px color-mix(in srgb, var(--easeL-primary) 10%, transparent);
+  --easeL-radius-sm: 0.5rem;
+  --easeL-radius-md: 0.8rem;
+  --easeL-radius-lg: 1rem;
+  --easeL-radius-xl: 1.25rem;
+  /* Typography */
+  --easeL-font-body: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --easeL-font-heading: "Urbanist", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --easeL-font-size-base: 1.035rem;
+  --easeL-line-height-base: 1.62;
+  --easeL-line-height-heading: 1.08;
+  --easeL-letter-spacing-heading: -0.01em;
+  --easeL-ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --easeL-ease-snappy: cubic-bezier(0.2, 0, 0, 1);
+  --easeL-duration-fast: 150ms;
+  --easeL-duration-standard: 220ms;
+  --easeL-duration-slow: 320ms;
+  --easeL-ink: #111111;
 }
 
 /* Nav bar (modular: apply class on <nav>) */
 .easeL-nav {
   background: var(--easeL-nav-bg);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--easeL-nav-border);
+  border-top: 4px solid var(--easeL-accent-coral);
+  border-bottom: 2px solid var(--easeL-border-strong);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--easeL-primary) 10%, transparent);
 }
 
-/* Logo gradient uses theme tokens */
+/* Brand wordmark (clean + professional) */
+.easeL-brand {
+  text-decoration: none;
+  transition: opacity var(--easeL-duration-standard) var(--easeL-ease-standard);
+}
+
 .easeL-logo {
-  background: linear-gradient(
-    105deg,
-    var(--easeL-primary) 0%,
-    var(--easeL-primary-light) 45%,
-    var(--easeL-accent-rose) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--easeL-primary);
+  font-family: var(--easeL-font-heading);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  transition-property: color, opacity, transform;
+  transition-duration: var(--easeL-duration-standard);
+  transition-timing-function: var(--easeL-ease-standard);
+  display: inline-block;
+}
+
+.easeL-brand-accent {
+  color: color-mix(in srgb, var(--easeL-primary-mid) 75%, var(--easeL-primary));
+}
+
+.easeL-brand:hover .easeL-logo,
+.easeL-brand[data-easel-head-hover="true"] .easeL-logo {
+  color: color-mix(in srgb, var(--easeL-primary-mid) 74%, var(--easeL-primary));
+  transform: translateY(-0.5px);
+}
+
+.easeL-brand:hover,
+.easeL-brand[data-easel-head-hover="true"] {
+  opacity: 0.98;
 }
 
 /* --- Shared page & form patterns (use across routes) --- */
@@ -87,28 +134,185 @@
   background: color-mix(in srgb, var(--easeL-bg-section) 94%, transparent);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  border: 2px solid var(--easeL-border-subtle);
+  border: 2px solid var(--easeL-border-strong);
   border-radius: var(--easeL-radius-xl);
-  box-shadow: var(--easeL-shadow-soft);
+  box-shadow: 0 8px 0 color-mix(in srgb, var(--easeL-border-strong) 26%, transparent);
+}
+
+.easeL-card {
+  border-radius: var(--easeL-radius-xl);
+  border: 2px solid var(--easeL-border-strong);
+  background: var(--easeL-bg-section);
+  box-shadow: 0 6px 0 color-mix(in srgb, var(--easeL-border-strong) 20%, transparent);
+}
+
+.easeL-surface-lavender {
+  background: var(--easeL-bg-card-butter);
+}
+
+.easeL-surface-coral {
+  background: var(--easeL-bg-card-coral);
+}
+
+.easeL-surface-ash {
+  background: var(--easeL-bg-card-mint);
+}
+
+.easeL-full-bleed-panel {
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: clamp(1rem, 3.5vw, 3rem);
+  padding-right: clamp(1rem, 3.5vw, 3rem);
+}
+
+.easeL-panel-divider {
+  border-top: 2px solid color-mix(in srgb, var(--easeL-border-strong) 36%, transparent);
+}
+
+.easeL-panel-inner {
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  max-width: 1240px;
+}
+
+.easeL-result-overlay {
+  background: color-mix(in srgb, var(--easeL-ink) 32%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.easeL-result-modal {
+  background: var(--easeL-bg-section);
+  border: 2px solid var(--easeL-border-strong);
+  border-radius: var(--easeL-radius-xl);
+  box-shadow: 0 18px 36px color-mix(in srgb, var(--easeL-primary) 14%, transparent);
+}
+
+.easeL-result-header {
+  background: color-mix(in srgb, var(--easeL-bg-page) 70%, white);
+  border-bottom: 1px solid var(--easeL-border-subtle);
+}
+
+.easeL-result-subtle {
+  background: var(--easeL-bg-page);
+  border: 1px solid var(--easeL-border-subtle);
+  border-radius: var(--easeL-radius-lg);
+}
+
+.easeL-heading-highlight {
+  display: inline;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  padding: 0 0.22em;
+  --easeL-current-highlight: var(--easeL-heading-highlight-mint);
+  background-image: linear-gradient(
+    to bottom,
+    transparent 18%,
+    var(--easeL-current-highlight) 18%,
+    var(--easeL-current-highlight) 100%
+  );
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 82%;
+  border-radius: 0.08em;
+}
+
+.easeL-full-bleed-panel:nth-of-type(3n + 1) .easeL-heading-highlight,
+.easeL-panel-inner > :is(h1, h2, h3, h4, h5, h6):nth-of-type(3n + 1) .easeL-heading-highlight {
+  --easeL-current-highlight: var(--easeL-heading-highlight-mint);
+}
+
+.easeL-full-bleed-panel:nth-of-type(3n + 2) .easeL-heading-highlight,
+.easeL-panel-inner > :is(h1, h2, h3, h4, h5, h6):nth-of-type(3n + 2) .easeL-heading-highlight {
+  --easeL-current-highlight: var(--easeL-heading-highlight-coral);
+}
+
+.easeL-full-bleed-panel:nth-of-type(3n) .easeL-heading-highlight,
+.easeL-panel-inner > :is(h1, h2, h3, h4, h5, h6):nth-of-type(3n) .easeL-heading-highlight {
+  --easeL-current-highlight: var(--easeL-heading-highlight-lavender);
+}
+
+.easeL-heading-highlight.easeL-highlight-mint {
+  --easeL-current-highlight: var(--easeL-heading-highlight-mint) !important;
+}
+
+.easeL-heading-highlight.easeL-highlight-coral {
+  --easeL-current-highlight: var(--easeL-heading-highlight-coral) !important;
+}
+
+.easeL-heading-highlight.easeL-highlight-lavender {
+  --easeL-current-highlight: var(--easeL-heading-highlight-lavender) !important;
+}
+
+.easeL-heading-section {
+  font-family: var(--easeL-font-heading);
+  font-weight: 700;
+  line-height: var(--easeL-line-height-heading);
+  letter-spacing: var(--easeL-letter-spacing-heading);
+  color: var(--easeL-text);
+}
+
+.easeL-text-muted {
+  color: var(--easeL-text-muted);
+}
+
+.easeL-transition-standard {
+  transition-property: color, background-color, border-color, opacity, transform, box-shadow;
+  transition-duration: var(--easeL-duration-standard);
+  transition-timing-function: var(--easeL-ease-standard);
+}
+
+.easeL-transition-fast {
+  transition-property: color, background-color, border-color, opacity, transform, box-shadow;
+  transition-duration: var(--easeL-duration-fast);
+  transition-timing-function: var(--easeL-ease-snappy);
+}
+
+.easeL-interactive {
+  transition-property: color, background-color, border-color, opacity, transform, box-shadow;
+  transition-duration: var(--easeL-duration-standard);
+  transition-timing-function: var(--easeL-ease-standard);
+}
+
+.easeL-interactive:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.easeL-interactive[data-easel-head-hover="true"]:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.easeL-interactive:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .easeL-btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 3rem;
+  min-height: 2.75rem;
   width: 100%;
   border-radius: var(--easeL-radius-lg);
   background: var(--easeL-primary);
   color: #fff;
-  font-weight: 600;
-  font-size: 1.0625rem;
-  box-shadow: var(--easeL-shadow-soft);
-  transition: opacity 0.2s;
+  font-weight: 700;
+  font-size: 1.08rem;
+  border: 2px solid color-mix(in srgb, var(--easeL-ink) 28%, var(--easeL-primary));
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--easeL-ink) 20%, transparent);
+  transition-property: opacity, transform, box-shadow;
+  transition-duration: var(--easeL-duration-standard);
+  transition-timing-function: var(--easeL-ease-standard);
 }
 
 .easeL-btn-primary:hover:not(:disabled) {
   opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.easeL-btn-primary[data-easel-head-hover="true"]:not(:disabled) {
+  opacity: 0.95;
+  transform: translateY(-1px);
 }
 
 .easeL-btn-primary:disabled {
@@ -122,23 +326,31 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  min-height: 3rem;
+  min-height: 2.75rem;
   padding: 0 1.25rem;
   border-radius: var(--easeL-radius-lg);
   background: var(--easeL-primary);
   color: #fff;
-  font-weight: 600;
-  font-size: 1.0625rem;
+  font-weight: 700;
+  font-size: 1.08rem;
   line-height: 1.25;
-  box-shadow: var(--easeL-shadow-soft);
-  transition: opacity 0.2s;
-  border: none;
+  border: 2px solid color-mix(in srgb, var(--easeL-ink) 28%, var(--easeL-primary));
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--easeL-ink) 20%, transparent);
+  transition-property: opacity, transform, box-shadow;
+  transition-duration: var(--easeL-duration-standard);
+  transition-timing-function: var(--easeL-ease-standard);
   cursor: pointer;
   text-decoration: none;
 }
 
 .easeL-btn-solid:hover:not(:disabled) {
   opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.easeL-btn-solid[data-easel-head-hover="true"]:not(:disabled) {
+  opacity: 0.95;
+  transform: translateY(-1px);
 }
 
 .easeL-btn-solid:disabled {
@@ -151,28 +363,64 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  min-height: 3rem;
+  min-height: 2.75rem;
   padding: 0 1.25rem;
   border-radius: var(--easeL-radius-lg);
   background: var(--easeL-bg-section);
   color: var(--easeL-text);
-  font-weight: 600;
-  font-size: 1.0625rem;
-  border: 2px solid var(--easeL-border-subtle);
-  transition: background 0.2s, border-color 0.2s;
+  font-weight: 700;
+  font-size: 1.04rem;
+  border: 2px solid var(--easeL-border-strong);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--easeL-ink) 14%, transparent);
+  transition-property: color, background-color, border-color, transform, box-shadow;
+  transition-duration: var(--easeL-duration-standard);
+  transition-timing-function: var(--easeL-ease-standard);
   cursor: pointer;
   text-decoration: none;
 }
 
 .easeL-btn-outline:hover:not(:disabled) {
-  border-color: var(--easeL-primary-mid);
-  background: color-mix(in srgb, var(--easeL-primary) 6%, white);
+  border-color: var(--easeL-border-strong);
+  background: color-mix(in srgb, var(--easeL-bg-page) 65%, white);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 0 color-mix(in srgb, var(--easeL-ink) 18%, transparent);
+}
+
+.easeL-btn-outline[data-easel-head-hover="true"]:not(:disabled) {
+  border-color: var(--easeL-border-strong);
+  background: color-mix(in srgb, var(--easeL-bg-page) 65%, white);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 0 color-mix(in srgb, var(--easeL-ink) 18%, transparent);
+}
+
+:is(button, a, [role="button"], [role="tab"], [role="menuitem"], [tabindex]:not([tabindex="-1"]))[data-easel-head-hover="true"]:not(:disabled) {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--easeL-primary) 30%, transparent);
+  filter: brightness(1.01);
+}
+
+.easeL-hoverable-card {
+  transition-property: transform, box-shadow, background-color;
+  transition-duration: var(--easeL-duration-standard);
+  transition-timing-function: var(--easeL-ease-standard);
+}
+
+.easeL-hoverable-card:hover,
+.easeL-hoverable-card[data-easel-head-hover="true"] {
+  transform: translateY(-2px);
+  box-shadow:
+    0 12px 0 color-mix(in srgb, var(--easeL-primary) 18%, transparent),
+    0 18px 26px color-mix(in srgb, var(--easeL-primary) 16%, transparent);
+}
+
+.easeL-hover-parent:hover .easeL-hover-reveal,
+.easeL-hover-parent[data-easel-head-hover="true"] .easeL-hover-reveal {
+  opacity: 1;
 }
 
 .easeL-chip-selected {
-  background: color-mix(in srgb, var(--easeL-primary) 16%, white);
-  color: var(--easeL-primary);
-  border: 1px solid color-mix(in srgb, var(--easeL-primary) 40%, transparent);
+  background: color-mix(in srgb, var(--easeL-accent-rose) 20%, white);
+  color: var(--easeL-accent-coral);
+  border: 1px solid color-mix(in srgb, var(--easeL-accent-coral) 44%, transparent);
 }
 
 /* Semantic aliases — use instead of raw Tailwind indigo/purple across lessons & screeners */
@@ -196,7 +444,7 @@
   min-height: 3rem;
   padding: 0 1rem;
   border-radius: var(--easeL-radius-lg);
-  border: 2px solid var(--easeL-border-subtle);
+  border: 1px solid var(--easeL-border);
   background: var(--easeL-bg-section);
   color: var(--easeL-text);
   font-size: 1rem;
@@ -218,6 +466,11 @@
   color: var(--easeL-link-hover);
 }
 
+.easeL-link[data-easel-head-hover="true"] {
+  text-decoration: underline;
+  color: var(--easeL-link-hover);
+}
+
 .easeL-checkbox {
   width: 1.25rem;
   height: 1.25rem;
@@ -228,12 +481,16 @@
 /* Desktop nav pills (NavLink adds .is-active via class) */
 .easeL-nav-pill {
   border-radius: var(--easeL-radius-lg);
-  transition: background 0.2s, color 0.2s;
+  border: 2px solid transparent;
+  transition-property: color, background-color, transform;
+  transition-duration: var(--easeL-duration-standard);
+  transition-timing-function: var(--easeL-ease-standard);
 }
 
 .easeL-nav-pill.is-active {
-  background: color-mix(in srgb, var(--easeL-primary) 16%, white);
-  color: var(--easeL-primary);
+  background: var(--easeL-bg-card-coral);
+  color: var(--easeL-ink);
+  border: 2px solid var(--easeL-border-strong);
 }
 
 .easeL-nav-pill:not(.is-active) {
@@ -243,22 +500,52 @@
 .easeL-nav-pill:not(.is-active):hover {
   background: color-mix(in srgb, white 82%, var(--easeL-bg-section-alt));
   color: var(--easeL-text);
+  border-color: color-mix(in srgb, var(--easeL-border-strong) 35%, transparent);
+}
+
+.easeL-nav-pill:not(.is-active)[data-easel-head-hover="true"] {
+  background: color-mix(in srgb, white 82%, var(--easeL-bg-section-alt));
+  color: var(--easeL-text);
+  border-color: color-mix(in srgb, var(--easeL-border-strong) 35%, transparent);
 }
 
 .easeL-avatar-btn {
-  background: color-mix(in srgb, var(--easeL-primary) 14%, white);
+  min-width: 3rem;
+  min-height: 3rem;
+  border-radius: var(--easeL-radius-lg);
+  border: 2px solid var(--easeL-border-strong);
+  background: var(--easeL-bg-section);
   color: var(--easeL-primary);
+  font-family: var(--easeL-font-heading);
+  font-weight: 800;
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--easeL-ink) 12%, transparent);
+  transition: background-color var(--easeL-duration-standard) var(--easeL-ease-standard),
+    color var(--easeL-duration-standard) var(--easeL-ease-standard),
+    transform var(--easeL-duration-standard) var(--easeL-ease-standard);
 }
 
 .easeL-avatar-btn:hover {
-  background: color-mix(in srgb, var(--easeL-primary) 22%, white);
+  background: color-mix(in srgb, var(--easeL-bg-section-alt) 42%, white);
+  color: var(--easeL-text);
+  transform: translateY(-1px);
+}
+
+.easeL-avatar-btn[data-easel-head-hover="true"] {
+  background: color-mix(in srgb, var(--easeL-bg-section-alt) 42%, white);
+  color: var(--easeL-text);
+  transform: translateY(-1px);
 }
 
 .easeL-dropdown {
-  border-color: var(--easeL-border-subtle);
+  border-color: var(--easeL-border-strong);
+  box-shadow: 0 16px 32px color-mix(in srgb, var(--easeL-primary) 16%, transparent);
 }
 
 /* Links only — sign out keeps its own hover */
 .easeL-dropdown a[href]:hover {
-  background: color-mix(in srgb, var(--easeL-primary) 8%, white);
+  background: color-mix(in srgb, var(--easeL-bg-page) 70%, white);
+}
+
+.easeL-dropdown a[href][data-easel-head-hover="true"] {
+  background: color-mix(in srgb, var(--easeL-bg-page) 70%, white);
 }

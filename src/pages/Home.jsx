@@ -118,6 +118,7 @@ function Mode2Home({ displayName, profile }) {
       buttonText: "Open Lessons",
       path: "/lessons",
       primary: true,
+      tone: "lavender",
     },
     {
       icon: Pencil,
@@ -125,6 +126,7 @@ function Mode2Home({ displayName, profile }) {
       description: "Open canvas for free practice (optional).",
       buttonText: "Open Canvas",
       path: "/canvas",
+      tone: "ash",
     },
     {
       icon: ImageIcon,
@@ -132,6 +134,7 @@ function Mode2Home({ displayName, profile }) {
       description: "Saved drawings you created.",
       buttonText: "View Gallery",
       path: "/gallery",
+      tone: "coral",
     },
   ];
 
@@ -154,92 +157,121 @@ function Mode2Home({ displayName, profile }) {
   ];
 
   return (
-    <div className="easeL-page-bg min-h-screen px-4 pb-16 pt-24 sm:px-6">
-      <div className="mx-auto max-w-6xl space-y-8">
-        <section
-          className="flex flex-col gap-4 rounded-3xl border-2 p-6 shadow-xl md:flex-row md:items-center md:justify-between md:p-8"
-          style={{ borderColor: "var(--easeL-border-subtle)", background: "var(--easeL-bg-section)" }}
-        >
-          <div>
-            <h1 className="text-3xl font-bold" style={{ color: "var(--easeL-text)" }}>
-              Welcome back, {displayName}
-            </h1>
-            <p className="mt-1 text-lg" style={{ color: "var(--easeL-text-muted)" }}>
-              Path 2 · guided control · level {currentStage} ·{" "}
-              <span className="font-semibold" style={{ color: "var(--easeL-primary)" }}>
-                {currentStageDef?.title ?? "—"}
-              </span>
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Link
-              to="/progress"
-              className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border-2 bg-white px-5 text-base font-semibold"
-              style={{ borderColor: "var(--easeL-border)", color: "var(--easeL-text)" }}
+    <div className="easeL-page-bg min-h-screen px-4 pb-16 pt-24 sm:px-6 md:pt-28">
+      <div className="mx-auto max-w-6xl space-y-12">
+        <section>
+            <div
+              className="easeL-card flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between md:p-6 border-2"
+              style={{ borderColor: "var(--easeL-border-strong)", background: "var(--easeL-bg-section)" }}
             >
-              <BarChart3 className="h-5 w-5" style={{ color: "var(--easeL-primary)" }} />
-              Progress
-            </Link>
-            <Link
-              to="/lessons"
-              className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl px-8 text-lg font-bold text-white shadow-lg"
-              style={{ background: "var(--easeL-primary)" }}
-            >
-              <BookOpen className="h-5 w-5" />
-              Continue path
-            </Link>
-          </div>
+              <div>
+                <h1 className="easeL-heading-1 max-w-[16ch] text-balance">
+                  Welcome back, {displayName}
+                </h1>
+                <p className="mt-1 text-base" style={{ color: "var(--easeL-text-muted)" }}>
+                  Path 2 · guided control · level {currentStage} ·{" "}
+                  <span className="font-semibold" style={{ color: "var(--easeL-primary)" }}>
+                    {currentStageDef?.title ?? "—"}
+                  </span>
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Link
+                  to="/progress"
+                  className="easeL-interactive inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border-2 bg-white px-5 text-[0.95rem] font-semibold"
+                  style={{ borderColor: "var(--easeL-border)", color: "var(--easeL-text)" }}
+                >
+                  <BarChart3 className="h-5 w-5" style={{ color: "var(--easeL-primary)" }} />
+                  Progress
+                </Link>
+                <Link
+                  to="/lessons"
+                  className="easeL-btn-solid min-h-12 px-7 text-[1rem] font-semibold"
+                  style={{ background: "var(--easeL-primary)" }}
+                >
+                  <BookOpen className="h-5 w-5" />
+                  Continue path
+                </Link>
+              </div>
+            </div>
         </section>
 
         <section>
-          <h2 className="mb-4 text-2xl font-bold" style={{ color: "var(--easeL-text)" }}>
-            Shortcuts
+          <h2 className="easeL-heading-2 mb-4">
+            <span className="easeL-heading-highlight easeL-highlight-coral">Shortcuts</span>
           </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {quickActions.map((action) => {
               const Icon = action.icon;
+              const toneStyles =
+                action.tone === "coral"
+                  ? {
+                      cardBg: "var(--easeL-bg-card-coral)",
+                      iconBg: "color-mix(in srgb, var(--easeL-accent-coral) 20%, white)",
+                      iconColor: "var(--easeL-accent-coral)",
+                      borderColor: "var(--easeL-border-subtle)",
+                      accentLine: "var(--easeL-accent-coral)",
+                    }
+                  : action.tone === "ash"
+                  ? {
+                      cardBg: "var(--easeL-bg-card-mint)",
+                      iconBg: "color-mix(in srgb, var(--easeL-accent-mint) 20%, white)",
+                      iconColor: "var(--easeL-accent-mint)",
+                      borderColor: "var(--easeL-border-subtle)",
+                      accentLine: "var(--easeL-accent-mint)",
+                    }
+                  : {
+                      cardBg: "var(--easeL-bg-card-butter)",
+                      iconBg: "color-mix(in srgb, var(--easeL-primary-light) 24%, white)",
+                      iconColor: "var(--easeL-primary)",
+                      borderColor: "var(--easeL-border-subtle)",
+                      accentLine: "var(--easeL-primary-light)",
+                    };
+
               return (
                 <div
                   key={action.title}
-                  className="flex min-h-0 flex-col rounded-3xl border-2 p-6 shadow-lg transition-all duration-300"
+                  className="easeL-hoverable-card flex min-h-0 flex-col rounded-3xl border-2 p-5"
                   style={
                     action.primary
                       ? {
-                          borderColor: "var(--easeL-border)",
-                          background: "var(--easeL-bg-section-alt)",
+                          borderColor: "var(--easeL-border-strong)",
+                          background: toneStyles.cardBg,
+                          boxShadow: `inset 0 3px 0 ${toneStyles.accentLine}`,
                         }
                       : {
-                          borderColor: "var(--easeL-border-subtle)",
-                          background: "var(--easeL-bg-section)",
+                          borderColor: "var(--easeL-border-strong)",
+                          background: toneStyles.cardBg,
+                          boxShadow: `inset 0 3px 0 ${toneStyles.accentLine}`,
                         }
                   }
                 >
                   <div className="mb-3 flex items-center gap-3">
                     <div
                       className="flex h-12 w-12 items-center justify-center rounded-2xl"
-                      style={{ background: "color-mix(in srgb, var(--easeL-primary) 14%, white)" }}
+                      style={{ background: toneStyles.iconBg }}
                     >
                       <Icon
                         className="h-6 w-6"
-                        style={{ color: "var(--easeL-primary)" }}
+                        style={{ color: toneStyles.iconColor }}
                       />
                     </div>
-                    <h3 className="text-lg font-bold" style={{ color: "var(--easeL-text)" }}>
+                    <h3 className="easeL-heading-3">
                       {action.title}
                     </h3>
                   </div>
-                  <p className="min-h-0 flex-1 text-base" style={{ color: "var(--easeL-text-muted)" }}>
+                  <p className="min-h-0 flex-1 text-[0.98rem]" style={{ color: "var(--easeL-text-muted)" }}>
                     {action.description}
                   </p>
                   <Link
                     to={action.path}
-                    className="mt-4 inline-flex min-h-12 items-center justify-center rounded-2xl px-6 text-base font-semibold transition-all"
+                    className="easeL-interactive mt-4 inline-flex min-h-11 items-center justify-center rounded-2xl px-6 text-[0.98rem] font-semibold"
                     style={
                       action.primary
-                        ? { background: "var(--easeL-primary)", color: "#fff" }
+                        ? { background: "var(--easeL-primary)", color: "white" }
                         : {
-                            border: "2px solid var(--easeL-primary)",
-                            color: "var(--easeL-primary)",
+                            border: `1px solid ${toneStyles.iconColor}`,
+                            color: toneStyles.iconColor,
                             background: "var(--easeL-bg-section)",
                           }
                     }
@@ -253,23 +285,23 @@ function Mode2Home({ displayName, profile }) {
         </section>
 
         <section>
-          <h2 className="mb-4 text-2xl font-bold" style={{ color: "var(--easeL-text)" }}>
-            Your summary
+          <h2 className="easeL-heading-2 mb-4">
+            <span className="easeL-heading-highlight easeL-highlight-lavender">Your summary</span>
           </h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {summary.map((item) => (
               <div
                 key={item.label}
-                className="rounded-2xl border-2 px-5 py-4 shadow-md"
-                style={{ borderColor: "var(--easeL-border-subtle)", background: "var(--easeL-bg-section)" }}
+                className="easeL-card rounded-2xl px-5 py-4 min-h-[108px] flex flex-col justify-center border-2"
+                style={{ borderColor: "var(--easeL-border-strong)", background: "var(--easeL-bg-section)" }}
               >
                 <p
-                  className="text-sm font-semibold uppercase tracking-wide"
+                  className="text-[0.82rem] font-medium"
                   style={{ color: "var(--easeL-text-muted)" }}
                 >
                   {item.label}
                 </p>
-                <p className="mt-1 text-lg font-bold" style={{ color: "var(--easeL-text)" }}>
+                <p className="mt-1.5 text-[1.22rem] font-semibold leading-tight" style={{ color: "var(--easeL-text)" }}>
                   {item.value}
                 </p>
               </div>

@@ -36,6 +36,7 @@ import {
   evaluateMastery,
   getMasteryFeedback,
 } from "../utils/stageAdaptation";
+import { UI_TOKENS } from "../theme/uiTokens";
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 700;
@@ -868,7 +869,7 @@ export default function Path1Lesson() {
       return;
     }
     const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#FAFAFF";
+    ctx.fillStyle = UI_TOKENS.lesson.canvasBg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const p = pathRef.current;
@@ -881,7 +882,7 @@ export default function Path1Lesson() {
       ctx.arc(p.start.x, p.start.y, p.holdRadius, 0, Math.PI * 2);
       ctx.fillStyle = "rgba(99, 102, 241, 0.14)";
       ctx.fill();
-      ctx.strokeStyle = "#6366F1";
+      ctx.strokeStyle = UI_TOKENS.lesson.tracePrimary;
       ctx.lineWidth = 5;
       ctx.setLineDash([14, 10]);
       ctx.stroke();
@@ -896,7 +897,7 @@ export default function Path1Lesson() {
           -Math.PI / 2,
           -Math.PI / 2 + held * Math.PI * 2,
         );
-        ctx.strokeStyle = "#22C55E";
+        ctx.strokeStyle = UI_TOKENS.lesson.startSoft;
         ctx.lineWidth = 12;
         ctx.lineCap = "round";
         ctx.stroke();
@@ -934,7 +935,7 @@ export default function Path1Lesson() {
     let tipX = center[0].x;
     let tipY = center[0].y;
     if (fillHead > 0) {
-      ctx.strokeStyle = "#6366F1";
+      ctx.strokeStyle = UI_TOKENS.lesson.tracePrimary;
       ctx.lineWidth = 16;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
@@ -958,14 +959,14 @@ export default function Path1Lesson() {
 
     ctx.beginPath();
     ctx.arc(p.start.x, p.start.y, 18, 0, Math.PI * 2);
-    ctx.fillStyle = "#16A34A";
+    ctx.fillStyle = UI_TOKENS.lesson.success;
     ctx.fill();
     ctx.lineWidth = 3;
     ctx.strokeStyle = "rgba(255,255,255,0.92)";
     ctx.stroke();
     ctx.beginPath();
     ctx.arc(p.end.x, p.end.y, 20, 0, Math.PI * 2);
-    ctx.fillStyle = "#F59E0B";
+    ctx.fillStyle = UI_TOKENS.lesson.warning;
     ctx.fill();
     ctx.lineWidth = 3;
     ctx.strokeStyle = "rgba(255,255,255,0.92)";
@@ -981,7 +982,7 @@ export default function Path1Lesson() {
       ctx.fill();
       ctx.beginPath();
       ctx.arc(tipX, tipY, 10, 0, Math.PI * 2);
-      ctx.fillStyle = "#4338CA";
+      ctx.fillStyle = UI_TOKENS.lesson.tracePrimaryDark;
       ctx.fill();
     }
   }
@@ -1087,7 +1088,7 @@ export default function Path1Lesson() {
     (ctx) => {
       if (!canvasRef.current || !path?.centerline) return;
       const canvas = canvasRef.current;
-      ctx.fillStyle = "#FAFAFF";
+      ctx.fillStyle = UI_TOKENS.lesson.canvasBg;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.strokeStyle = "rgba(100, 116, 139, 0.24)";
       ctx.lineWidth = 28;
@@ -1107,14 +1108,14 @@ export default function Path1Lesson() {
       drawMidDirectionArrow(ctx, path.centerline);
       ctx.beginPath();
       ctx.arc(path.start.x, path.start.y, 18, 0, Math.PI * 2);
-      ctx.fillStyle = "#16A34A";
+      ctx.fillStyle = UI_TOKENS.lesson.success;
       ctx.fill();
       ctx.lineWidth = 3;
       ctx.strokeStyle = "rgba(255,255,255,0.92)";
       ctx.stroke();
       ctx.beginPath();
       ctx.arc(path.end.x, path.end.y, 20, 0, Math.PI * 2);
-      ctx.fillStyle = "#F59E0B";
+      ctx.fillStyle = UI_TOKENS.lesson.warning;
       ctx.fill();
       ctx.lineWidth = 3;
       ctx.strokeStyle = "rgba(255,255,255,0.92)";
@@ -1162,23 +1163,26 @@ export default function Path1Lesson() {
       className="easeL-page-bg relative flex min-h-screen w-screen flex-col items-center overflow-hidden px-4 pb-4 pt-20"
     >
       <MasteryToast message={masteryToast} language={language} />
-      <div className="w-full max-w-[1200px] flex items-center justify-between gap-3 mb-2 z-20 flex-wrap">
-        <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/95 shadow border border-slate-200/80">
+      <div className="z-20 mb-2 flex w-full max-w-[1200px] flex-wrap items-center justify-between gap-3">
+        <div
+          className="flex items-center gap-2 rounded-2xl border px-4 py-2"
+          style={{ background: "var(--easeL-bg-section)", borderColor: "var(--easeL-border-subtle)" }}
+        >
           <StageIcon className="easeL-accent-text-strong h-5 w-5" />
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+          <span className="text-xs font-semibold" style={{ color: "var(--easeL-text-muted)" }}>
             Level {stage.stage}
           </span>
-          <span className="text-slate-800 font-bold text-base">{title}</span>
+          <span className="text-base font-bold" style={{ color: "var(--easeL-text)" }}>{title}</span>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
             ref={(el) => {
               buttonRefs.current.recenter = el;
             }}
             onClick={recenter}
-            className="inline-flex items-center gap-2 min-h-14 px-6 rounded-2xl bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 font-bold shadow-sm text-lg"
+            className="easeL-btn-outline inline-flex min-h-14 items-center gap-2 px-6 text-lg font-bold"
             title="Recenter cursor"
           >
             <RefreshCw className="w-5 h-5" />
@@ -1190,7 +1194,7 @@ export default function Path1Lesson() {
               buttonRefs.current.mute = el;
             }}
             onClick={() => setMuted((m) => !m)}
-            className="inline-flex items-center gap-2 min-h-14 px-6 rounded-2xl bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 font-bold shadow-sm text-lg"
+            className="easeL-btn-outline inline-flex min-h-14 items-center gap-2 px-6 text-lg font-bold"
             aria-label={muted ? "Unmute" : "Mute"}
           >
             {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
@@ -1201,7 +1205,12 @@ export default function Path1Lesson() {
               buttonRefs.current.exit = el;
             }}
             onClick={handleExit}
-            className="inline-flex items-center gap-2 min-h-14 px-6 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold shadow-sm border-2 border-slate-300 text-lg"
+            className="inline-flex min-h-14 items-center gap-2 rounded-2xl border-2 px-6 text-lg font-bold transition hover:opacity-95"
+            style={{
+              background: "var(--easeL-bg-section-alt)",
+              borderColor: "var(--easeL-border-strong)",
+              color: "var(--easeL-text)",
+            }}
           >
             <LogOut className="w-5 h-5" />
             {language === "ur" ? "ختم" : "Exit"}
@@ -1376,15 +1385,15 @@ export default function Path1Lesson() {
       )}
 
       {stageUnlock && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 shadow-2xl p-6">
-            <p className="easeL-accent-text-strong text-xs font-semibold uppercase tracking-wide">
+        <div className="easeL-result-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="easeL-result-modal w-full max-w-md p-6">
+            <p className="easeL-accent-text-strong text-xs font-semibold tracking-wide">
               {language === "ur" ? "مبارک ہو" : "Congratulations"}
             </p>
-            <h3 className="mt-1 text-2xl font-bold text-slate-800">
+            <h3 className="mt-1 text-2xl font-bold" style={{ color: "var(--easeL-text)" }}>
               {language === "ur" ? "نیا لیول کھل گیا" : "New level unlocked"}
             </h3>
-            <p className="mt-2 text-slate-600">
+            <p className="mt-2" style={{ color: "var(--easeL-text-muted)" }}>
               {language === "ur"
                 ? `آپ ${stageUnlock.title} پر جا سکتے ہیں۔`
                 : `You can now move to ${stageUnlock.title}.`}
@@ -1393,14 +1402,14 @@ export default function Path1Lesson() {
               <button
                 type="button"
                 onClick={goToUnlockedStage}
-                className="easeL-btn-solid flex-1 shadow"
+                className="easeL-btn-solid flex-1"
               >
                 {language === "ur" ? "اگلا لیول" : "Go to next level"}
               </button>
               <button
                 type="button"
                 onClick={stayOnCurrentStage}
-                className="flex-1 min-h-11 rounded-xl bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200"
+                className="easeL-btn-outline flex-1 min-h-11 font-semibold"
               >
                 {language === "ur" ? "یہی جاری رکھیں" : "Stay on this level"}
               </button>

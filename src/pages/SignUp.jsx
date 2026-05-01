@@ -65,7 +65,7 @@ export default function SignUp() {
       <div className="w-full max-w-md">
         <div className="easeL-auth-card p-8 sm:p-10">
           <h1
-            className="mb-2 text-center text-3xl font-bold sm:text-4xl"
+            className="easeL-heading-1 mb-2 text-center sm:text-4xl"
             style={{ color: "var(--easeL-text)" }}
           >
             Create an account
@@ -76,7 +76,14 @@ export default function SignUp() {
           </p>
 
           {error && (
-            <div className="mb-4 rounded-2xl border-2 border-red-200 bg-red-50 p-4 text-base text-red-800">
+            <div
+              className="mb-4 rounded-2xl border-2 p-4 text-base"
+              style={{
+                borderColor: "color-mix(in srgb, var(--easeL-accent-coral) 40%, white)",
+                background: "color-mix(in srgb, var(--easeL-accent-coral) 12%, white)",
+                color: "var(--easeL-text)",
+              }}
+            >
               {error}
             </div>
           )}
@@ -144,7 +151,7 @@ export default function SignUp() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl p-3"
+                  className="easeL-transition-fast absolute right-2 top-1/2 -translate-y-1/2 rounded-xl p-3 hover:bg-[color:color-mix(in_srgb,var(--easeL-primary)_8%,white)]"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
@@ -193,7 +200,7 @@ export default function SignUp() {
                 <button
                   type="button"
                   onClick={() => setShowConfirm(!showConfirm)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl p-3"
+                  className="easeL-transition-fast absolute right-2 top-1/2 -translate-y-1/2 rounded-xl p-3 hover:bg-[color:color-mix(in_srgb,var(--easeL-primary)_8%,white)]"
                   aria-label={showConfirm ? "Hide password" : "Show password"}
                 >
                   {showConfirm ? (
@@ -204,7 +211,7 @@ export default function SignUp() {
                 </button>
               </div>
               {confirmPassword && !match && (
-                <p className="mt-2 text-base text-red-700">Passwords do not match</p>
+                <p className="mt-2 text-base" style={{ color: "var(--easeL-accent-coral)" }}>Passwords do not match</p>
               )}
             </div>
 

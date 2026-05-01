@@ -2,19 +2,11 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Save, RotateCcw } from "lucide-react";
 import { useAppState } from "../context/AppStateContext";
+import { UI_TOKENS } from "../theme/uiTokens";
 
 const TABS = ["Accessibility", "Drawing"];
 
-const DEFAULT_COLORS = [
-  "#000000",
-  "#ef4444",
-  "#f97316",
-  "#eab308",
-  "#22c55e",
-  "#3b82f6",
-  "#8b5cf6",
-  "#ec4899",
-];
+const DEFAULT_COLORS = [UI_TOKENS.brush.default, ...UI_TOKENS.brush.palette];
 
 const ACCESSIBILITY_DEFAULTS = {
   headSensitivity: 75,
@@ -57,7 +49,7 @@ const ROLLING_NEUTRAL_PRESETS = [
 
 const DRAWING_DEFAULTS = {
   brushSize: "M",
-  defaultBrushColor: "#000000",
+  defaultBrushColor: UI_TOKENS.brush.default,
   canvasBg: "white",
 };
 
@@ -136,8 +128,8 @@ export default function Settings() {
     <div className="easeL-page-bg min-h-screen px-6 pb-16 pt-24">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-800">Settings</h1>
-          <p className="text-slate-600 mt-1">
+          <h1 className="easeL-heading-1"><span className="easeL-heading-highlight">Settings</span></h1>
+          <p className="easeL-text-muted mt-1">
             Caregiver controls for accessibility, sessions, and drawing.
           </p>
         </div>
@@ -148,9 +140,10 @@ export default function Settings() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`min-h-12 px-5 rounded-2xl font-medium whitespace-nowrap transition-all ${
-                  activeTab === tab ? "easeL-chip-selected font-semibold" : "text-slate-600 hover:bg-white/80"
+                className={`easeL-transition-standard min-h-12 px-5 rounded-2xl font-medium whitespace-nowrap ${
+                  activeTab === tab ? "easeL-chip-selected font-semibold" : "hover:bg-white/80"
                 }`}
+                style={activeTab === tab ? undefined : { color: "var(--easeL-text-muted)" }}
               >
                 {tab}
               </button>
@@ -161,7 +154,7 @@ export default function Settings() {
             {activeTab === "Accessibility" && (
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="mb-2 block text-sm font-medium" style={{ color: "var(--easeL-text)" }}>
                     Head tracking sensitivity: {form.headSensitivity}
                   </label>
                   <input
@@ -170,11 +163,12 @@ export default function Settings() {
                     max="100"
                     value={form.headSensitivity}
                     onChange={(e) => update("headSensitivity", Number(e.target.value))}
-                    className="w-full h-3 rounded-full appearance-none bg-slate-200 accent-[var(--easeL-primary)]"
+                    className="h-3 w-full appearance-none rounded-full accent-[var(--easeL-primary)]"
+                    style={{ background: "color-mix(in srgb, var(--easeL-border-subtle) 65%, white)" }}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="mb-2 block text-sm font-medium" style={{ color: "var(--easeL-text)" }}>
                     Gesture sensitivity: {form.gestureSensitivity}
                   </label>
                   <input
@@ -183,11 +177,12 @@ export default function Settings() {
                     max="100"
                     value={form.gestureSensitivity}
                     onChange={(e) => update("gestureSensitivity", Number(e.target.value))}
-                    className="w-full h-3 rounded-full appearance-none bg-slate-200 accent-[var(--easeL-primary)]"
+                    className="h-3 w-full appearance-none rounded-full accent-[var(--easeL-primary)]"
+                    style={{ background: "color-mix(in srgb, var(--easeL-border-subtle) 65%, white)" }}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="mb-2 block text-sm font-medium" style={{ color: "var(--easeL-text)" }}>
                     Dead zone: {form.deadZone}
                   </label>
                   <input
@@ -196,15 +191,16 @@ export default function Settings() {
                     max="100"
                     value={form.deadZone}
                     onChange={(e) => update("deadZone", Number(e.target.value))}
-                    className="w-full h-3 rounded-full appearance-none bg-slate-200 accent-[var(--easeL-primary)]"
+                    className="h-3 w-full appearance-none rounded-full accent-[var(--easeL-primary)]"
+                    style={{ background: "color-mix(in srgb, var(--easeL-border-subtle) 65%, white)" }}
                   />
                 </div>
 
-                <div className="pt-4 border-t border-slate-100">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                <div className="border-t pt-4" style={{ borderColor: "color-mix(in srgb, var(--easeL-border-subtle) 45%, transparent)" }}>
+                  <label className="mb-1 block text-sm font-medium" style={{ color: "var(--easeL-text)" }}>
                     Rolling-neutral recalibration
                   </label>
-                  <p className="text-slate-500 text-sm mb-3">
+                  <p className="mb-3 text-sm" style={{ color: "var(--easeL-text-muted)" }}>
                     Framework §3.3 — gradually re-learns the user's resting head
                     pose. Recalibration is always paused while a lesson stroke
                     is in progress, so this setting controls how much it
@@ -218,20 +214,22 @@ export default function Settings() {
                           key={preset.value}
                           type="button"
                           onClick={() => update("rollingNeutralStrength", preset.value)}
-                          className={`text-left min-h-20 px-4 py-3 rounded-2xl border transition-colors ${
+                          className={`easeL-transition-standard text-left min-h-20 px-4 py-3 rounded-2xl border-2 ${
                             active
                               ? "border-[color:var(--easeL-primary)] bg-[color-mix(in_srgb,var(--easeL-primary)_12%,white)] ring-2 ring-[color:color-mix(in_srgb,var(--easeL-primary)_35%,transparent)]"
-                              : "border-slate-200 bg-white hover:bg-slate-50"
+                              : "bg-white hover:bg-[color:var(--easeL-bg-page)]"
                           }`}
+                          style={active ? undefined : { borderColor: "var(--easeL-border-strong)" }}
                         >
                           <span
                             className={`block font-semibold ${
-                              active ? "easeL-accent-text-strong" : "text-slate-700"
+                              active ? "easeL-accent-text-strong" : ""
                             }`}
+                            style={active ? undefined : { color: "var(--easeL-text)" }}
                           >
                             {preset.label}
                           </span>
-                          <span className="block text-xs text-slate-500 mt-1 leading-snug">
+                          <span className="mt-1 block text-xs leading-snug" style={{ color: "var(--easeL-text-muted)" }}>
                             {preset.description}
                           </span>
                         </button>
@@ -240,11 +238,11 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-100">
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                <div className="border-t pt-4" style={{ borderColor: "color-mix(in srgb, var(--easeL-border-subtle) 45%, transparent)" }}>
+                  <label className="mb-2 block text-sm font-medium" style={{ color: "var(--easeL-text)" }}>
                     Session length cap: {sessionLength} minutes
                   </label>
-                  <p className="text-slate-500 text-sm mb-2">
+                  <p className="mb-2 text-sm" style={{ color: "var(--easeL-text-muted)" }}>
                     Framework §6.2 — scheduled breaks prompt every 5 min, session caps at this length.
                   </p>
                   <input
@@ -254,28 +252,29 @@ export default function Settings() {
                     step="5"
                     value={sessionLength}
                     onChange={(e) => setSessionLength(Number(e.target.value))}
-                    className="w-full h-3 rounded-full appearance-none bg-slate-200 accent-[var(--easeL-primary)]"
+                    className="h-3 w-full appearance-none rounded-full accent-[var(--easeL-primary)]"
+                    style={{ background: "color-mix(in srgb, var(--easeL-border-subtle) 65%, white)" }}
                   />
                 </div>
 
                 <div className="flex items-start justify-between gap-4 pt-2">
                   <div>
-                    <p className="text-slate-700 font-medium">Audio feedback</p>
-                    <p className="text-slate-500 text-sm">Reward beeps and spoken cues.</p>
+                    <p className="font-medium" style={{ color: "var(--easeL-text)" }}>Audio feedback</p>
+                    <p className="text-sm" style={{ color: "var(--easeL-text-muted)" }}>Reward beeps and spoken cues.</p>
                   </div>
                   <Toggle value={form.audioFeedback} onChange={(v) => update("audioFeedback", v)} />
                 </div>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-slate-700 font-medium">High contrast</p>
-                    <p className="text-slate-500 text-sm">Thicker outlines, higher-contrast targets.</p>
+                    <p className="font-medium" style={{ color: "var(--easeL-text)" }}>High contrast</p>
+                    <p className="text-sm" style={{ color: "var(--easeL-text-muted)" }}>Thicker outlines, higher-contrast targets.</p>
                   </div>
                   <Toggle value={form.highContrast} onChange={(v) => update("highContrast", v)} />
                 </div>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-slate-700 font-medium">Dwell activation fallback</p>
-                    <p className="text-slate-500 text-sm">
+                    <p className="font-medium" style={{ color: "var(--easeL-text)" }}>Dwell activation fallback</p>
+                    <p className="text-sm" style={{ color: "var(--easeL-text-muted)" }}>
                       Use 1 s cursor dwell instead of mouth-open when gesture is unreliable (§3.4).
                     </p>
                   </div>
@@ -283,8 +282,8 @@ export default function Settings() {
                 </div>
 
                 <div>
-                  <p className="text-slate-700 font-medium mb-1">Spoken language</p>
-                  <p className="text-slate-500 text-sm mb-2">
+                  <p className="mb-1 font-medium" style={{ color: "var(--easeL-text)" }}>Spoken language</p>
+                  <p className="mb-2 text-sm" style={{ color: "var(--easeL-text-muted)" }}>
                     Framework §8.4 — icon-first with optional audio.
                   </p>
                   <div className="flex gap-2">
@@ -296,11 +295,16 @@ export default function Settings() {
                         key={o.value}
                         type="button"
                         onClick={() => setLanguage(o.value)}
-                        className={`min-h-12 px-5 rounded-2xl font-medium transition-colors ${
+                        className={`easeL-transition-standard min-h-12 px-5 rounded-2xl font-medium ${
                           language === o.value
                             ? "bg-[var(--easeL-primary)] text-white"
-                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                            : "hover:bg-[color:color-mix(in_srgb,var(--easeL-border-subtle)_30%,white)]"
                         }`}
+                        style={
+                          language === o.value
+                            ? undefined
+                            : { background: "var(--easeL-bg-section-alt)", color: "var(--easeL-text)" }
+                        }
                       >
                         {o.label}
                       </button>
@@ -321,7 +325,7 @@ export default function Settings() {
             {activeTab === "Drawing" && (
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="mb-2 block text-sm font-medium" style={{ color: "var(--easeL-text)" }}>
                     Default brush size
                   </label>
                   <select
@@ -337,7 +341,7 @@ export default function Settings() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="mb-2 block text-sm font-medium" style={{ color: "var(--easeL-text)" }}>
                     Default color
                   </label>
                   <div className="flex gap-2 flex-wrap">
@@ -346,19 +350,22 @@ export default function Settings() {
                         key={c}
                         type="button"
                         onClick={() => update("defaultBrushColor", c)}
-                        className={`w-12 h-12 rounded-2xl border-2 transition-colors ${
+                        className={`easeL-transition-standard w-12 h-12 rounded-2xl border-2 ${
                           form.defaultBrushColor === c
                             ? "border-[color:var(--easeL-primary)] ring-2 ring-[color:color-mix(in_srgb,var(--easeL-primary)_30%,transparent)] ring-offset-2"
-                            : "border-slate-200 hover:border-[color:color-mix(in_srgb,var(--easeL-primary)_45%,transparent)]"
+                            : "hover:border-[color:color-mix(in_srgb,var(--easeL-primary)_45%,transparent)]"
                         }`}
-                        style={{ backgroundColor: c }}
+                        style={{
+                          backgroundColor: c,
+                          ...(form.defaultBrushColor === c ? {} : { borderColor: "var(--easeL-border-subtle)" }),
+                        }}
                         aria-label={`Color ${c}`}
                       />
                     ))}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label className="mb-2 block text-sm font-medium" style={{ color: "var(--easeL-text)" }}>
                     Canvas background
                   </label>
                   <div className="flex gap-2">
@@ -366,11 +373,16 @@ export default function Settings() {
                       <button
                         key={bg}
                         onClick={() => update("canvasBg", bg)}
-                        className={`min-h-12 px-4 rounded-2xl font-medium capitalize ${
+                        className={`easeL-transition-standard min-h-12 px-4 rounded-2xl font-medium capitalize ${
                           form.canvasBg === bg
                             ? "bg-[var(--easeL-primary)] text-white"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            : "hover:bg-[color:color-mix(in_srgb,var(--easeL-border-subtle)_30%,white)]"
                         }`}
+                        style={
+                          form.canvasBg === bg
+                            ? undefined
+                            : { background: "var(--easeL-bg-section-alt)", color: "var(--easeL-text-muted)" }
+                        }
                       >
                         {bg}
                       </button>
@@ -386,7 +398,7 @@ export default function Settings() {
           <button
             type="button"
             onClick={handleSave}
-            className="easeL-btn-solid inline-flex min-h-12 items-center justify-center gap-2 px-8 transition-all"
+            className="easeL-btn-solid inline-flex min-h-12 items-center justify-center gap-2 px-8"
           >
             <Save className="w-5 h-5" />
             Save changes
@@ -394,13 +406,14 @@ export default function Settings() {
           <button
             type="button"
             onClick={handleReset}
-            className="inline-flex items-center justify-center gap-2 min-h-12 px-6 rounded-2xl border-2 border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition-all"
+            className="easeL-interactive inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border-2 px-6 font-semibold hover:bg-[color:var(--easeL-bg-page)]"
+            style={{ borderColor: "var(--easeL-border-strong)", color: "var(--easeL-text)" }}
           >
             <RotateCcw className="w-5 h-5" />
             Reset to defaults
           </button>
           {saveFeedback && (
-            <span className="text-emerald-600 font-medium text-sm">{saveFeedback}</span>
+            <span className="text-sm font-medium" style={{ color: "var(--easeL-accent-mint)" }}>{saveFeedback}</span>
           )}
         </div>
       </div>
@@ -413,12 +426,13 @@ function Toggle({ value, onChange }) {
     <button
       type="button"
       onClick={() => onChange(!value)}
-      className={`w-14 h-8 rounded-full transition-colors shrink-0 ${
-        value ? "bg-[var(--easeL-primary)]" : "bg-slate-200"
+      className={`easeL-transition-standard h-8 w-14 shrink-0 rounded-full ${
+        value ? "bg-[var(--easeL-primary)]" : ""
       }`}
+      style={value ? undefined : { background: "color-mix(in srgb, var(--easeL-border-subtle) 65%, white)" }}
     >
       <span
-        className={`block w-6 h-6 rounded-full bg-white shadow transform transition-transform ${
+        className={`easeL-transition-standard block w-6 h-6 rounded-full bg-white shadow transform ${
           value ? "translate-x-7" : "translate-x-1"
         }`}
       />

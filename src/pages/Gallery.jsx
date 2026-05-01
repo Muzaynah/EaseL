@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Plus, Pencil, Trash2, Palette, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -22,6 +22,7 @@ function formatRelative(ms) {
 
 export default function Gallery() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [freeDrawItems, setFreeDrawItems] = useState([]);
   const [lessonItems, setLessonItems] = useState([]);
   const [selectedLesson, setSelectedLesson] = useState(null);
@@ -97,7 +98,7 @@ export default function Gallery() {
     <div className="easeL-page-bg min-h-screen px-6 pb-16 pt-24">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <h1 className="text-3xl font-bold text-slate-800">My Gallery</h1>
+          <h1 className="easeL-heading-1"><span className="easeL-heading-highlight easeL-highlight-coral">My Gallery</span></h1>
           <div className="flex flex-wrap items-center gap-3">
             <Link
               to="/canvas"
@@ -110,15 +111,18 @@ export default function Gallery() {
         </div>
 
         {loadState === "loading" ? (
-          <div className="bg-white/90 backdrop-blur-md rounded-3xl p-12 text-center shadow-2xl border border-white/50">
-            <div className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-[var(--easeL-primary)]" />
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">Loading gallery...</h2>
-            <p className="text-slate-600">Fetching your saved free-draw projects and lesson results.</p>
+          <div className="easeL-card p-12 text-center">
+            <div
+              className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-4 border-t-[var(--easeL-primary)]"
+              style={{ borderColor: "color-mix(in srgb, var(--easeL-border-subtle) 55%, white)" }}
+            />
+            <h2 className="easeL-heading-2 mb-2">Loading gallery...</h2>
+            <p className="easeL-text-muted">Fetching your saved free-draw projects and lesson results.</p>
           </div>
         ) : loadState === "denied" ? (
-          <div className="bg-white/90 backdrop-blur-md rounded-3xl p-12 text-center shadow-2xl border border-amber-200">
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">Permission denied</h2>
-            <p className="text-slate-600 mb-6">
+          <div className="easeL-card p-12 text-center" style={{ background: "var(--easeL-bg-card-coral)" }}>
+            <h2 className="easeL-heading-2 mb-2">Permission denied</h2>
+            <p className="easeL-text-muted mb-6">
               We could not read gallery items from cloud storage for this account.
             </p>
             <button
@@ -130,9 +134,9 @@ export default function Gallery() {
             </button>
           </div>
         ) : loadState === "network" ? (
-          <div className="bg-white/90 backdrop-blur-md rounded-3xl p-12 text-center shadow-2xl border border-rose-200">
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">Network error</h2>
-            <p className="text-slate-600 mb-6">
+          <div className="easeL-card p-12 text-center" style={{ background: "var(--easeL-bg-card-coral)" }}>
+            <h2 className="easeL-heading-2 mb-2">Network error</h2>
+            <p className="easeL-text-muted mb-6">
               We could not fetch your cloud gallery right now.
             </p>
             <button
@@ -144,12 +148,12 @@ export default function Gallery() {
             </button>
           </div>
         ) : loadState === "empty" || totalItems === 0 ? (
-          <div className="bg-white/90 backdrop-blur-md rounded-3xl p-12 text-center shadow-2xl border border-white/50">
-            <div className="w-24 h-24 mx-auto rounded-full bg-slate-100 flex items-center justify-center mb-6">
-              <Palette className="w-12 h-12 text-slate-400" />
+          <div className="easeL-card p-12 text-center">
+            <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full" style={{ background: "var(--easeL-bg-page)" }}>
+              <Palette className="h-12 w-12" style={{ color: "var(--easeL-text-muted)" }} />
             </div>
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">No drawings yet</h2>
-            <p className="text-slate-600 mb-6">Saved free-draw projects and lesson results appear here.</p>
+            <h2 className="easeL-heading-2 mb-2">No drawings yet</h2>
+            <p className="easeL-text-muted mb-6">Saved free-draw projects and lesson results appear here.</p>
             <Link
               to="/canvas"
               className="easeL-btn-solid inline-flex min-h-12 items-center justify-center px-8 transition-all"
@@ -160,9 +164,9 @@ export default function Gallery() {
         ) : (
           <>
             <section className="mb-10">
-              <h2 className="text-xl font-bold text-slate-800 mb-4">Free Draw Projects</h2>
+              <h2 className="easeL-heading-2 mb-4"><span className="easeL-heading-highlight easeL-highlight-lavender">Free Draw Projects</span></h2>
               {freeDrawItems.length === 0 ? (
-                <div className="rounded-2xl bg-white/80 border border-slate-200 p-5 text-slate-600">
+                <div className="rounded-2xl border-2 p-5" style={{ background: "var(--easeL-bg-section)", borderColor: "var(--easeL-border-strong)", color: "var(--easeL-text-muted)" }}>
                   No free-draw projects saved yet.
                 </div>
               ) : (
@@ -170,9 +174,19 @@ export default function Gallery() {
                   {freeDrawItems.map((drawing) => (
                     <div
                       key={drawing.id}
-                      className="bg-white/90 backdrop-blur-md rounded-3xl overflow-hidden shadow-2xl border border-white/50 hover:shadow-indigo-100/50 hover:scale-[1.02] transition-all duration-300"
+                      className="easeL-hover-parent easeL-hoverable-card rounded-3xl overflow-hidden border-2"
+                      style={{ background: "var(--easeL-bg-section)", borderColor: "var(--easeL-border-strong)" }}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => navigate(`/canvas?project=${drawing.id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          navigate(`/canvas?project=${drawing.id}`);
+                        }
+                      }}
                     >
-                      <div className="relative w-full aspect-square bg-slate-100 border-b border-slate-100">
+                      <div className="relative w-full aspect-square border-b" style={{ background: "var(--easeL-bg-page)", borderColor: "var(--easeL-border-subtle)" }}>
                         {drawing.thumbnail ? (
                           <img
                             src={drawing.thumbnail}
@@ -180,21 +194,27 @@ export default function Gallery() {
                             className="w-full h-full object-contain"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-                            <Palette className="w-16 h-16 text-slate-400" />
+                          <div className="w-full h-full flex items-center justify-center" style={{ background: "var(--easeL-bg-page)" }}>
+                            <Palette className="w-16 h-16" style={{ color: "var(--easeL-text-muted)" }} />
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 hover:opacity-100 transition-opacity flex items-end justify-end gap-2 p-3">
+                        <div className="easeL-hover-reveal absolute inset-0 opacity-0 easeL-transition-standard flex items-end justify-end gap-2 p-3" style={{ background: "color-mix(in srgb, black 18%, transparent)" }}>
                           <Link
                             to={`/canvas?project=${drawing.id}`}
-                            className="w-10 h-10 rounded-xl bg-white/90 flex items-center justify-center text-slate-700 hover:bg-white"
+                            onClick={(e) => e.stopPropagation()}
+                            className="easeL-interactive flex h-10 w-10 items-center justify-center rounded-xl bg-white/90 hover:bg-white"
+                            style={{ color: "var(--easeL-text)" }}
                             title="Open in canvas"
                           >
                             <Pencil className="w-5 h-5" />
                           </Link>
                           <button
-                            onClick={() => deleteFree(drawing)}
-                            className="w-10 h-10 rounded-xl bg-white/90 flex items-center justify-center text-red-600 hover:bg-red-50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteFree(drawing);
+                            }}
+                            className="easeL-interactive flex h-10 w-10 items-center justify-center rounded-xl bg-white/90 hover:bg-white"
+                            style={{ color: "var(--easeL-accent-coral)" }}
                             title="Delete"
                           >
                             <Trash2 className="w-5 h-5" />
@@ -202,9 +222,9 @@ export default function Gallery() {
                         </div>
                       </div>
                       <div className="p-4">
-                        <h3 className="font-semibold text-slate-800 truncate">{drawing.title}</h3>
-                        <p className="text-sm text-slate-500 mt-0.5">{formatRelative(drawing.createdAt)}</p>
-                        <span className="inline-block mt-2 px-2 py-0.5 rounded-lg text-xs font-medium bg-indigo-100 text-indigo-800">
+                        <h3 className="font-semibold truncate" style={{ color: "var(--easeL-text)" }}>{drawing.title}</h3>
+                        <p className="text-sm mt-0.5" style={{ color: "var(--easeL-text-muted)" }}>{formatRelative(drawing.createdAt)}</p>
+                        <span className="inline-block mt-2 px-2 py-0.5 rounded-lg text-xs font-medium" style={{ background: "var(--easeL-bg-card-butter)", color: "var(--easeL-primary)" }}>
                           Free draw
                         </span>
                       </div>
@@ -215,9 +235,9 @@ export default function Gallery() {
             </section>
 
             <section>
-              <h2 className="text-xl font-bold text-slate-800 mb-4">Lesson Results</h2>
+              <h2 className="easeL-heading-2 mb-4"><span className="easeL-heading-highlight easeL-highlight-mint">Lesson Results</span></h2>
               {lessonItems.length === 0 ? (
-                <div className="rounded-2xl bg-white/80 border border-slate-200 p-5 text-slate-600">
+                <div className="rounded-2xl border-2 p-5" style={{ background: "var(--easeL-bg-section)", borderColor: "var(--easeL-border-strong)", color: "var(--easeL-text-muted)" }}>
                   No lesson results saved yet.
                 </div>
               ) : (
@@ -225,11 +245,13 @@ export default function Gallery() {
                   {lessonItems.map((drawing) => (
                     <div
                       key={drawing.id}
-                      className="bg-white/90 backdrop-blur-md rounded-3xl overflow-hidden shadow-2xl border border-white/50"
+                      className="easeL-hover-parent easeL-hoverable-card rounded-3xl overflow-hidden border-2"
+                      style={{ background: "var(--easeL-bg-section)", borderColor: "var(--easeL-border-strong)" }}
                     >
                       <button
                         type="button"
-                        className="relative w-full aspect-square bg-slate-100 border-b border-slate-100"
+                        className="relative w-full aspect-square border-b"
+                        style={{ background: "var(--easeL-bg-page)", borderColor: "var(--easeL-border-subtle)" }}
                         onClick={() => setSelectedLesson(drawing)}
                       >
                         {drawing.thumbnail ? (
@@ -239,24 +261,25 @@ export default function Gallery() {
                             className="w-full h-full object-contain"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-                            <Palette className="w-16 h-16 text-slate-400" />
+                          <div className="w-full h-full flex items-center justify-center" style={{ background: "var(--easeL-bg-page)" }}>
+                            <Palette className="w-16 h-16" style={{ color: "var(--easeL-text-muted)" }} />
                           </div>
                         )}
                       </button>
                       <div className="p-4">
-                        <h3 className="font-semibold text-slate-800 truncate">{drawing.title}</h3>
-                        <p className="text-sm text-slate-500 mt-0.5">{formatRelative(drawing.createdAt)}</p>
-                        <p className="mt-1 text-sm font-bold text-slate-700">
+                        <h3 className="font-semibold truncate" style={{ color: "var(--easeL-text)" }}>{drawing.title}</h3>
+                        <p className="text-sm mt-0.5" style={{ color: "var(--easeL-text-muted)" }}>{formatRelative(drawing.createdAt)}</p>
+                        <p className="mt-1 text-sm font-bold" style={{ color: "var(--easeL-text)" }}>
                           Score: {typeof drawing.score === "number" ? `${drawing.score}%` : "n/a"}
                         </p>
                         <div className="mt-2 flex items-center justify-between">
-                          <span className="inline-block px-2 py-0.5 rounded-lg text-xs font-medium bg-amber-100 text-amber-800">
+                          <span className="inline-block px-2 py-0.5 rounded-lg text-xs font-medium" style={{ background: "var(--easeL-bg-card-coral)", color: "var(--easeL-accent-coral)" }}>
                             Lesson
                           </span>
                           <button
                             onClick={() => deleteLesson(drawing)}
-                            className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center text-red-600 hover:bg-red-100"
+                            className="easeL-interactive flex h-9 w-9 items-center justify-center rounded-xl hover:brightness-95"
+                            style={{ background: "var(--easeL-bg-card-coral)", color: "var(--easeL-accent-coral)" }}
                             title="Delete"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -274,22 +297,23 @@ export default function Gallery() {
 
       {selectedLesson ? (
         <div className="fixed inset-0 z-50 bg-black/65 p-6 flex items-center justify-center">
-          <div className="relative max-w-5xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden">
+          <div className="relative max-w-5xl w-full overflow-hidden rounded-3xl bg-white shadow-2xl">
             <button
               type="button"
-              className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 text-slate-700 flex items-center justify-center"
+              className="easeL-interactive absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/90"
+              style={{ color: "var(--easeL-text)" }}
               onClick={() => setSelectedLesson(null)}
               aria-label="Close preview"
             >
               <X className="w-5 h-5" />
             </button>
-            <div className="p-4 border-b border-slate-200">
-              <h3 className="text-lg font-bold text-slate-800">{selectedLesson.title}</h3>
-              <p className="text-slate-600 text-sm">
+            <div className="border-b p-4" style={{ borderColor: "var(--easeL-border-subtle)" }}>
+              <h3 className="text-lg font-bold" style={{ color: "var(--easeL-text)" }}>{selectedLesson.title}</h3>
+              <p className="text-sm" style={{ color: "var(--easeL-text-muted)" }}>
                 Score: {typeof selectedLesson.score === "number" ? `${selectedLesson.score}%` : "n/a"}
               </p>
             </div>
-            <div className="bg-slate-50 p-4 flex items-center justify-center min-h-[50vh]">
+            <div className="flex min-h-[50vh] items-center justify-center p-4" style={{ background: "var(--easeL-bg-page)" }}>
               {selectedLesson.thumbnail ? (
                 <img
                   src={selectedLesson.thumbnail}
@@ -297,7 +321,7 @@ export default function Gallery() {
                   className="max-h-[75vh] w-auto object-contain"
                 />
               ) : (
-                <div className="text-slate-500">No preview</div>
+                <div style={{ color: "var(--easeL-text-muted)" }}>No preview</div>
               )}
             </div>
           </div>

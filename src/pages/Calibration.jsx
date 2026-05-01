@@ -316,20 +316,20 @@ export default function Calibration() {
     const goToTutorial = !fromSettings && isFirstTime;
     return (
       <div className="easeL-page-bg flex min-h-screen items-center justify-center px-6 pb-16 pt-24">
-        <div className="max-w-md w-full bg-white/90 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/50 text-center">
+        <div className="easeL-card max-w-md w-full p-8 text-center">
           <div className="w-20 h-20 mx-auto rounded-full bg-emerald-100 flex items-center justify-center mb-6">
             <Check className="w-10 h-10 text-emerald-600" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">
+          <h1 className="easeL-heading-1 mb-2">
             {fromSettings ? "Calibration complete" : "All Set!"}
           </h1>
-          <p className="text-slate-600 mb-2">
+          <p className="easeL-text-muted mb-2">
             {fromSettings
               ? "Your cursor and controls are updated everywhere—tutorial, canvas, and screener will use the new calibration."
               : "Your controls are calibrated."}
           </p>
           {!fromSettings && (
-            <p className="text-slate-500 text-sm mb-8">
+            <p className="easeL-text-muted text-sm mb-8">
               You can recalibrate anytime in Settings.
             </p>
           )}
@@ -339,7 +339,7 @@ export default function Calibration() {
           <button
             onClick={handleCalibrationDone}
             disabled={saving}
-            className="easeL-btn-solid flex w-full items-center justify-center gap-2 transition-all disabled:cursor-not-allowed disabled:opacity-70"
+            className="easeL-btn-solid flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {saving ? (
               <>
@@ -364,7 +364,7 @@ export default function Calibration() {
           <p className="text-slate-600 font-medium">Step {step} of {TOTAL_STEPS}</p>
           <button
             onClick={handleSkip}
-            className="flex items-center gap-2 min-h-12 px-4 rounded-2xl text-slate-600 hover:bg-white/80 transition-all"
+            className="easeL-interactive flex items-center gap-2 min-h-12 px-4 rounded-2xl text-slate-600 hover:bg-white/80"
           >
             <SkipForward className="w-5 h-5" />
             Skip
@@ -389,7 +389,7 @@ export default function Calibration() {
         <div className="easeL-auth-card p-8">
           {step === 1 && (
             <>
-              <h2 className="mb-4 text-2xl font-bold" style={{ color: "var(--easeL-text)" }}>
+              <h2 className="easeL-heading-2 mb-4" style={{ color: "var(--easeL-text)" }}>
                 Let&apos;s Set Up Your Controls
               </h2>
               <p className="mb-8" style={{ color: "var(--easeL-text-muted)" }}>
@@ -403,7 +403,7 @@ export default function Calibration() {
               </div>
               <button
                 onClick={() => setStep(2)}
-                className="easeL-btn-solid w-full transition-all"
+                className="easeL-btn-solid w-full"
               >
                 Begin Calibration
               </button>
@@ -412,7 +412,7 @@ export default function Calibration() {
 
           {step === 2 && (
             <>
-              <h2 className="text-2xl font-bold text-slate-800 mb-2">
+              <h2 className="easeL-heading-2 mb-2">
                 Your Resting Position
               </h2>
               <p className="text-slate-600 mb-4">
@@ -474,7 +474,7 @@ export default function Calibration() {
 
           {step === 3 && (
             <>
-              <h2 className="text-2xl font-bold text-slate-800 mb-2">
+              <h2 className="easeL-heading-2 mb-2">
                 Tilt Left and Right
               </h2>
               <p className="text-slate-600 mb-4">
@@ -522,7 +522,7 @@ export default function Calibration() {
 
           {step === 4 && (
             <>
-              <h2 className="text-2xl font-bold text-slate-800 mb-2">
+              <h2 className="easeL-heading-2 mb-2">
                 Turn Left and Right
               </h2>
               <p className="text-slate-600 mb-4">
@@ -570,7 +570,7 @@ export default function Calibration() {
 
           {step === 5 && (
             <>
-              <h2 className="text-2xl font-bold text-slate-800 mb-2">
+              <h2 className="easeL-heading-2 mb-2">
                 Look Up and Down
               </h2>
               <p className="text-slate-600 mb-4">
@@ -618,7 +618,7 @@ export default function Calibration() {
 
           {step === 6 && (
             <>
-              <h2 className="text-2xl font-bold text-slate-800 mb-2">
+              <h2 className="easeL-heading-2 mb-2">
                 Mouth Open (Your Gesture)
               </h2>
               <p className="text-slate-600 mb-4">
@@ -663,7 +663,7 @@ export default function Calibration() {
             <button
               type="button"
               onClick={() => setStep((s) => s - 1)}
-              className="mt-4 flex items-center gap-2 text-slate-600 hover:text-slate-800"
+              className="easeL-interactive mt-4 flex items-center gap-2 text-slate-600 hover:text-slate-800"
             >
               <ArrowRight className="w-5 h-5 rotate-180" />
               Back

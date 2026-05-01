@@ -151,7 +151,7 @@ export default function Profile({ user, onSignOut }) {
   return (
     <div className="easeL-page-bg min-h-screen px-6 pb-16 pt-24">
       <div className="max-w-3xl mx-auto space-y-8">
-        <div className="bg-white/90 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/50">
+        <div className="easeL-card p-8">
           <div className="flex flex-col sm:flex-row sm:items-center gap-6">
             <div
               className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full text-2xl font-bold text-white"
@@ -160,9 +160,9 @@ export default function Profile({ user, onSignOut }) {
               {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold text-slate-800">{displayName}</h1>
-              {email && <p className="text-slate-600 mt-1 truncate">{email}</p>}
-              <p className="text-sm text-slate-500 mt-2">
+              <h1 className="easeL-heading-1 text-2xl"><span className="easeL-heading-highlight">{displayName}</span></h1>
+              {email && <p className="mt-1 truncate" style={{ color: "var(--easeL-text-muted)" }}>{email}</p>}
+              <p className="text-sm mt-2" style={{ color: "var(--easeL-text-muted)" }}>
                 This page is for caregiver reference. The child interacts with Home and Lessons.
               </p>
             </div>
@@ -170,30 +170,32 @@ export default function Profile({ user, onSignOut }) {
         </div>
 
         <section>
-          <h2 className="text-xl font-bold text-slate-800 mb-4">Setup status</h2>
+          <h2 className="easeL-heading-2 text-xl mb-4"><span className="easeL-heading-highlight">Setup status</span></h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {setup.map((item) => (
               <div
                 key={item.label}
-                className="bg-white/90 backdrop-blur-md rounded-2xl px-5 py-4 shadow-lg border border-white/50"
+                className="easeL-hoverable-card rounded-2xl px-5 py-4 border-2"
+                style={{ background: "var(--easeL-bg-section)", borderColor: "var(--easeL-border-strong)" }}
               >
-                <p className="text-xs text-slate-500 uppercase tracking-wide">{item.label}</p>
-                <p className="text-base font-bold text-slate-800 mt-1">{item.value}</p>
+                <p className="text-xs uppercase tracking-wide" style={{ color: "var(--easeL-text-muted)" }}>{item.label}</p>
+                <p className="text-base font-bold mt-1" style={{ color: "var(--easeL-text)" }}>{item.value}</p>
               </div>
             ))}
           </div>
         </section>
 
         <section>
-          <h2 className="text-xl font-bold text-slate-800 mb-4">Usage</h2>
+          <h2 className="easeL-heading-2 text-xl mb-4"><span className="easeL-heading-highlight">Usage</span></h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {usage.map((item) => (
               <div
                 key={item.label}
-                className="bg-white/90 backdrop-blur-md rounded-2xl px-5 py-4 shadow-lg border border-white/50"
+                className="easeL-hoverable-card rounded-2xl px-5 py-4 border-2"
+                style={{ background: "var(--easeL-bg-section)", borderColor: "var(--easeL-border-strong)" }}
               >
-                <p className="text-xs text-slate-500 uppercase tracking-wide">{item.label}</p>
-                <p className="text-2xl font-bold text-slate-800 mt-1">{item.value}</p>
+                <p className="text-xs uppercase tracking-wide" style={{ color: "var(--easeL-text-muted)" }}>{item.label}</p>
+                <p className="text-2xl font-bold mt-1" style={{ color: "var(--easeL-text)" }}>{item.value}</p>
               </div>
             ))}
           </div>
@@ -201,8 +203,8 @@ export default function Profile({ user, onSignOut }) {
 
         {metricRows && (
           <section>
-            <h2 className="text-xl font-bold text-slate-800 mb-4">Screener metrics</h2>
-            <div className="bg-white/90 backdrop-blur-md rounded-3xl border border-white/50 shadow-2xl divide-y divide-slate-100 overflow-hidden">
+            <h2 className="easeL-heading-2 text-xl mb-4"><span className="easeL-heading-highlight">Screener metrics</span></h2>
+            <div className="easeL-card divide-y divide-slate-100 overflow-hidden">
               {metricRows.map((row) => (
                 <div key={row.label} className="flex items-center justify-between px-5 py-3">
                   <p className="text-slate-700 font-medium">{row.label}</p>
@@ -213,24 +215,24 @@ export default function Profile({ user, onSignOut }) {
           </section>
         )}
 
-        <div className="bg-white/90 backdrop-blur-md rounded-3xl p-4 shadow-2xl border border-white/50 space-y-1">
+        <div className="easeL-card p-4 space-y-1">
           <Link
             to="/calibration"
-            className="flex items-center gap-3 rounded-2xl p-4 text-slate-700 transition-colors hover:bg-[color-mix(in_srgb,var(--easeL-primary)_8%,white)]"
+            className="easeL-interactive flex items-center gap-3 rounded-2xl p-4 text-slate-700 hover:bg-[color-mix(in_srgb,var(--easeL-primary)_8%,white)]"
           >
             <Target className="easeL-accent-text-strong h-5 w-5" />
             Re-run calibration
           </Link>
           <Link
             to="/screener"
-            className="flex items-center gap-3 rounded-2xl p-4 text-slate-700 transition-colors hover:bg-[color-mix(in_srgb,var(--easeL-primary)_8%,white)]"
+            className="easeL-interactive flex items-center gap-3 rounded-2xl p-4 text-slate-700 hover:bg-[color-mix(in_srgb,var(--easeL-primary)_8%,white)]"
           >
             <RefreshCcw className="easeL-accent-text-strong h-5 w-5" />
             Re-run screener
           </Link>
           <Link
             to="/settings"
-            className="flex items-center gap-3 rounded-2xl p-4 text-slate-700 transition-colors hover:bg-[color-mix(in_srgb,var(--easeL-primary)_8%,white)]"
+            className="easeL-interactive flex items-center gap-3 rounded-2xl p-4 text-slate-700 hover:bg-[color-mix(in_srgb,var(--easeL-primary)_8%,white)]"
           >
             <SettingsIcon className="easeL-accent-text-strong h-5 w-5" />
             Settings
@@ -238,7 +240,7 @@ export default function Profile({ user, onSignOut }) {
           <button
             type="button"
             onClick={handleExportPdf}
-            className="group flex w-full items-center gap-3 rounded-2xl border border-[color:color-mix(in_srgb,var(--easeL-primary)_25%,white)] bg-[color-mix(in_srgb,var(--easeL-primary)_8%,white)] p-4 text-left text-[color:var(--easeL-primary)] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[color-mix(in_srgb,var(--easeL-primary)_13%,white)] hover:shadow-md"
+            className="group easeL-interactive flex w-full items-center gap-3 rounded-2xl border border-[color:color-mix(in_srgb,var(--easeL-primary)_25%,white)] bg-[color-mix(in_srgb,var(--easeL-primary)_8%,white)] p-4 text-left text-[color:var(--easeL-primary)] shadow-sm hover:bg-[color-mix(in_srgb,var(--easeL-primary)_13%,white)] hover:shadow-md"
           >
             {exported ? (
               <Check className="w-5 h-5 text-emerald-600" />
@@ -258,7 +260,7 @@ export default function Profile({ user, onSignOut }) {
           <button
             type="button"
             onClick={handleExportPng}
-            className="group flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-[color:color-mix(in_srgb,var(--easeL-primary)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--easeL-primary)_6%,white)] hover:shadow-md"
+            className="group easeL-interactive flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left text-slate-700 shadow-sm hover:border-[color:color-mix(in_srgb,var(--easeL-primary)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--easeL-primary)_6%,white)] hover:shadow-md"
           >
             <Download className="easeL-accent-text-strong h-5 w-5 transition-transform group-hover:scale-110" />
             <div className="flex-1">
@@ -274,7 +276,7 @@ export default function Profile({ user, onSignOut }) {
               onSignOut?.();
               navigate("/");
             }}
-            className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-red-50 transition-colors text-red-600 font-semibold text-left"
+            className="easeL-interactive flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-red-50 text-red-600 font-semibold text-left"
           >
             <LogOut className="w-5 h-5" />
             Sign out

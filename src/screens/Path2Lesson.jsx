@@ -3,14 +3,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Volume2,
   VolumeX,
-  Save,
   RefreshCw,
   LogOut,
   CheckCircle2,
-  Home,
-  ArrowRight,
-  RotateCcw,
-  BookOpen,
   Pause,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -19,7 +14,6 @@ import { useFaceMesh } from "../hooks/useFaceMesh";
 import { useGestureControl } from "../hooks/useGestureControl";
 import { useCalibratedCursor } from "../hooks/useCalibratedCursor";
 import { useSessionTimer } from "../hooks/useSessionTimer";
-import ScoreSprinkles from "../components/ScoreSprinkles";
 import BreakPrompt from "../components/BreakPrompt";
 import GhostStrokePreview from "../components/GhostStrokePreview";
 import LessonInstructionCard from "../components/LessonInstructionCard";
@@ -34,9 +28,9 @@ import {
 } from "../utils/lessonContent";
 import { getStageLessonPath } from "../utils/lessonPath";
 import { distanceToPath, getNearestPointOnPath } from "../utils/lessonPath";
-import { calculateAdherence, computePathAccuracy } from "../utils/corridorGeometry";
+import { calculateAdherence } from "../utils/corridorGeometry";
 import { getCanvasCoordinates } from "../utils/canvasUtils";
-import { appendTrialLog, appendSessionLog, getTrialLog } from "../utils/persistence";
+import { appendSessionLog, getTrialLog } from "../utils/persistence";
 import { resolveActivationConfig } from "../utils/activationConfig";
 import {
   sayPhrase,
@@ -49,19 +43,29 @@ import { saveLessonResultCloud } from "../firebase/cloudData";
 import {
   filterTrials,
   getAdaptedStage,
-  maybeAdvanceStage,
   computeFatigueIndex,
-  evaluateMastery,
-  getMasteryFeedback,
   STAGE_UNLOCK_ADHERENCE,
-  didTrialPass,
-  getDynamicRequiredAdherence,
 } from "../utils/stageAdaptation";
-
-function lessonPointInsideCanvas(px, py, vp) {
-  if (!vp) return false;
-  return px >= vp.left && px <= vp.right && py >= vp.top && py <= vp.bottom;
-}
+import Path2RewardModal from "./path2Lesson/Path2RewardModal";
+import { usePath2InputCageController } from "./path2Lesson/usePath2InputCageController";
+import { usePath2ScoringProgression } from "./path2Lesson/usePath2ScoringProgression";
+import {
+  PREVIEW_COLOR,
+  STROKE_QUALITY_HEX,
+  TRACE_WIDTH,
+  VISUAL_CORRIDOR_SCALE,
+  buildVertexQualityFills,
+  drawCenterlineByTiers,
+  effectiveScoringWidth,
+  lessonPointInsideCanvas,
+  normalizePathToSegmentStart,
+  path2DrawDecorations,
+  path2FillBackgroundAndRoad,
+  qualityTierFromDistance,
+  traceSampleStyleFromDistance,
+  wobbleBeadColor,
+} from "./path2Lesson/traceUtils";
+import { UI_TOKENS } from "../theme/uiTokens";
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 700;
@@ -80,118 +84,7 @@ const RAIL_AHEAD_SLACK = 0.12;
 // corridors already finish at this; closed single-segment shapes (circle,
 // sun) also use this bound since they are one long segment.
 const AUTO_FINISH_PROGRESS = 0.9;
-// Default only for dashed preview; live/completed trace uses `STROKE_QUALITY_HEX` tiers.
-const TRACE_COLOR = "#4338CA";
-const TRACE_WIDTH = 10;
-const VISUAL_CORRIDOR_SCALE = 0.78;
-
-/** Six discrete quality bands (on-line → off-line). Must match `qualityTierFromDistance` bins. */
-const STROKE_QUALITY_HEX = ["#22C55E", "#5EEAD4", "#A3E635", "#EAB308", "#F97316", "#DC2626"];
-
-function hexToRgb(hex) {
-  const h = hex.replace("#", "");
-  return {
-    r: parseInt(h.slice(0, 2), 16),
-    g: parseInt(h.slice(2, 4), 16),
-    b: parseInt(h.slice(4, 6), 16),
-  };
-}
-
-/**
- * 0 = best (on path), 5 = far off. 6 steps for simple, readable feedback.
- */
-function qualityTierFromDistance(dist, th) {
-  const ths = Math.max(0.5, th);
-  const n = dist / ths;
-  if (n <= 0.32) return 0;
-  if (n <= 0.5) return 1;
-  if (n <= 0.65) return 2;
-  if (n <= 0.82) return 3;
-  if (n <= 1) return 4;
-  return 5;
-}
-
-/**
- * One polyline as solid segments, worst tier of the two vertices wins per edge.
- */
-function drawCenterlineByTiers(ctx, centerline, vertexTiers, lineWidth) {
-  const L = centerline.length;
-  if (L < 2) return;
-  const def = 2;
-  const tiers =
-    Array.isArray(vertexTiers) && vertexTiers.length === L
-      ? vertexTiers
-      : Array(L).fill(def);
-  ctx.lineWidth = lineWidth;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  for (let i = 0; i < L - 1; i++) {
-    const t = Math.max(
-      Math.min(5, Math.max(0, tiers[i] ?? def)),
-      Math.min(5, Math.max(0, tiers[i + 1] ?? def)),
-    );
-    ctx.strokeStyle = STROKE_QUALITY_HEX[t];
-    ctx.beginPath();
-    ctx.moveTo(centerline[i].x, centerline[i].y);
-    ctx.lineTo(centerline[i + 1].x, centerline[i + 1].y);
-    ctx.stroke();
-  }
-}
-
-function path2FillBackgroundAndRoad(ctx, canvas, c, segs) {
-  ctx.fillStyle = "#FAFAFF";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  if (c.closed && segs.length === 1) {
-    ctx.fillStyle = "rgba(99,102,241,0.06)";
-    ctx.beginPath();
-    ctx.moveTo(c.centerline[0].x, c.centerline[0].y);
-    for (const p of c.centerline) ctx.lineTo(p.x, p.y);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.strokeStyle = "rgba(100, 116, 139, 0.55)";
-  ctx.lineWidth = Math.max(18, c.width * VISUAL_CORRIDOR_SCALE);
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.globalAlpha = 0.1;
-  for (const s of segs) {
-    if (!s.centerline?.length) continue;
-    ctx.beginPath();
-    ctx.moveTo(s.centerline[0].x, s.centerline[0].y);
-    for (let i = 1; i < s.centerline.length; i++) {
-      ctx.lineTo(s.centerline[i].x, s.centerline[i].y);
-    }
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
-}
-
-function path2DrawDecorations(ctx, c) {
-  if (c.decorations?.rays) {
-    for (const r of c.decorations.rays) {
-      ctx.strokeStyle = "#F59E0B";
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(r.from.x, r.from.y);
-      ctx.lineTo(r.to.x, r.to.y);
-      ctx.stroke();
-    }
-  }
-  if (c.decorations?.tail) {
-    ctx.strokeStyle = "#a855f7";
-    ctx.lineWidth = 4;
-    ctx.setLineDash([8, 6]);
-    ctx.beginPath();
-    const t0 = c.decorations.tail[0];
-    ctx.moveTo(t0.x, t0.y);
-    for (const p of c.decorations.tail) ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-}
-
 // Dotted preview colour for the not-yet-drawn portion of the active segment.
-const PREVIEW_COLOR = "rgba(100, 116, 139, 0.65)";
 const GUIDE_PROGRESS_PER_MS = 0.035;
 const GUIDE_AHEAD_BUFFER = 14;
 // Do not penalize a child for simply pausing. We only sample for adherence
@@ -201,7 +94,6 @@ const ADHERENCE_MIN_SAMPLE_MS = 140;
 const START_LOCK_MS = 420;
 const OFF_CORRIDOR_HARD_MULTIPLIER = 1.15;
 const OFF_CORRIDOR_SOFT_MULTIPLIER = 1.02;
-const ACCEPTANCE_BUFFER_PX = 4;
 const CAREGIVER_CONTROLS_HIDE_MS = 2400;
 const CAREGIVER_MOUSE_REVEAL_DELTA = 24;
 const DEMO_COUNTDOWN_MS = 2700;
@@ -209,111 +101,6 @@ const DEMO_COUNTDOWN_STEP_MS = 900;
 const LESSON_CAGE_PADDING = 20;
 const CANCEL_TRACE_FADE_MS = 420;
 
-function normalizePathToSegmentStart(path, seg) {
-  if (!Array.isArray(path) || path.length === 0 || !seg?.start) return path;
-  const first = path[0];
-  const offsetX = seg.start.x - first.x;
-  const offsetY = seg.start.y - first.y;
-  return path.map((p) => ({ x: p.x + offsetX, y: p.y + offsetY }));
-}
-
-function effectiveScoringWidth(width) {
-  return Math.max(10, width + ACCEPTANCE_BUFFER_PX * 2);
-}
-
-/**
- * Lerp two RGB objects (0..1 factor).
- */
-function lerpRgb(a, b, t) {
-  const u = Math.max(0, Math.min(1, t));
-  return {
-    r: Math.round(a.r + (b.r - a.r) * u),
-    g: Math.round(a.g + (b.g - a.g) * u),
-    b: Math.round(a.b + (b.b - a.b) * u),
-  };
-}
-
-// Inner ~80% of the scoring half-width: mint → deep green (reinforcement), no warm hues.
-const TRACE_BEST = { r: 167, g: 243, b: 208 }; // mint-200
-const TRACE_GOOD = { r: 52, g: 211, b: 153 }; // emerald-400
-const TRACE_EDGE = { r: 21, g: 128, b: 61 }; // green-800
-// Last ~20% inside the band: full gradient deep green → amber → red (meets the edge smoothly).
-const TRACE_WARN = { r: 245, g: 158, b: 11 };
-const TRACE_ORANGE = { r: 234, g: 88, b: 12 }; // orange-600
-const TRACE_BAD = { r: 220, g: 38, b: 38 };
-
-/** Portion of [0, threshold] that stays "green only"; the rest ramps warm → red before the physical edge. */
-const IN_BAND_GREEN_ONLY = 0.8;
-
-/**
- * Inner green-only band: f 0 = on the line, 1 = at 80% of scoring width.
- * Deep green on the line → mint toward the warm zone (reversed from mint-on-line).
- */
-function greenZoneStyle(fractInner, baseAlpha) {
-  const f = Math.max(0, Math.min(1, fractInner));
-  let rgb;
-  if (f < 0.5) {
-    rgb = lerpRgb(TRACE_EDGE, TRACE_GOOD, f * 2);
-  } else {
-    rgb = lerpRgb(TRACE_GOOD, TRACE_BEST, (f - 0.5) * 2);
-  }
-  const q = 1 - f;
-  const alphaBoost = 0.1 * q * q;
-  return { ...rgb, alpha: Math.min(1, baseAlpha + alphaBoost) };
-}
-
-/**
- * Last 20% inside the band: starts from mint (meets inner zone) → amber → red at edge.
- */
-function inBandEdgeGradient(t) {
-  const u = Math.max(0, Math.min(1, t));
-  if (u < 0.34) return lerpRgb(TRACE_BEST, TRACE_WARN, u / 0.34);
-  if (u < 0.67) return lerpRgb(TRACE_WARN, TRACE_ORANGE, (u - 0.34) / 0.33);
-  return lerpRgb(TRACE_ORANGE, TRACE_BAD, (u - 0.67) / 0.33);
-}
-
-/**
- * `dist` = distance to path, `th` = scoring half-width. Discrete quality tiers (matches stroke).
- */
-function traceSampleStyleFromDistance(dist, th, baseAlpha) {
-  const ths = Math.max(th, 0.5);
-  const norm = dist / ths; // 1 = at corridor edge, >1 = outside
-  const tier = qualityTierFromDistance(dist, ths);
-  const { r, g, b } = hexToRgb(STROKE_QUALITY_HEX[tier]);
-  if (norm <= 1) {
-    const fInner = norm <= IN_BAND_GREEN_ONLY ? 1 - norm / IN_BAND_GREEN_ONLY : 0;
-    return {
-      style: { r, g, b, alpha: baseAlpha },
-      q: fInner, // 1 = on line, for gold glow
-      inGreenOnlyZone: norm <= IN_BAND_GREEN_ONLY,
-    };
-  }
-  const past = dist - ths;
-  const falloff = ths * 2.2;
-  const extraOp = 0.5 * (1 - Math.exp(-past / falloff));
-  return {
-    style: { r, g, b, alpha: Math.min(0.95, baseAlpha + extraOp) },
-    q: 0,
-    inGreenOnlyZone: false,
-  };
-}
-
-function wobbleBeadColor(intensity, baseAlpha) {
-  const t = Math.min(1, 0.2 + 0.8 * (intensity ?? 0));
-  const rgb = lerpRgb(TRACE_WARN, TRACE_BAD, t);
-  return { ...rgb, alpha: baseAlpha };
-}
-
-/** Per-vertex {dist, th} for stroke colouring; forward-fill from last sample. */
-function buildVertexQualityFills(raw, thDef, L) {
-  if (L < 2) return [];
-  const f = new Array(L);
-  f[0] = raw?.[0] ?? { dist: 0, threshold: thDef };
-  for (let i = 1; i < L; i++) {
-    f[i] = raw?.[i] ?? f[i - 1];
-  }
-  return f;
-}
 
 /**
  * Mode 2 (Guided Control) — stages 3-6.
@@ -430,7 +217,6 @@ export default function Path2Lesson() {
   const [saved, setSaved] = useState(false);
   const [masteryToast, setMasteryToast] = useState(null);
   const [instructionDismiss, setInstructionDismiss] = useState(0);
-  const [masteryHint, setMasteryHint] = useState("");
   const [scoreSprinklesOn, setScoreSprinklesOn] = useState(false);
   const [lessonPaused, setLessonPaused] = useState(false);
   const [caregiverControlsVisible, setCaregiverControlsVisible] = useState(false);
@@ -574,296 +360,94 @@ export default function Path2Lesson() {
     };
   }, []);
 
-  /** Snap both the tracking cursor and the display cursor to a canvas point.
-   * Call when starting or advancing to a new segment so the user doesn't
-   * have to hunt for the green start dot. */
-  const snapCursorToCanvasPoint = useCallback(
-    (cx, cy) => {
-      const screen = canvasToScreen(cx, cy);
-      if (cursorPosRef?.current) {
-        cursorPosRef.current.x = screen.x;
-        cursorPosRef.current.y = screen.y;
-      }
-      displayCursorRef.current.x = screen.x;
-      displayCursorRef.current.y = screen.y;
-    },
-    [canvasToScreen, cursorPosRef],
-  );
-
-  /** Compute adherence & deviation for the just-finished segment. */
-  const computeSegmentResult = useCallback(() => {
-    const path = [...userPathRef.current];
-    const seg = currentSegmentRef.current;
-    const c = corridorRef.current;
-    if (!seg || !c || !path.length) {
-      return {
-        invalid: true,
-        adherence: Math.max(20, adherence || 0),
-        meanDev: c?.width ?? 0,
-        duration: 0,
-        points: 1,
-        insideCount: 0,
-        outsideCount: 1,
-      };
-    }
-    const normalizedPath = normalizePathToSegmentStart(path, seg);
-    const miniCorridor = { centerline: seg.centerline, width: effectiveScoringWidth(c.width) };
-    const acc = computePathAccuracy(normalizedPath, miniCorridor);
-    const duration = startTsRef.current != null ? Date.now() - startTsRef.current : 0;
-    return {
-      adherence: acc.adherence,
-      meanDev: acc.meanDeviation,
-      duration,
-      points: normalizedPath.length,
-      insideCount: acc.insideCount,
-      outsideCount: acc.outsideCount,
-    };
-  }, []);
-
-  const finishAttempt = useCallback(() => {
-    const c = corridorRef.current;
-    if (!c) return;
-    const results = segmentResultsRef.current;
-    if (!results.length) return;
-
-    const totalPoints = results.reduce((s, r) => s + r.points, 0) || 1;
-    const weightedAdh =
-      results.reduce((s, r) => s + r.adherence * r.points, 0) / totalPoints;
-    const weightedMeanDev =
-      results.reduce((s, r) => s + r.meanDev * r.points, 0) / totalPoints;
-    const totalDuration = results.reduce((s, r) => s + r.duration, 0);
-    const finalAdherence = Math.max(0, Math.min(100, Math.round(weightedAdh)));
-    const stageTrialsBefore = filterTrials(getTrialLog(), {
-      userId: user?.uid ?? "local",
-      mode: 2,
-      stage: stage.stage,
-    });
-    const requiredAd = getDynamicRequiredAdherence(stage, stageTrialsBefore);
-    const unlockQualified = finalAdherence >= STAGE_UNLOCK_ADHERENCE;
-    const totalOut = results.reduce((s, r) => s + (r.outsideCount ?? 0), 0);
-    const totalIn = results.reduce((s, r) => s + (r.insideCount ?? 0), 0);
-    const offPathPercent =
-      totalPoints > 0 ? Math.round((totalOut / totalPoints) * 100) : 0;
-    const jitter =
-      jitterSamplesRef.current.length > 0
-        ? jitterSamplesRef.current.reduce((a, b) => a + b, 0) / jitterSamplesRef.current.length
-        : 0;
-    const targetMasteryAttempts = Math.max(1, stage.trialsForMastery ?? 5);
-    const beforeWindow = stageTrialsBefore.slice(-targetMasteryAttempts);
-    const masteryBefore = beforeWindow.filter((t) => didTrialPass(t, stage)).length;
-
-    appendTrialLog({
-      userId: user?.uid ?? "local",
-      mode: 2,
-      stage: stage.stage,
-      attempt: attempt + 1,
-      shape: c.type,
-      segments: results.length,
-      durationMs: totalDuration,
-      adherence: finalAdherence,
-      meanDeviation: Number(weightedMeanDev.toFixed(2)),
-      jitter: Number(jitter.toFixed(5)),
-      activationErrors: activationErrorsRef.current,
-      mouthEvents: mouthEventsRef.current,
-      requiredAdherence: requiredAd,
-      success: finalAdherence >= requiredAd,
+  const { completeSegment } =
+    usePath2ScoringProgression({
+      user,
+      stage,
+      attempt,
+      adaptedStage,
       activationMethod,
-      assistance: {
-        corridorWidth: effectiveScoringWidth(c.width),
-        autocompleteLevel: adaptedStage.autocompleteLevel,
-      },
+      profile,
+      updateProfile,
+      searchParams,
+      corridorRef,
+      currentSegmentRef,
+      userPathRef,
+      adherence,
+      startTsRef,
+      segmentResultsRef,
+      activationErrorsRef,
+      mouthEventsRef,
+      jitterSamplesRef,
+      completedSegmentsRef,
+      railVertexDistRef,
+      segmentsFor,
+      segmentIndexRef,
+      maxProjIdxRef,
+      guideIdxRef,
+      debugSamplesRef,
+      stallFramesRef,
+      lastHeadCanvasPosRef,
+      reachedHalfwayRef,
+      setAdherence,
+      setFinishedPayload,
+      setPhase,
+      setMasteryToast,
     });
 
-    reinforcementCompletionsRef.current += 1;
-    let newUnlock = null;
-    // Only lock stage progression in explicit dev-override mode.
-    const pinnedStage = searchParams.get("lockStage") === "1";
-    if (!pinnedStage && updateProfile) {
-      const next = maybeAdvanceStage({
-        profile,
-        trialLog: getTrialLog(),
-        userId: user?.uid ?? "local",
-      });
-      if (next != null && next > (profile?.currentStage ?? 0) && next <= 6) {
-        const nextStageDef = getStage(next);
-        updateProfile({ ...profile, currentStage: next, currentLevel: next });
-        const unlockedTitle = nextStageDef?.title ?? `Stage ${next}`;
-        setMasteryToast(unlockedTitle);
-        newUnlock = { stage: next, title: unlockedTitle };
-      }
-    }
+  const {
+    snapCursorToCanvasPoint,
+    getLessonCageBounds,
+    cancelCurrentStroke,
+    startDrawingSegment,
+    beginTrial,
+  } = usePath2InputCageController({
+    phaseRef,
+    isDrawingRef,
+    currentSegmentRef,
+    corridorRef,
+    segmentsFor,
+    cursorPosRef,
+    displayCursorRef,
+    canvasToScreen,
+    freezeRecalibrationRef,
+    setIsDrawing,
+    setInstructionDismiss,
+    userPathRef,
+    wobbleIndicesRef,
+    maxProjIdxRef,
+    guideIdxRef,
+    startTsRef,
+    lastAdherenceSampleRef,
+    debugSamplesRef,
+    canceledStrokeRef,
+    segmentStartLockUntilRef,
+    lastHeadCanvasPosRef,
+    stallFramesRef,
+    reachedHalfwayRef,
+    railVertexDistRef,
+    lessonCagePadding: LESSON_CAGE_PADDING,
+    canvasWidth: CANVAS_WIDTH,
+    canvasHeight: CANVAS_HEIGHT,
+    visualCorridorScale: VISUAL_CORRIDOR_SCALE,
+    startLockMs: START_LOCK_MS,
+  });
 
-    setFinishedPayload({
-      adherence: finalAdherence,
-      meanDev: weightedMeanDev,
-      duration: totalDuration,
-      offPathCount: totalOut,
-      onPathCount: totalIn,
-      totalSamples: totalPoints,
-      offPathPercent,
-      requiredAdherence: requiredAd,
-      passed: finalAdherence >= requiredAd,
-      unlockQualified,
-      unlock: newUnlock,
-      masteryProgress: {
-        before: masteryBefore,
-        after: Math.min(
-          targetMasteryAttempts,
-          [...stageTrialsBefore, { adherence: finalAdherence, success: finalAdherence >= requiredAd }]
-            .slice(-targetMasteryAttempts)
-            .filter((t) => didTrialPass(t, stage)).length,
-        ),
-        target: targetMasteryAttempts,
-      },
-    });
-    setPhase("reward");
-
-    const staged = filterTrials(getTrialLog(), {
-      userId: user?.uid ?? "local",
-      mode: 2,
-      stage: stage.stage,
-    });
-    const mastery = evaluateMastery(stage, staged);
-    setMasteryHint(getMasteryFeedback(stage, mastery));
-  }, [user?.uid, stage, adaptedStage, attempt, activationMethod, profile, updateProfile, searchParams, language]);
-
-  /** Finalise the current segment and either advance or finish the attempt. */
-  const completeSegment = useCallback(() => {
-    const seg = currentSegmentRef.current;
-    if (!seg) return;
-    const result = computeSegmentResult();
-    if (result.invalid) {
-      setMasteryHint("We could not score this line clearly. Try starting from the green dot.");
-    }
-    segmentResultsRef.current.push(result);
-    const thD = effectiveScoringWidth(corridorRef.current?.width ?? 24) / 2;
-    const L = seg.centerline.length;
-    const vq = buildVertexQualityFills(railVertexDistRef.current, thD, L);
-    const vertexTiers = vq.map((v) => qualityTierFromDistance(v.dist, v.threshold));
-    completedSegmentsRef.current.push({
-      centerline: seg.centerline,
-      vertexTiers,
-    });
-
-    const segs = segmentsFor(corridorRef.current);
-    const nextIndex = segmentIndexRef.current + 1;
-
-    // Reset for next segment (or end of attempt).
-    userPathRef.current = [];
-    wobbleIndicesRef.current = [];
-    maxProjIdxRef.current = 0;
-    guideIdxRef.current = 0;
-    startTsRef.current = null;
-    debugSamplesRef.current = [];
-    stallFramesRef.current = 0;
-    lastHeadCanvasPosRef.current = null;
-    reachedHalfwayRef.current = false;
-    railVertexDistRef.current = null;
-
-    if (nextIndex >= segs.length) {
-      finishAttempt();
-      return;
-    }
-
+  const completeSegmentAndAdvance = useCallback(() => {
+    const nextIndex = completeSegment();
+    if (typeof nextIndex !== "number") return;
     try {
       playSuccessBeep();
     } catch {
       /* ignore */
     }
-
-    // Advance to the next side.  Snap the cursor to its start and bump the
-    // per-attempt adherence display to the weighted running average.
-    const runningAdh =
-      segmentResultsRef.current.reduce((s, r) => s + r.adherence * r.points, 0) /
-      Math.max(1, segmentResultsRef.current.reduce((s, r) => s + r.points, 0));
-    setAdherence(Math.round(runningAdh));
     setSegmentIndex(nextIndex);
+    const segs = segmentsFor(corridorRef.current);
     const nextSeg = segs[nextIndex];
     if (nextSeg?.start) {
       snapCursorToCanvasPoint(nextSeg.start.x, nextSeg.start.y);
     }
-  }, [computeSegmentResult, finishAttempt, segmentsFor, snapCursorToCanvasPoint]);
-
-  const startDrawingSegment = useCallback(() => {
-    if (phaseRef.current !== "trial") return;
-    if (isDrawingRef.current) return;
-    const seg = currentSegmentRef.current;
-    isDrawingRef.current = true;
-    if (freezeRecalibrationRef) freezeRecalibrationRef.current = true;
-    setIsDrawing(true);
-    setInstructionDismiss((n) => n + 1);
-    userPathRef.current = seg?.start ? [{ x: seg.start.x, y: seg.start.y }] : [];
-    wobbleIndicesRef.current = [];
-    maxProjIdxRef.current = 0;
-    guideIdxRef.current = 0;
-    startTsRef.current = Date.now();
-    lastAdherenceSampleRef.current = { x: seg?.start?.x ?? null, y: seg?.start?.y ?? null, ts: performance.now() };
-    debugSamplesRef.current = [];
-    canceledStrokeRef.current = null;
-    if (seg?.start) snapCursorToCanvasPoint(seg.start.x, seg.start.y);
-    segmentStartLockUntilRef.current = performance.now() + START_LOCK_MS;
-    lastHeadCanvasPosRef.current = seg?.start ? { x: seg.start.x, y: seg.start.y } : null;
-    stallFramesRef.current = 0;
-    reachedHalfwayRef.current = false;
-  }, [freezeRecalibrationRef, snapCursorToCanvasPoint]);
-
-  const getLessonCageBounds = useCallback(() => {
-    const c = corridorRef.current;
-    const seg = currentSegmentRef.current;
-    const pts = seg?.centerline?.length ? seg.centerline : c?.centerline;
-    const corridorWidth = (c?.width ?? 120) * VISUAL_CORRIDOR_SCALE;
-    if (!pts?.length) {
-      return {
-        left: LESSON_CAGE_PADDING,
-        top: LESSON_CAGE_PADDING,
-        right: CANVAS_WIDTH - LESSON_CAGE_PADDING,
-        bottom: CANVAS_HEIGHT - LESSON_CAGE_PADDING,
-      };
-    }
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    for (const p of pts) {
-      if (p.x < minX) minX = p.x;
-      if (p.y < minY) minY = p.y;
-      if (p.x > maxX) maxX = p.x;
-      if (p.y > maxY) maxY = p.y;
-    }
-    const pad = Math.max(LESSON_CAGE_PADDING, corridorWidth * 0.7);
-    return {
-      left: Math.max(0, minX - pad),
-      top: Math.max(0, minY - pad),
-      right: Math.min(CANVAS_WIDTH, maxX + pad),
-      bottom: Math.min(CANVAS_HEIGHT, maxY + pad),
-    };
-  }, []);
-
-  const cancelCurrentStroke = useCallback(() => {
-    if (phaseRef.current !== "trial" || !isDrawingRef.current) return;
-    const seg = currentSegmentRef.current;
-    if (seg?.centerline?.length) {
-      canceledStrokeRef.current = {
-        centerline: seg.centerline,
-        upto: maxProjIdxRef.current ?? 0,
-        ts: performance.now(),
-      };
-    }
-    isDrawingRef.current = false;
-    if (freezeRecalibrationRef) freezeRecalibrationRef.current = false;
-    setIsDrawing(false);
-    // Reset active stroke progress so next mouth-open starts fresh.
-    userPathRef.current = seg?.start ? [{ x: seg.start.x, y: seg.start.y }] : [];
-    wobbleIndicesRef.current = [];
-    maxProjIdxRef.current = 0;
-    guideIdxRef.current = 0;
-    startTsRef.current = null;
-    debugSamplesRef.current = [];
-    stallFramesRef.current = 0;
-    lastHeadCanvasPosRef.current = null;
-    reachedHalfwayRef.current = false;
-    railVertexDistRef.current = null;
-  }, [freezeRecalibrationRef]);
+  }, [completeSegment, segmentsFor, corridorRef, snapCursorToCanvasPoint]);
 
   useEffect(() => {
     if (phase !== "trial" || !isDrawing || !currentSegment?.centerline?.length) {
@@ -1188,7 +772,7 @@ export default function Path2Lesson() {
           isDrawingRef.current = false;
           if (freezeRecalibrationRef) freezeRecalibrationRef.current = false;
           setIsDrawing(false);
-          completeSegment();
+          completeSegmentAndAdvance();
         } else if (closedBigShape && progress >= 0.8 && userPathRef.current.length > 40) {
           const last = userPathRef.current[userPathRef.current.length - 1];
           const back = Math.hypot(last.x - seg.start.x, last.y - seg.start.y);
@@ -1196,7 +780,7 @@ export default function Path2Lesson() {
             isDrawingRef.current = false;
             if (freezeRecalibrationRef) freezeRecalibrationRef.current = false;
             setIsDrawing(false);
-            completeSegment();
+            completeSegmentAndAdvance();
           }
         }
       } else {
@@ -1310,7 +894,7 @@ export default function Path2Lesson() {
             ctx.lineWidth = TRACE_WIDTH;
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
-            ctx.strokeStyle = "#94A3B8";
+            ctx.strokeStyle = UI_TOKENS.lesson.neutralMarker;
             ctx.beginPath();
             ctx.moveTo(cl[0].x, cl[0].y);
             for (let i = 1; i <= endIdx; i++) ctx.lineTo(cl[i].x, cl[i].y);
@@ -1456,12 +1040,12 @@ export default function Path2Lesson() {
       // the trace tip to land on the end dot visually).
       ctx.beginPath();
       ctx.arc(activeSeg.start.x, activeSeg.start.y, 16, 0, Math.PI * 2);
-      ctx.fillStyle = "#16A34A";
+      ctx.fillStyle = UI_TOKENS.lesson.success;
       ctx.fill();
       if (!activeSeg.closed) {
         ctx.beginPath();
         ctx.arc(activeSeg.end.x, activeSeg.end.y, 16, 0, Math.PI * 2);
-        ctx.fillStyle = "#DC2626";
+        ctx.fillStyle = UI_TOKENS.lesson.danger;
         ctx.fill();
       } else if (activeSeg.centerline.length > 2) {
         // Closed shapes (circle/sun) have same start/end point; show an explicit
@@ -1470,7 +1054,7 @@ export default function Path2Lesson() {
         const mid = activeSeg.centerline[midIdx];
         ctx.beginPath();
         ctx.arc(mid.x, mid.y, 14, 0, Math.PI * 2);
-        ctx.fillStyle = reachedHalfwayRef.current ? "#22C55E" : "#F59E0B";
+        ctx.fillStyle = reachedHalfwayRef.current ? UI_TOKENS.lesson.startSoft : UI_TOKENS.lesson.warning;
         ctx.fill();
         ctx.beginPath();
         ctx.arc(mid.x, mid.y, 7, 0, Math.PI * 2);
@@ -1491,7 +1075,7 @@ export default function Path2Lesson() {
         ctx.fill();
         ctx.beginPath();
         ctx.arc(gx, gy, 8, 0, Math.PI * 2);
-        ctx.fillStyle = "#22C55E";
+        ctx.fillStyle = UI_TOKENS.lesson.startSoft;
         ctx.fill();
       }
 
@@ -1530,21 +1114,6 @@ export default function Path2Lesson() {
     pauseAccumMsRef.current = 0;
   }, []);
 
-  const beginTrial = useCallback(() => {
-    if (phaseRef.current !== "demo") return;
-    // Snap the cursor to the first segment's start so the user isn't
-    // hunting.  Fallback to window centre if the corridor isn't ready yet.
-    const c = corridorRef.current;
-    const segs = segmentsFor(c);
-    const firstSeg = segs[0];
-    if (firstSeg?.start) {
-      snapCursorToCanvasPoint(firstSeg.start.x, firstSeg.start.y);
-    } else {
-      recenter();
-    }
-    setPhase("trial");
-  }, [recenter, segmentsFor, snapCursorToCanvasPoint]);
-
   // Spoken instruction + 3-2-1 countdown before trial begins.
   useEffect(() => {
     if (phase !== "demo") {
@@ -1568,14 +1137,14 @@ export default function Path2Lesson() {
       if (current <= 0) {
         clearInterval(id);
         setCountdown(null);
-        beginTrial();
+        beginTrial(recenter, setPhase);
         return;
       }
       setCountdown(current);
       if (!muted) speakInstruction(String(current), { language });
     }, DEMO_COUNTDOWN_STEP_MS);
     return () => clearInterval(id);
-  }, [phase, beginTrial, muted, language]);
+  }, [phase, beginTrial, recenter, muted, language]);
 
   useEffect(() => {
     if (!countdownDeadlineMs) return undefined;
@@ -1594,8 +1163,8 @@ export default function Path2Lesson() {
     isDrawingRef.current = false;
     if (freezeRecalibrationRef) freezeRecalibrationRef.current = false;
     setIsDrawing(false);
-    completeSegment();
-  }, [completeSegment, freezeRecalibrationRef]);
+    completeSegmentAndAdvance();
+  }, [completeSegmentAndAdvance, freezeRecalibrationRef]);
 
   async function saveToGallery() {
     const canvas = canvasRef.current;
@@ -1784,20 +1353,23 @@ export default function Path2Lesson() {
         dismissSignal={instructionDismiss}
       />
 
-      <div className="w-full max-w-[1200px] flex items-center justify-between gap-3 mb-2 z-20">
-        <div className="min-w-0 flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/95 shadow border border-slate-200/80">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+      <div className="z-20 mb-2 flex w-full max-w-[1200px] items-center justify-between gap-3">
+        <div
+          className="min-w-0 flex items-center gap-2 rounded-2xl border px-4 py-2"
+          style={{ background: "var(--easeL-bg-section)", borderColor: "var(--easeL-border-subtle)" }}
+        >
+          <span className="text-xs font-semibold" style={{ color: "var(--easeL-text-muted)" }}>
             Level {stage.stage}
           </span>
           {lessonTotal > 1 && (
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            <span className="text-xs font-semibold" style={{ color: "var(--easeL-text-muted)" }}>
               ·{" "}
               {language === "ur"
                 ? `سبق ${lessonIdx} (${lessonTotal} میں سے)`
                 : `Lesson ${lessonIdx} of ${lessonTotal}`}
             </span>
           )}
-          <span className="truncate text-base font-bold text-slate-800">{title}</span>
+          <span className="truncate text-base font-bold" style={{ color: "var(--easeL-text)" }}>{title}</span>
           {activeVariantKey && (
             <span className="easeL-accent-bg easeL-accent-text-strong rounded-lg px-2.5 py-1 text-xs font-semibold">
               {variantPretty || activeVariantKey}
@@ -1833,7 +1405,7 @@ export default function Path2Lesson() {
               buttonRefs.current.recenter = el;
             }}
             onClick={recenter}
-            className="inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold shadow-sm text-sm"
+            className="easeL-btn-outline inline-flex min-h-10 items-center gap-1.5 px-3 text-sm font-semibold"
             title="Recenter cursor"
           >
             <RefreshCw className="w-4 h-4" />
@@ -1845,7 +1417,7 @@ export default function Path2Lesson() {
               buttonRefs.current.mute = el;
             }}
             onClick={() => setMuted((m) => !m)}
-            className="inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold shadow-sm text-sm"
+            className="easeL-btn-outline inline-flex min-h-10 items-center gap-1.5 px-3 text-sm font-semibold"
             aria-label={muted ? "Unmute" : "Mute"}
           >
             {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -1856,7 +1428,12 @@ export default function Path2Lesson() {
               buttonRefs.current.exit = el;
             }}
             onClick={handleExit}
-            className="inline-flex items-center gap-1.5 min-h-10 px-4 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold shadow-sm border-2 border-slate-300 text-sm"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border-2 px-4 text-sm font-bold transition hover:opacity-95"
+            style={{
+              background: "var(--easeL-bg-section-alt)",
+              borderColor: "var(--easeL-border-strong)",
+              color: "var(--easeL-text)",
+            }}
           >
             <LogOut className="w-5 h-5" />
             {language === "ur" ? "ختم" : "Exit"}
@@ -2009,7 +1586,7 @@ export default function Path2Lesson() {
         canvasRef={canvasRef}
         centerline={phase === "demo" ? corridor?.centerline : null}
         active={phase === "demo"}
-        color="#a855f7"
+        color={UI_TOKENS.lesson.ghost}
         durationMs={900}
         lineWidth={10}
         maxAlpha={0.4}
@@ -2017,7 +1594,7 @@ export default function Path2Lesson() {
           const canvas = canvasRef.current;
           const c = corridorRef.current;
           if (!canvas || !c?.centerline?.length) return;
-          ctx.fillStyle = "#FAFAFF";
+          ctx.fillStyle = UI_TOKENS.lesson.canvasBg;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           const segs = segmentsFor(c);
           if (c.closed && segs.length === 1) {
@@ -2044,7 +1621,7 @@ export default function Path2Lesson() {
           ctx.globalAlpha = 1;
           ctx.beginPath();
           ctx.arc(segs[0].start.x, segs[0].start.y, 16, 0, Math.PI * 2);
-          ctx.fillStyle = "#16A34A";
+          ctx.fillStyle = UI_TOKENS.lesson.success;
           ctx.fill();
         }}
         onDone={() => {}}
@@ -2102,258 +1679,53 @@ export default function Path2Lesson() {
       )}
 
       {phase === "reward" && finishedPayload && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-3 sm:p-4">
-          <div
-            className="max-w-md w-full rounded-2xl sm:rounded-3xl bg-white shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[calc(100vh-1.5rem)]"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="result-title"
-          >
-            <div
-              className={`shrink-0 px-5 pt-4 pb-3 text-center border-b ${
-                finishedPayload.passed
-                  ? "bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-100/80"
-                  : "bg-gradient-to-br from-amber-50 to-orange-50/80 border-amber-100/80"
-              }`}
-            >
-              <h2
-                id="result-title"
-                className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight"
-              >
-                {language === "ur"
-                  ? finishedPayload.passed
-                    ? "بہت اچھا!"
-                    : "مکمل!"
-                  : finishedPayload.passed
-                  ? "Nice work!"
-                  : "All done!"}
-              </h2>
-              <p className="text-slate-600 text-xs sm:text-sm mt-0.5">
-                {title}
-                {lessonTotal > 1
-                  ? language === "ur"
-                    ? ` · سبق ${lessonIdx}: ${variantPretty || activeVariantKey || ""}`
-                    : ` · Lesson ${lessonIdx}: ${variantPretty || activeVariantKey || ""}`
-                  : activeVariantKey
-                  ? ` · ${variantPretty || activeVariantKey}`
-                  : ""}
-              </p>
-            </div>
-
-            <div className="px-5 py-3 text-center relative shrink-0">
-              <div className="relative mx-auto w-full max-w-sm min-h-[8.5rem] flex flex-col items-center justify-center">
-                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-40 w-full max-h-36 pointer-events-none">
-                  <ScoreSprinkles
-                    active={scoreSprinklesOn}
-                    lowStimulation={lowStim}
-                    duration={SCORE_REVEAL_MS}
-                  />
-                </div>
-                <div className="relative z-10">
-                  <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-500 mb-0.5">
-                    {language === "ur" ? "آپ کا نمبر" : "Your score"}
-                  </p>
-                  <div className="mx-auto mt-1 h-40 w-40">
-                    <svg viewBox="0 0 160 160" className="h-full w-full">
-                      <circle cx="80" cy="80" r={gaugeRadius} fill="none" stroke="#E2E8F0" strokeWidth="12" />
-                      <circle
-                        cx="80"
-                        cy="80"
-                        r={gaugeRadius}
-                        fill="none"
-                        stroke={finishedPayload.passed ? "#10B981" : "#F59E0B"}
-                        strokeWidth="12"
-                        strokeLinecap="round"
-                        transform="rotate(-90 80 80)"
-                        strokeDasharray={gaugeCircumference}
-                        strokeDashoffset={gaugeCircumference * (1 - scoreGaugeProgress)}
-                        className="transition-[stroke-dashoffset] duration-700 ease-out"
-                      />
-                      <circle cx={passMarkerX} cy={passMarkerY} r="4.5" fill="#334155" />
-                      <text x="80" y="86" textAnchor="middle" className="fill-slate-900 text-[28px] font-black tabular-nums">
-                        {finishedPayload.adherence}%
-                      </text>
-                    </svg>
-                  </div>
-                  <p
-                    className={`-mt-1 text-sm font-bold ${
-                      finishedPayload.passed ? "text-emerald-700" : "text-amber-700"
-                    }`}
-                  >
-                    {finishedPayload.passed
-                      ? language === "ur"
-                        ? "کلیئر ہو گیا"
-                        : "Cleared"
-                      : language === "ur"
-                      ? "ابھی نہیں"
-                      : "Not quite yet"}
-                  </p>
-                </div>
-              </div>
-              <div
-                className={`mt-2 rounded-lg border px-3 py-1.5 text-[11px] font-semibold ${
-                  finishedPayload.unlockQualified
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                    : "bg-amber-50 border-amber-200 text-amber-900"
-                }`}
-              >
-                {language === "ur" ? "پیش رفت" : "Progression"}:{" "}
-                {finishedPayload.unlockQualified
-                  ? language === "ur"
-                    ? "اگلا مرحلہ کھل گیا"
-                    : "next stage unlocked"
-                  : language === "ur"
-                  ? `مزید ${STAGE_UNLOCK_ADHERENCE}% درکار`
-                  : `need ${STAGE_UNLOCK_ADHERENCE}% to unlock next stage`}
-                {" · "}
-                {language === "ur" ? "پاس حد" : "pass mark"} {finishedPayload.requiredAdherence}%
-              </div>
-              {finishedPayload.masteryProgress ? (
-                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/90 px-3 py-2 text-left">
-                  <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-slate-600">
-                    <span>{language === "ur" ? "مہارت کی پیش رفت" : "Mastery progress"}</span>
-                    <span className="tabular-nums">
-                      {finishedPayload.masteryProgress.after >
-                      finishedPayload.masteryProgress.before ? (
-                        <>
-                          {finishedPayload.masteryProgress.before}/
-                          {finishedPayload.masteryProgress.target}
-                          {" \u2192 "}
-                          {finishedPayload.masteryProgress.after}/
-                          {finishedPayload.masteryProgress.target}
-                        </>
-                      ) : (
-                        <>
-                          {finishedPayload.masteryProgress.after}/
-                          {finishedPayload.masteryProgress.target}
-                          {" · "}
-                          {language === "ur" ? "کوئی اضافہ نہیں" : "no gain this attempt"}
-                        </>
-                      )}
-                    </span>
-                  </div>
-                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full rounded-full bg-emerald-500 transition-[width] duration-700 ease-out"
-                      style={{ width: `${Math.round(masteryProgressVisual * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            {finishedPayload.unlock ? (
-              <div className="px-5 pb-2 shrink-0">
-                <div
-                  className="rounded-xl border-2 px-3 py-2 text-left easeL-accent-bg"
-                  style={{ borderColor: "color-mix(in srgb, var(--easeL-primary) 30%, transparent)" }}
-                >
-                  <p className="easeL-accent-text-strong text-[10px] font-bold uppercase tracking-wider">
-                    {language === "ur" ? "نیا مرحلہ" : "New stage"}
-                  </p>
-                  <p className="text-sm font-bold text-slate-900">
-                    {finishedPayload.unlock.title}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (finishedPayload?.unlock) {
-                        navigate(`/lesson-path2?stage=${finishedPayload.unlock.stage}`);
-                      }
-                    }}
-                    className="easeL-accent-text-strong mt-1.5 inline-flex items-center gap-1 text-xs font-bold underline-offset-2 hover:opacity-90"
-                  >
-                    {language === "ur" ? "اس مرحلہ پر جائیں" : "Start this level"}
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="px-5 pt-1 pb-4 flex flex-col gap-2 mt-auto">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={saveToGallery}
-                  disabled={saved}
-                  className={`inline-flex items-center justify-center gap-2 min-h-12 px-4 rounded-2xl font-bold shadow-md transition-all ${
-                    saved
-                      ? "bg-emerald-500 text-white cursor-default"
-                      : "bg-[var(--easeL-primary)] text-white hover:opacity-95"
-                  }`}
-                >
-                  <Save className="w-5 h-5" />
-                  {saved
-                    ? language === "ur"
-                      ? "گیلری میں محفوظ"
-                      : "Saved to gallery"
-                    : language === "ur"
-                    ? "گیلری میں محفوظ کریں"
-                    : "Save to gallery"}
-                </button>
-                <button
-                  type="button"
-                  onClick={nextAttempt}
-                  className="inline-flex items-center justify-center gap-2 min-h-12 px-4 rounded-2xl font-bold border-2 border-slate-200 bg-white text-slate-800 hover:bg-slate-50 shadow-sm"
-                >
-                  <RotateCcw className="w-5 h-5" />
-                  {language === "ur" ? "دوبارہ کوشش" : "Try again"}
-                </button>
-              </div>
-
-              {stage.stage < 6 ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (finishedPayload?.unlockQualified) {
-                      navigate(`/lesson-path2?stage=${stage.stage + 1}`);
-                    }
-                  }}
-                  disabled={!finishedPayload?.unlockQualified}
-                  className={`inline-flex items-center justify-center gap-2 min-h-12 px-4 rounded-2xl font-bold ${
-                    finishedPayload?.unlockQualified
-                      ? "bg-slate-900 text-white hover:bg-slate-800"
-                      : "bg-slate-200 text-slate-500 cursor-not-allowed"
-                  }`}
-                >
-                  {language === "ur" ? "اگلی سطح" : "Next stage"}
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              ) : null}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    stopSpeech();
-                    navigate("/home");
-                    appendSessionLog({
-                      userId: user?.uid ?? "local",
-                      mode: 2,
-                      stage: stage.stage,
-                      durationMs: sessionTimer.elapsedMs,
-                      attempts: attempt,
-                      reinforcementsFired: reinforcementCompletionsRef.current,
-                      completion: "result_home",
-                    });
-                  }}
-                  className="inline-flex items-center justify-center gap-2 min-h-11 px-4 rounded-2xl font-semibold border border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-100"
-                >
-                  <Home className="w-4 h-4" />
-                  {language === "ur" ? "ہوم" : "App home"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExit}
-                  className="inline-flex items-center justify-center gap-2 min-h-11 px-4 rounded-2xl font-medium text-slate-600 border border-slate-200/90 hover:bg-slate-50"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  {language === "ur" ? "سبق منتخب کریں" : "Back to lessons"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <Path2RewardModal
+          language={language}
+          title={title}
+          lessonTotal={lessonTotal}
+          lessonIdx={lessonIdx}
+          variantPretty={variantPretty}
+          activeVariantKey={activeVariantKey}
+          finishedPayload={finishedPayload}
+          scoreSprinklesOn={scoreSprinklesOn}
+          lowStim={lowStim}
+          scoreRevealMs={SCORE_REVEAL_MS}
+          gaugeRadius={gaugeRadius}
+          gaugeCircumference={gaugeCircumference}
+          scoreGaugeProgress={scoreGaugeProgress}
+          passMarkerX={passMarkerX}
+          passMarkerY={passMarkerY}
+          stageUnlockAdherence={STAGE_UNLOCK_ADHERENCE}
+          masteryProgressVisual={masteryProgressVisual}
+          stage={stage}
+          saved={saved}
+          onSaveToGallery={saveToGallery}
+          onNextAttempt={nextAttempt}
+          onNavigateUnlock={() => {
+            if (finishedPayload?.unlock) {
+              navigate(`/lesson-path2?stage=${finishedPayload.unlock.stage}`);
+            }
+          }}
+          onNavigateNextStage={() => {
+            if (finishedPayload?.unlockQualified) {
+              navigate(`/lesson-path2?stage=${stage.stage + 1}`);
+            }
+          }}
+          onNavigateHome={() => {
+            stopSpeech();
+            navigate("/home");
+            appendSessionLog({
+              userId: user?.uid ?? "local",
+              mode: 2,
+              stage: stage.stage,
+              durationMs: sessionTimer.elapsedMs,
+              attempts: attempt,
+              reinforcementsFired: reinforcementCompletionsRef.current,
+              completion: "result_home",
+            });
+          }}
+          onBackToLessons={handleExit}
+        />
       )}
 
       <div className="fixed bottom-4 right-4 z-20 w-32 overflow-hidden rounded-xl border-2 border-slate-200 bg-slate-900 shadow-lg">

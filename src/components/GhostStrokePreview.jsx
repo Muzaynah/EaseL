@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { UI_TOKENS } from "../theme/uiTokens";
 
 /**
  * Framework §6.1 "demonstration-first": animated preview of the target stroke
@@ -13,7 +14,7 @@ export default function GhostStrokePreview({
   canvasRef,
   centerline,
   durationMs = 1200,
-  color = "#a855f7",
+  color = UI_TOKENS.lesson.ghost,
   lineWidth = 10,
   active,
   drawBackdrop,
@@ -38,7 +39,7 @@ export default function GhostStrokePreview({
       if (drawBackdrop) {
         drawBackdrop(ctx);
       } else {
-        ctx.fillStyle = "#FAFAFF";
+        ctx.fillStyle = UI_TOKENS.lesson.canvasBg;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 

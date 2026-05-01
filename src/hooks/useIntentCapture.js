@@ -1,4 +1,5 @@
 import { useRef, useCallback } from "react";
+import { UI_TOKENS } from "../theme/uiTokens";
 
 export function useIntentCapture({
   tiltAngle,
@@ -82,7 +83,7 @@ export function useIntentCapture({
         endPos.x,
         endPos.y
       );
-      ctx.strokeStyle = "#6366F1";
+      ctx.strokeStyle = UI_TOKENS.lesson.tracePrimary;
       ctx.lineWidth = 12;
       ctx.lineCap = "round";
       ctx.stroke();

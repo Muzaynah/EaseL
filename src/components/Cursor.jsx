@@ -1,5 +1,6 @@
 // components/Cursor.jsx
 import React, { forwardRef, useCallback, useEffect, useRef } from "react";
+import { UI_TOKENS } from "../theme/uiTokens";
 
 /** Below max 32-bit signed int so fixed layers stay sane on all screens */
 export const EASEL_CURSOR_DOT_Z = 2_147_483_630;
@@ -16,7 +17,7 @@ function hexToRgbCsv(hex, fallbackCsv) {
 }
 
 /** Universal cursor tone (dark green across head + trail). */
-const UNIVERSAL_CURSOR_RGB = hexToRgbCsv("#0f7a4f", "15, 122, 79");
+const UNIVERSAL_CURSOR_RGB = hexToRgbCsv(UI_TOKENS.app.primary, "61, 31, 122");
 const UNIVERSAL_CURSOR_FILL_ACTIVE = `rgba(${UNIVERSAL_CURSOR_RGB}, 0.62)`;
 const UNIVERSAL_CURSOR_FILL_IDLE = "rgba(255, 255, 255, 0.9)";
 const UNIVERSAL_CURSOR_BORDER_ACTIVE = "rgba(255, 255, 255, 0.96)";
@@ -90,7 +91,8 @@ const Cursor = forwardRef(
     const coneDiameterRef = useRef(0);
 
     const isLesson = variant === "lesson";
-    const pad = isLesson ? 3 : 8;
+    // Keep cursor geometry uniform across lesson/global and canvas contexts.
+    const pad = 6;
     const coneRefDiameterPx = (size + pad) * CONE_REF_SCALE;
     const { wMax } = coneStrokeExtents(coneRefDiameterPx);
     /** Matches thickest stroke; outline read as continuation of taper */

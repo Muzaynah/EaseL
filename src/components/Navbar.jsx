@@ -37,19 +37,19 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
   const showCaregiverMenu = isAuthenticated && !inSetup;
 
   return (
-    <nav className="easeL-nav fixed top-0 left-0 z-50 w-full shadow-sm">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
+    <nav className="easeL-nav fixed top-0 left-0 z-50 w-full">
+      <div className="mx-auto flex h-17 max-w-7xl items-center justify-between px-6">
         <Link
           to={isAuthenticated ? "/home" : "/"}
-          className="flex items-center min-h-12 min-w-[4rem] justify-center"
+          className="easeL-brand flex min-h-12 items-center"
         >
-          <span className="easeL-logo text-2xl font-extrabold tracking-tight transition-opacity duration-300 hover:opacity-90">
-            EaseL
+          <span className="easeL-logo text-[1.78rem] leading-none">
+            Ease<span className="easeL-brand-accent">L</span>
           </span>
         </Link>
 
         {showNavLinks && (
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden items-center gap-1.5 md:flex">
             {navLinks.map((link) => {
               const Icon = link.icon;
               return (
@@ -57,7 +57,7 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
                   key={link.name}
                   to={link.path}
                   className={({ isActive }) =>
-                    `easeL-nav-pill flex items-center gap-2 min-h-12 px-5 text-base font-semibold ${
+                    `easeL-nav-pill flex min-h-12 items-center gap-2 px-5 text-base font-semibold ${
                       isActive ? "is-active" : ""
                     }`
                   }
@@ -70,27 +70,25 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
           </div>
         )}
 
-        <div className="flex items-center min-h-12 gap-2">
+        <div className="flex min-h-12 items-center gap-2.5">
           {isAuthenticated ? (
             showCaregiverMenu ? (
               <div className="relative" ref={profileRef}>
                 <button
                   type="button"
                   onClick={() => setProfileOpen(!profileOpen)}
-                  className="easeL-avatar-btn flex items-center justify-center min-h-12 min-w-12 rounded-2xl font-semibold text-lg transition-all duration-300"
+                  className="easeL-avatar-btn easeL-interactive flex items-center justify-center min-h-12 min-w-12 rounded-2xl font-semibold text-lg"
                   aria-label={isMode1 ? "Caregiver menu" : "Profile menu"}
                   title={isMode1 ? "Caregiver menu" : "Profile menu"}
                 >
                   {user?.name || user?.email ? (
-                    <span className="uppercase">
-                      {(user.name || user.email || "U").charAt(0)}
-                    </span>
+                    <span>{(user.name || user.email || "U").charAt(0).toUpperCase()}</span>
                   ) : (
                     <User className="w-6 h-6" />
                   )}
                 </button>
                 {profileOpen && (
-                  <div className="easeL-dropdown absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border-2 bg-white/95 py-2 shadow-2xl backdrop-blur-md">
+                  <div className="easeL-dropdown absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border-2 bg-white py-2 shadow-2xl">
                     {isMode1 && (
                       <div
                         className="border-b px-4 py-2"
@@ -107,7 +105,7 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
                     <Link
                       to="/profile"
                       onClick={() => setProfileOpen(false)}
-                      className="flex min-h-12 items-center gap-3 px-4 py-3 text-base transition-colors"
+                      className="easeL-transition-fast flex min-h-12 items-center gap-3 px-4 py-3 text-base"
                       style={{ color: "var(--easeL-text)" }}
                     >
                       <User
@@ -119,7 +117,7 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
                     <Link
                       to="/progress"
                       onClick={() => setProfileOpen(false)}
-                      className="flex min-h-12 items-center gap-3 px-4 py-3 text-base transition-colors"
+                      className="easeL-transition-fast flex min-h-12 items-center gap-3 px-4 py-3 text-base"
                       style={{ color: "var(--easeL-text)" }}
                     >
                       <BarChart3
@@ -131,7 +129,7 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
                     <Link
                       to="/settings"
                       onClick={() => setProfileOpen(false)}
-                      className="flex min-h-12 items-center gap-3 px-4 py-3 text-base transition-colors"
+                      className="easeL-transition-fast flex min-h-12 items-center gap-3 px-4 py-3 text-base"
                       style={{ color: "var(--easeL-text)" }}
                     >
                       <Settings
@@ -145,7 +143,8 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
                         setProfileOpen(false);
                         onSignOut();
                       }}
-                      className="flex items-center gap-3 w-full px-4 py-3 text-left text-red-600 hover:bg-red-50 transition-colors"
+                      className="easeL-transition-fast flex w-full items-center gap-3 px-4 py-3 text-left"
+                      style={{ color: "var(--easeL-accent-coral)" }}
                     >
                       <LogOut className="w-5 h-5" />
                       Sign out
@@ -158,7 +157,7 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
             <>
               <Link
                 to="/signup"
-                className="min-h-12 px-4 flex items-center justify-center rounded-2xl border-2 font-semibold transition-all duration-300 hover:opacity-95"
+                className="easeL-interactive min-h-12 px-4 flex items-center justify-center rounded-2xl border-2 font-semibold hover:opacity-95"
                 style={{
                   borderColor: "var(--easeL-primary)",
                   color: "var(--easeL-link)",
@@ -168,7 +167,7 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
               </Link>
               <Link
                 to="/login"
-                className="min-h-12 px-5 flex items-center justify-center rounded-2xl text-white font-semibold shadow-lg transition-all duration-300 hover:opacity-95"
+                className="easeL-interactive min-h-12 px-5 flex items-center justify-center rounded-2xl text-white font-semibold shadow-lg hover:opacity-95"
                 style={{ background: "var(--easeL-primary)" }}
               >
                 Sign in
@@ -192,7 +191,7 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
 
       {showNavLinks && (
         <div
-          className={`md:hidden overflow-hidden transition-all duration-300 ${
+          className={`md:hidden overflow-hidden easeL-transition-standard ${
             open ? "max-h-80 opacity-100" : "max-h-0 opacity-0"
           }`}
         >

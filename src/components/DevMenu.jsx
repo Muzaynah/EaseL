@@ -44,12 +44,12 @@ export default function DevMenu() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-900 font-medium shadow-lg"
+        className="easeL-interactive flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-900 font-medium shadow-lg"
         aria-label="Dev: jump to page"
       >
         <Code2 className="w-4 h-4" />
         <span>Dev</span>
-        <ChevronUp className={`w-4 h-4 transition-transform ${open ? "rotate-0" : "rotate-180"}`} />
+        <ChevronUp className={`w-4 h-4 easeL-transition-standard ${open ? "rotate-0" : "rotate-180"}`} />
       </button>
       {open && (
         <div className="absolute left-0 bottom-full mb-2 w-60 max-h-[70vh] overflow-y-auto rounded-2xl bg-white shadow-xl border-2 border-amber-200">
@@ -92,7 +92,7 @@ export default function DevMenu() {
                       setOpen(false);
                       navigate(`${path}?stage=${s.stage}`);
                     }}
-                    className="rounded-lg border px-2 py-2 text-xs font-semibold text-[color:var(--easeL-primary)] hover:bg-[color-mix(in_srgb,var(--easeL-primary)_8%,white)]"
+                    className="easeL-transition-fast rounded-lg border px-2 py-2 text-xs font-semibold text-[color:var(--easeL-primary)] hover:bg-[color-mix(in_srgb,var(--easeL-primary)_8%,white)]"
                     style={{ borderColor: "color-mix(in srgb, var(--easeL-primary) 35%, transparent)" }}
                     title={`${s.title} — Path ${mode}`}
                   >
@@ -115,7 +115,7 @@ export default function DevMenu() {
                 key={link.path}
                 to={link.path}
                 onClick={() => setOpen(false)}
-                className={`block px-4 py-2.5 text-sm font-medium hover:bg-amber-50 ${
+                className={`easeL-transition-fast block px-4 py-2.5 text-sm font-medium hover:bg-amber-50 ${
                   location.pathname === link.path ? "bg-amber-100 text-amber-900" : "text-slate-700"
                 }`}
               >

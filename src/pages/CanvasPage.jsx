@@ -10,6 +10,7 @@ import CanvasControls from "../components/CanvasControls";
 import { getCanvasCoordinates } from "../utils/canvasUtils";
 import { resolveActivationConfig } from "../utils/activationConfig";
 import { appendTelemetryLog } from "../utils/persistence";
+import { UI_TOKENS } from "../theme/uiTokens";
 
 import DrawingCanvas from "../components/DrawingCanvas";
 import LayerPanel from "../components/LayerPanel";
@@ -40,7 +41,9 @@ export default function CanvasPage() {
     const cursorRef = useRef(null);
 
     const [brushSize, setBrushSize] = useState(() => getInitialBrushSize(settings));
-    const [brushColor, setBrushColor] = useState(() => settings?.defaultBrushColor ?? "#000000");
+    const [brushColor, setBrushColor] = useState(
+        () => settings?.defaultBrushColor ?? UI_TOKENS.brush.default
+    );
     const [tool, setTool] = useState("brush");
     const [isPenDown, setIsPenDown] = useState(false);
     const [strokeState, setStrokeState] = useState("idle");

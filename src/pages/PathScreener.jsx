@@ -650,14 +650,14 @@ export default function PathScreener() {
 
     return (
       <div className="min-h-screen flex flex-col items-center justify-center easeL-page-bg pt-28 pb-10 px-6">
-        <div className="max-w-2xl w-full bg-white/95 backdrop-blur-md rounded-3xl p-8 md:p-10 shadow-2xl border-2 border-emerald-100 animate-fade-scale-in">
+        <div className="easeL-card max-w-2xl w-full p-8 md:p-10 border-2 border-emerald-100 animate-fade-scale-in">
           <div className="flex items-center gap-4 mb-6">
             <div className="w-16 h-16 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shrink-0">
               <Check className="w-9 h-9" strokeWidth={2.5} />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Screening complete</h1>
-              <p className="text-slate-600">Your Learning–Interaction Profile has been assigned.</p>
+              <h1 className="easeL-heading-1 text-2xl md:text-3xl">Screening complete</h1>
+              <p className="easeL-text-muted">Your Learning–Interaction Profile has been assigned.</p>
             </div>
           </div>
 
@@ -714,13 +714,13 @@ export default function PathScreener() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
             <button
               onClick={() => saveProfileAndNavigate("/home")}
-              className="min-h-14 px-8 easeL-btn-solid rounded-2xl text-lg font-bold shadow-lg transition-all hover:scale-[1.02] hover:opacity-95 active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-[color:var(--easeL-focus-ring)]"
+              className="min-h-14 px-8 easeL-btn-solid rounded-2xl text-lg font-bold shadow-lg focus:outline-none focus:ring-4 focus:ring-[color:var(--easeL-focus-ring)]"
             >
               Continue to Home
             </button>
             <button
               onClick={() => saveProfileAndNavigate("/lessons")}
-              className="min-h-14 rounded-2xl border-4 border-[color:var(--easeL-primary)] px-8 text-lg font-bold text-[color:var(--easeL-primary)] transition-all hover:scale-[1.02] hover:border-[color:var(--easeL-primary-mid)] hover:bg-[color-mix(in_srgb,var(--easeL-primary)_10%,white)] active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-[color:var(--easeL-focus-ring)]"
+              className="easeL-interactive min-h-14 rounded-2xl border-4 border-[color:var(--easeL-primary)] px-8 text-lg font-bold text-[color:var(--easeL-primary)] hover:border-[color:var(--easeL-primary-mid)] hover:bg-[color-mix(in_srgb,var(--easeL-primary)_10%,white)] focus:outline-none focus:ring-4 focus:ring-[color:var(--easeL-focus-ring)]"
             >
               Start Lessons
             </button>
@@ -922,7 +922,7 @@ export default function PathScreener() {
                   key={i}
                   ref={(el) => { buttonRefs.current[id] = el; }}
                   className={`flex h-24 w-24 items-center justify-center rounded-full border-4 text-2xl font-bold shadow-lg transition-all focus:outline-none focus:ring-4 focus:ring-[color:var(--easeL-focus-ring)] focus:ring-offset-2 md:h-28 md:w-28 ${
-                    selected ? "scale-105 border-emerald-700 bg-emerald-500 text-white" : cursorOver ? "scale-105 bg-[color:color-mix(in_srgb,var(--easeL-accent-rose)_38%,white)] shadow-xl" : "border-[color:var(--easeL-accent-rose)] bg-[color-mix(in_srgb,var(--easeL-accent-rose)_20%,white)] text-[color:#4a1f42]"
+                    selected ? "scale-105 border-emerald-700 bg-emerald-500 text-white" : cursorOver ? "scale-105 bg-[color:color-mix(in_srgb,var(--easeL-accent-rose)_38%,white)] shadow-xl" : "border-[color:var(--easeL-accent-rose)] bg-[color-mix(in_srgb,var(--easeL-accent-rose)_20%,white)] text-[color:var(--easeL-text)]"
                   }`}
                 >
                   {selected ? <Check className="w-12 h-12 md:w-14 md:h-14" /> : i}

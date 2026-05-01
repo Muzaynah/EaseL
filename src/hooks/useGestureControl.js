@@ -1,11 +1,13 @@
 // hooks/useGestureControl.js
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import { resolvePointerTarget } from "../utils/interactiveTarget";
 
 export function useGestureControl({
   onPenToggle,
   onButtonHover,
   onButtonClick,
+  /** Called with DOM element currently hovered by head pointer (or null). */
+  onHoverTargetChange,
   /** Called when user activates (mouth/dwell) but cursor is not over any clickable target. */
   onActivateOutside,
   /** Fires for every mouth-open event even if it was rejected (for false-positive tracking). */
@@ -40,6 +42,8 @@ export function useGestureControl({
   const wasMouthOpen = useRef(false);
   const dwellStartRef = useRef(null);
   const dwellPosRef = useRef(null);
+  const lastHoverTargetRef = useRef(null);
+  const lastHoverParentRef = useRef(null);
 
   const dispatchPointerEvent = useCallback((type, target) => {
     if (!target) return;
@@ -53,6 +57,63 @@ export function useGestureControl({
         pointerType: "mouse",
       })
     );
+  }, []);
+
+  const updateHeadHoverTarget = useCallback(
+    (nextTargetRaw) => {
+      const nextTarget =
+        nextTargetRaw &&
+        nextTargetRaw !== document.body &&
+        nextTargetRaw !== document.documentElement
+          ? nextTargetRaw
+          : null;
+      const prev = lastHoverTargetRef.current;
+      const prevParent = lastHoverParentRef.current;
+      const nextParent = nextTarget?.closest?.(".easeL-hover-parent") ?? null;
+      if (prev === nextTarget) {
+        if (nextTarget) dispatchPointerEvent("pointermove", nextTarget);
+        if (nextParent && nextParent !== nextTarget) nextParent.setAttribute("data-easel-head-hover", "true");
+        onHoverTargetChange?.(nextTarget ?? null);
+        return;
+      }
+
+      if (prev?.isConnected) {
+        prev.removeAttribute("data-easel-head-hover");
+        dispatchPointerEvent("pointerout", prev);
+        dispatchPointerEvent("pointerleave", prev);
+      }
+      if (prevParent?.isConnected && prevParent !== prev) {
+        prevParent.removeAttribute("data-easel-head-hover");
+      }
+
+      if (nextTarget?.isConnected) {
+        nextTarget.setAttribute("data-easel-head-hover", "true");
+        dispatchPointerEvent("pointerover", nextTarget);
+        dispatchPointerEvent("pointerenter", nextTarget);
+        dispatchPointerEvent("pointermove", nextTarget);
+      }
+      if (nextParent?.isConnected && nextParent !== nextTarget) {
+        nextParent.setAttribute("data-easel-head-hover", "true");
+      }
+
+      lastHoverTargetRef.current = nextTarget ?? null;
+      lastHoverParentRef.current = nextParent;
+      onHoverTargetChange?.(nextTarget ?? null);
+    },
+    [dispatchPointerEvent, onHoverTargetChange]
+  );
+
+  useEffect(() => {
+    return () => {
+      const prev = lastHoverTargetRef.current;
+      if (prev?.isConnected) prev.removeAttribute("data-easel-head-hover");
+      const prevParent = lastHoverParentRef.current;
+      if (prevParent?.isConnected && prevParent !== prev) {
+        prevParent.removeAttribute("data-easel-head-hover");
+      }
+      lastHoverTargetRef.current = null;
+      lastHoverParentRef.current = null;
+    };
   }, []);
 
   const processLandmarks = useCallback(
@@ -112,6 +173,9 @@ export function useGestureControl({
       const primaryClickTarget = hoveredElement ?? domClickTarget;
 
       onButtonHover?.(hoveredBtn);
+      // Hover visuals should follow what the head cursor is physically over
+      // (cards/containers/areas), not only the resolved clickable control.
+      updateHeadHoverTarget(rawAtCursor ?? primaryClickTarget);
 
       const now = performance.now();
       const useMouthActivation =
@@ -208,6 +272,7 @@ export function useGestureControl({
       dwellMs,
       dwellRadius,
       dispatchPointerEvent,
+      updateHeadHoverTarget,
     ]
   );
 

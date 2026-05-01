@@ -1,13 +1,87 @@
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Urbanist:wght@600;700&display=swap");
 @import "./theme/easeLPalette.css";
 @import "tailwindcss";
 
 body {
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 1.0625rem;
-  line-height: 1.65;
+  font-family: var(--easeL-font-body);
+  font-size: var(--easeL-font-size-base);
+  line-height: var(--easeL-line-height-base);
   color: var(--easeL-text);
   background: var(--easeL-bg-page);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Global typography system */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--easeL-font-heading);
+  line-height: var(--easeL-line-height-heading);
+  letter-spacing: var(--easeL-letter-spacing-heading);
+  font-weight: 700;
+  color: var(--easeL-text);
+}
+
+p,
+li,
+label,
+button,
+input,
+select,
+textarea {
+  font-family: var(--easeL-font-body);
+}
+
+p,
+li,
+label {
+  color: var(--easeL-text);
+  font-weight: 500;
+}
+
+.easeL-heading-1 {
+  font-family: var(--easeL-font-heading);
+  font-weight: 700;
+  line-height: var(--easeL-line-height-heading);
+  letter-spacing: var(--easeL-letter-spacing-heading);
+  font-size: clamp(1.95rem, 2.4vw, 2.6rem);
+}
+
+.easeL-heading-2 {
+  font-family: var(--easeL-font-heading);
+  font-weight: 700;
+  line-height: var(--easeL-line-height-heading);
+  letter-spacing: var(--easeL-letter-spacing-heading);
+  font-size: clamp(1.48rem, 1.9vw, 2.02rem);
+}
+
+.easeL-heading-3 {
+  font-family: var(--easeL-font-heading);
+  font-weight: 700;
+  line-height: 1.14;
+  letter-spacing: -0.008em;
+  font-size: clamp(1.16rem, 1.32vw, 1.42rem);
+}
+
+.easeL-body {
+  font-family: var(--easeL-font-body);
+  line-height: var(--easeL-line-height-base);
+  color: var(--easeL-text);
+}
+
+/* Global radius tuning for Tailwind rounded utilities used across app */
+.rounded-3xl {
+  border-radius: 1.25rem !important;
+}
+.rounded-2xl {
+  border-radius: 0.95rem !important;
+}
+.rounded-xl {
+  border-radius: 0.75rem !important;
 }
 
 /** Head navigation: webcam must not steal hit-testing from head pointer */
@@ -25,9 +99,15 @@ body {
 
 /* Display headings (editorial / landing) */
 .font-easeL-display {
-  font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  font-family: var(--easeL-font-heading);
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: var(--easeL-letter-spacing-heading);
+}
+
+/* Prefer natural-case labels over all-caps utility usage */
+.uppercase {
+  text-transform: none !important;
+  letter-spacing: normal !important;
 }
 
 /* Landing: staggered entrance (respects reduced motion) */
@@ -75,6 +155,15 @@ body {
     opacity: 1 !important;
     animation: none !important;
     transform: none !important;
+  }
+  .easeL-transition-standard,
+  .easeL-transition-fast,
+  .easeL-interactive,
+  .easeL-btn-primary,
+  .easeL-btn-solid,
+  .easeL-btn-outline,
+  .easeL-nav-pill {
+    transition-duration: 1ms !important;
   }
 }
 
@@ -213,6 +302,22 @@ body {
   .animate-gradient-shift,
   .animate-fade-scale-in {
     animation: none !important;
+  }
+  .easeL-interactive:hover:not(:disabled),
+  .easeL-interactive[data-easel-head-hover="true"]:not(:disabled),
+  .easeL-btn-primary:hover:not(:disabled),
+  .easeL-btn-primary[data-easel-head-hover="true"]:not(:disabled),
+  .easeL-btn-solid:hover:not(:disabled),
+  .easeL-btn-solid[data-easel-head-hover="true"]:not(:disabled),
+  .easeL-btn-outline:hover:not(:disabled) {
+    transform: none !important;
+  }
+  .easeL-btn-outline[data-easel-head-hover="true"]:not(:disabled) {
+    transform: none !important;
+  }
+  .easeL-hoverable-card:hover,
+  .easeL-hoverable-card[data-easel-head-hover="true"] {
+    transform: none !important;
   }
 }
 

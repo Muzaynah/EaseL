@@ -8,6 +8,7 @@ import {
   isFirestorePermissionError,
   listCloudLogs,
 } from "../firebase/cloudData";
+import { UI_TOKENS } from "../theme/uiTokens";
 
 export const SETTINGS = "easeL_settings";
 export const CALIBRATION = "easeL_calibration";
@@ -59,7 +60,7 @@ const defaultSettings = {
   audioFeedback: true,
   highContrast: false,
   brushSize: "M",
-  defaultBrushColor: "#000000",
+  defaultBrushColor: UI_TOKENS.brush.default,
   canvasBg: "white",
   layers: false,
   activationMethod: "click",

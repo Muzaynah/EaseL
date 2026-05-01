@@ -2,25 +2,9 @@
 // Bottom toolbar with tool selection, colors, sizes, and actions
 
 import React from "react";
+import { UI_TOKENS } from "../theme/uiTokens";
 
-const COLORS = [
-  "#EF4444", // Red
-  "#F97316", // Orange
-  "#FBBF24", // Amber
-  "#FFD133", // Yellow
-  "#84CC16", // Lime
-  "#22C55E", // Green
-  "#14B8A6", // Teal
-  "#06B6D4", // Cyan
-  "#3B82F6", // Blue
-  "#6366F1", // Indigo
-  "#8B5CF6", // Violet
-  "#A855F7", // Purple
-  "#EC4899", // Pink
-  "#F43F5E", // Rose
-  "#64748B", // Slate
-  "#1F2937", // Dark
-];
+const COLORS = UI_TOKENS.brush.palette;
 
 const SIZES = [
   { value: 8, label: "S" },
@@ -49,7 +33,7 @@ export default function Toolbar({
       <div className="flex items-center gap-2 px-2">
         <button
           ref={setBtnRef("pencil")}
-          className={`p-3 rounded-2xl transition-all duration-200 text-lg ${
+          className={`easeL-transition-standard p-3 rounded-2xl text-lg ${
             tool === "pencil"
               ? "scale-105 bg-[var(--easeL-primary)] text-white shadow-lg"
               : "bg-gradient-to-br from-slate-50 to-slate-100 text-slate-600 hover:from-slate-100 hover:to-slate-200"
@@ -60,7 +44,7 @@ export default function Toolbar({
         </button>
         <button
           ref={setBtnRef("eraser")}
-          className={`p-3 rounded-2xl transition-all duration-200 text-lg ${
+          className={`easeL-transition-standard p-3 rounded-2xl text-lg ${
             tool === "eraser"
               ? "scale-105 bg-[var(--easeL-primary)] text-white shadow-lg"
               : "bg-gradient-to-br from-slate-50 to-slate-100 text-slate-600 hover:from-slate-100 hover:to-slate-200"
@@ -79,7 +63,7 @@ export default function Toolbar({
           <button
             key={color}
             ref={setBtnRef(`col-${color}`)}
-            className={`w-8 h-8 rounded-xl transition-all duration-200 shadow-md hover:scale-110 active:scale-95 ${
+            className={`easeL-transition-standard w-8 h-8 rounded-xl shadow-md hover:scale-110 active:scale-95 ${
               brushColor === color 
                 ? "ring-4 ring-offset-2 ring-offset-white scale-110 shadow-xl" 
                 : "hover:shadow-lg"
@@ -101,7 +85,7 @@ export default function Toolbar({
           <button
             key={value}
             ref={setBtnRef(`sz-${value}`)}
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 ${
+            className={`easeL-transition-standard flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl ${
               brushSize === value
                 ? "scale-105 bg-[var(--easeL-primary)] text-white shadow-lg"
                 : "bg-gradient-to-br from-slate-50 to-slate-100 text-slate-600 hover:from-slate-100 hover:to-slate-200"
@@ -129,7 +113,7 @@ export default function Toolbar({
         <button
           ref={setBtnRef("undo")}
           disabled={!canUndo}
-          className={`p-3 rounded-2xl transition-all duration-200 text-lg font-bold ${
+          className={`easeL-transition-standard p-3 rounded-2xl text-lg font-bold ${
             canUndo
               ? "bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 hover:from-blue-100 hover:to-blue-200 shadow-md hover:shadow-lg active:scale-95"
               : "bg-gradient-to-br from-slate-50 to-slate-100 text-slate-300 cursor-not-allowed opacity-50"
@@ -141,7 +125,7 @@ export default function Toolbar({
         <button
           ref={setBtnRef("redo")}
           disabled={!canRedo}
-          className={`p-3 rounded-2xl transition-all duration-200 text-lg font-bold ${
+          className={`easeL-transition-standard p-3 rounded-2xl text-lg font-bold ${
             canRedo
               ? "bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 hover:from-blue-100 hover:to-blue-200 shadow-md hover:shadow-lg active:scale-95"
               : "bg-gradient-to-br from-slate-50 to-slate-100 text-slate-300 cursor-not-allowed opacity-50"
@@ -152,7 +136,7 @@ export default function Toolbar({
         </button>
         <button
           ref={setBtnRef("clear")}
-          className={`p-3 text-lg rounded-2xl transition-all duration-200 bg-gradient-to-br from-red-50 to-red-100 text-red-600 hover:from-red-100 hover:to-red-200 shadow-md hover:shadow-lg active:scale-95 ${
+          className={`easeL-transition-standard p-3 text-lg rounded-2xl bg-gradient-to-br from-red-50 to-red-100 text-red-600 hover:from-red-100 hover:to-red-200 shadow-md hover:shadow-lg active:scale-95 ${
             isHovered("clear") ? "ring-4 ring-[color:var(--easeL-focus-ring)] ring-offset-2 ring-offset-white" : ""
           }`}
           title="Clear Canvas"

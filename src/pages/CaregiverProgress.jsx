@@ -30,6 +30,7 @@ import {
   downloadCaregiverReportPdf,
   downloadCaregiverReportPng,
 } from "../utils/dataExport";
+import { UI_TOKENS } from "../theme/uiTokens";
 
 const MS_PER_HOUR = 1000 * 60 * 60;
 
@@ -192,13 +193,13 @@ export default function CaregiverProgress() {
       <div className="max-w-6xl mx-auto space-y-8">
         <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <p className="easeL-accent-text-strong text-sm font-semibold uppercase tracking-wider">
+            <p className="easeL-accent-text-strong text-sm font-semibold tracking-wider">
               Caregiver dashboard
             </p>
-            <h1 className="text-3xl font-bold text-slate-800 mt-1">
-              Progress overview
+            <h1 className="easeL-heading-1 mt-1">
+              <span className="easeL-heading-highlight">Progress overview</span>
             </h1>
-            <p className="text-slate-600 mt-1 max-w-2xl">
+            <p className="easeL-text-muted mt-1 max-w-2xl">
               A summary of recent practice — attempts, accuracy, and fatigue.
               Used by caregivers and clinicians. This is not a medical report.
             </p>
@@ -207,7 +208,7 @@ export default function CaregiverProgress() {
             <button
               type="button"
               onClick={openReportPreview}
-              className="inline-flex items-center gap-2 rounded-2xl border border-[color:color-mix(in_srgb,var(--easeL-primary)_28%,white)] bg-[color-mix(in_srgb,var(--easeL-primary)_10%,white)] px-5 py-3 font-semibold text-[color:var(--easeL-primary)] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[color-mix(in_srgb,var(--easeL-primary)_16%,white)] hover:shadow-md"
+              className="easeL-interactive inline-flex items-center gap-2 rounded-2xl border border-[color:color-mix(in_srgb,var(--easeL-primary)_28%,white)] bg-[color-mix(in_srgb,var(--easeL-primary)_10%,white)] px-5 py-3 font-semibold text-[color:var(--easeL-primary)] shadow-sm hover:bg-[color-mix(in_srgb,var(--easeL-primary)_16%,white)] hover:shadow-md"
             >
               <Download className="h-4 w-4" />
               <span>Preview & Download Report</span>
@@ -252,11 +253,11 @@ export default function CaregiverProgress() {
           />
         </section>
 
-        <section className="bg-white/90 backdrop-blur rounded-3xl p-6 shadow-xl border border-white/50">
-          <h2 className="text-xl font-bold text-slate-800 mb-4">
+        <section className="easeL-card p-6">
+          <h2 className="easeL-heading-2 mb-4">
             Level progress ladder
           </h2>
-          <p className="text-sm text-slate-500 mb-4">
+          <p className="text-sm mb-4" style={{ color: "var(--easeL-text-muted)" }}>
             Mastery uses level-specific thresholds (early levels are eased for learning momentum).
             The app silently adjusts support and advances when criteria are met.
           </p>
@@ -310,23 +311,23 @@ export default function CaregiverProgress() {
             subtitle="Last 20 attempts · higher is better"
             values={data.adherenceSpark}
             scale={100}
-            color="#4338CA"
+            color={UI_TOKENS.lesson.tracePrimaryDark}
           />
           <SparkCard
             title="Cursor jitter"
             subtitle="Last 20 attempts · lower is better"
             values={data.jitterSpark}
             scale={Math.max(0.05, Math.max(...data.jitterSpark, 0.05))}
-            color="#F59E0B"
+            color={UI_TOKENS.lesson.warning}
             invert
           />
         </section>
 
-        <section className="bg-white/90 backdrop-blur rounded-3xl p-6 shadow-xl border border-white/50">
+        <section className="easeL-card p-6">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
-              <h2 className="text-xl font-bold text-slate-800">Recent sessions</h2>
-              <p className="text-sm text-slate-500">
+              <h2 className="easeL-heading-2"><span className="easeL-heading-highlight">Recent sessions</span></h2>
+              <p className="text-sm" style={{ color: "var(--easeL-text-muted)" }}>
                 Adherence and fatigue index per session.
               </p>
             </div>
@@ -385,7 +386,10 @@ export default function CaregiverProgress() {
           )}
         </section>
 
-        <section className="bg-white/90 backdrop-blur rounded-3xl p-4 shadow-lg border border-white/50 text-xs text-slate-500">
+        <section
+          className="rounded-3xl p-4 shadow-lg border-2 text-xs"
+          style={{ background: "var(--easeL-bg-card-butter)", borderColor: "var(--easeL-border-strong)", color: "var(--easeL-text-muted)" }}
+        >
           EaseL stores only derived performance metrics on this device. No
           raw video, audio, or biometric templates are recorded or exported.
           This dashboard is intended for caregivers and clinicians as a

@@ -103,7 +103,7 @@ export default function Tutorial() {
   return (
     <div className="easeL-page-bg flex min-h-screen flex-col items-center justify-center px-6 pb-20 pt-32">
       <div
-        className="animate-fade-scale-in w-full max-w-lg rounded-3xl p-8 text-center shadow-2xl"
+        className="easeL-card animate-fade-scale-in w-full max-w-lg p-8 text-center"
         style={{
           background: "color-mix(in srgb, var(--easeL-bg-section) 94%, transparent)",
           border: "2px solid var(--easeL-border-subtle)",
@@ -113,7 +113,7 @@ export default function Tutorial() {
           <button
             type="button"
             onClick={() => setMuted((m) => !m)}
-            className="rounded-full p-2 transition-colors hover:opacity-90"
+            className="easeL-interactive rounded-full p-2 hover:opacity-90"
             style={{ color: "var(--easeL-text-muted)" }}
             aria-label={muted ? "Unmute" : "Mute"}
           >
@@ -121,7 +121,7 @@ export default function Tutorial() {
           </button>
         </div>
 
-        <h1 className="mb-2 text-2xl font-bold" style={{ color: "var(--easeL-text)" }}>
+        <h1 className="easeL-heading-2 mb-2" style={{ color: "var(--easeL-text)" }}>
           Your movement moves your brush
         </h1>
         <p className="mb-6 text-lg" style={{ color: "var(--easeL-text-muted)" }}>
