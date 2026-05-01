@@ -10,6 +10,19 @@ body {
   background: var(--easeL-bg-page);
 }
 
+/** Head navigation: webcam must not steal hit-testing from head pointer */
+.easeL-camera-feed-offscreen {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
 /* Display headings (editorial / landing) */
 .font-easeL-display {
   font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
@@ -201,6 +214,30 @@ body {
   .animate-fade-scale-in {
     animation: none !important;
   }
+}
+
+/* WCAG 2.4.1 — bypass block */
+.easeL-skip-link {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 100;
+  padding: 0.75rem 1rem;
+  background: var(--easeL-bg-section);
+  color: var(--easeL-link);
+  font-weight: 700;
+  border-radius: 0 0 var(--easeL-radius-md) 0;
+  border: 2px solid var(--easeL-focus-ring);
+  transform: translateY(-120%);
+  transition: transform 0.2s ease;
+}
+.easeL-skip-link:focus {
+  outline: none;
+}
+.easeL-skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 3px solid var(--easeL-focus-ring);
+  outline-offset: 2px;
 }
 
 /* Focus visible for keyboard users */

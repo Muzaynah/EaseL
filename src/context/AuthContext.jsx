@@ -11,11 +11,9 @@ import {
   setProfileInFirestore,
   createProfileInFirestore,
 } from "../firebase/profile";
+import { hydrateCloudLogs } from "../utils/persistence";
 import { getNextSetupStep } from "../utils/setupFlow";
 import { createDefaultProfile, normaliseProfile } from "../utils/profileSchema";
-
-const DEMO_USER_KEY = "easeL_demoUser";
-const DEMO_PROFILE_KEY = "easeL_demoProfile";
 
 const AuthContext = createContext(null);
 
@@ -24,73 +22,95 @@ export function AuthProvider({ children }) {
   const [profile, setProfileState] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [profileStatus, setProfileStatus] = useState("loading"); // loading | ready | missing | corrupt | error
+
+  const isProfileStructurallyValid = useCallback((p) => {
+    if (!p || typeof p !== "object") return false;
+    return true;
+  }, []);
 
   const loadProfile = useCallback(async (uid) => {
-    if (hasConfig && uid) {
-      const raw = await getProfileFromFirestore(uid);
-      const p = normaliseProfile(raw);
-      setProfileState(p);
-      // Persist the auto-correction so Firestore mirrors the in-memory shape
-      // and the user's recent-trials query in the lessons reads correctly.
-      if (
-        p &&
-        raw &&
-        (p.currentStage !== raw.currentStage ||
-          p.currentLevel !== raw.currentLevel ||
-          p.pathId !== raw.pathId ||
-          p.pathLevel !== raw.pathLevel)
-      ) {
-        try {
-          await setProfileInFirestore(uid, p);
-        } catch (e) {
-          console.warn("profile auto-heal persist failed", e);
-        }
-      }
-      return p;
+    if (!hasConfig || !uid) {
+      setProfileState(null);
+      setProfileStatus("error");
+      return null;
     }
-    try {
-      const raw = localStorage.getItem(DEMO_PROFILE_KEY);
-      const parsed = raw ? JSON.parse(raw) : null;
-      const p = normaliseProfile(parsed);
-      setProfileState(p);
-      if (
-        p &&
-        parsed &&
-        (p.currentStage !== parsed.currentStage ||
-          p.currentLevel !== parsed.currentLevel ||
-          p.pathId !== parsed.pathId ||
-          p.pathLevel !== parsed.pathLevel)
-      ) {
-        try {
-          localStorage.setItem(DEMO_PROFILE_KEY, JSON.stringify(p));
-        } catch (e) {
-          console.warn("demo profile auto-heal persist failed", e);
-        }
+    const raw = await getProfileFromFirestore(uid);
+    if (!raw) {
+      setProfileState(null);
+      setProfileStatus("missing");
+      await hydrateCloudLogs(uid);
+      return null;
+    }
+    const p = normaliseProfile(raw);
+    if (!isProfileStructurallyValid(p)) {
+      setProfileState(null);
+      setProfileStatus("corrupt");
+      await hydrateCloudLogs(uid);
+      return null;
+    }
+    setProfileState(p);
+    setProfileStatus("ready");
+    await hydrateCloudLogs(uid);
+    // Persist the auto-correction so Firestore mirrors the in-memory shape.
+    if (
+      p &&
+      raw &&
+      (p.currentStage !== raw.currentStage ||
+        p.currentLevel !== raw.currentLevel ||
+        p.pathId !== raw.pathId ||
+        p.pathLevel !== raw.pathLevel)
+    ) {
+      try {
+        await setProfileInFirestore(uid, p);
+      } catch (e) {
+        console.warn("profile auto-heal persist failed", e);
       }
-      return p;
-    } catch {
+    }
+    return p;
+  }, [isProfileStructurallyValid]);
+
+  const reloadProfile = useCallback(async () => {
+    const uid = auth?.currentUser?.uid ?? user?.uid ?? null;
+    if (!uid) return null;
+    try {
+      setProfileStatus("loading");
+      return await loadProfile(uid);
+    } catch (e) {
+      console.warn("reloadProfile failed", e);
+      setProfileStatus("error");
+      setError("Could not load your profile from cloud.");
       setProfileState(null);
       return null;
     }
-  }, []);
+  }, [loadProfile, user?.uid]);
 
   const updateProfile = useCallback(
     async (next) => {
       const uid = user?.uid;
-      if (!uid && !hasConfig) {
-        const updated = typeof next === "function" ? next(profile) : next;
-        setProfileState(updated);
-        try {
-          localStorage.setItem(DEMO_PROFILE_KEY, JSON.stringify(updated));
-        } catch (e) {
-          console.warn("demo profile save failed", e);
-        }
-        return updated;
+      if (!uid || !hasConfig) {
+        throw new Error("Cloud profile is required for updates.");
       }
-      if (!uid) return profile;
-      const updated = typeof next === "function" ? next(profile) : next;
+      const incoming = typeof next === "function" ? next(profile) : next;
+      const canonicalStage = Number.isFinite(incoming?.currentStage)
+        ? incoming.currentStage
+        : Number.isFinite(incoming?.currentLevel)
+        ? incoming.currentLevel
+        : profile?.currentStage ?? profile?.currentLevel ?? 0;
+      const canonicalPathId =
+        incoming?.pathId === 1 || incoming?.pathId === 2
+          ? incoming.pathId
+          : incoming?.lipMode;
+      const updated = {
+        ...incoming,
+        currentStage: canonicalStage,
+        currentLevel: canonicalStage, // kept for backwards compatibility until full migration
+        pathId: canonicalPathId ?? null,
+        lipMode: canonicalPathId ?? incoming?.lipMode ?? null,
+      };
       await setProfileInFirestore(uid, updated);
       setProfileState(updated);
+      setProfileStatus("ready");
       return updated;
     },
     [user?.uid, profile]
@@ -98,17 +118,10 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!hasConfig) {
-      const raw = localStorage.getItem(DEMO_USER_KEY);
-      if (raw) {
-        try {
-          const u = JSON.parse(raw);
-          setUser(u);
-          loadProfile(null);
-        } catch {
-          setUser(null);
-          setProfileState(null);
-        }
-      }
+      setUser(null);
+      setProfileState(null);
+      setProfileStatus("error");
+      setError("Firebase configuration missing. Cloud auth is required.");
       setLoading(false);
       return;
     }
@@ -117,6 +130,8 @@ export function AuthProvider({ children }) {
       if (!firebaseUser) {
         setUser(null);
         setProfileState(null);
+        setProfileStatus("loading");
+        await hydrateCloudLogs(null);
         setLoading(false);
         return;
       }
@@ -125,7 +140,14 @@ export function AuthProvider({ children }) {
         email: firebaseUser.email ?? "",
         name: firebaseUser.displayName ?? firebaseUser.email ?? "User",
       });
-      await loadProfile(firebaseUser.uid);
+      try {
+        await loadProfile(firebaseUser.uid);
+      } catch (e) {
+        console.warn("profile load failed", e);
+        setProfileState(null);
+        setProfileStatus("error");
+        setError("Could not load your cloud profile.");
+      }
       setLoading(false);
     });
 
@@ -152,25 +174,10 @@ export function AuthProvider({ children }) {
         });
         const p = await getProfileFromFirestore(cred.user.uid);
         setProfileState(p);
+        setProfileStatus("ready");
         return getNextSetupStep(p);
       }
-      const demoUser = {
-        uid: "demo-" + Date.now(),
-        email: account.email ?? email,
-        name: account.name ?? "User",
-      };
-      const demoProfile = createDefaultProfile(account);
-      demoProfile.name = demoUser.name;
-      demoProfile.email = demoUser.email;
-      try {
-        localStorage.setItem(DEMO_USER_KEY, JSON.stringify(demoUser));
-        localStorage.setItem(DEMO_PROFILE_KEY, JSON.stringify(demoProfile));
-      } catch (e) {
-        console.warn("demo save failed", e);
-      }
-      setUser(demoUser);
-      setProfileState(demoProfile);
-      return getNextSetupStep(demoProfile);
+      throw new Error("Cloud auth is required.");
     },
     []
   );
@@ -187,6 +194,8 @@ export function AuthProvider({ children }) {
         name: p?.name ?? cred.user.displayName ?? cred.user.email ?? "User",
       });
       setProfileState(p);
+      setProfileStatus(p ? "ready" : "missing");
+      await hydrateCloudLogs(cred.user.uid);
       if (
         p &&
         raw &&
@@ -203,24 +212,7 @@ export function AuthProvider({ children }) {
       }
       return getNextSetupStep(p);
     }
-    const raw = localStorage.getItem(DEMO_USER_KEY);
-    if (raw) {
-      try {
-        const u = JSON.parse(raw);
-        if (u.email === email) {
-          setUser(u);
-          const pr = localStorage.getItem(DEMO_PROFILE_KEY);
-          const parsed = pr ? JSON.parse(pr) : null;
-          const p = normaliseProfile(parsed);
-          setProfileState(p);
-          return getNextSetupStep(p);
-        }
-      } catch {
-        // ignore
-      }
-    }
-    setError("No account found. Sign up first.");
-    return null;
+    throw new Error("Cloud auth is required.");
   }, []);
 
   const signOut = useCallback(async () => {
@@ -228,27 +220,24 @@ export function AuthProvider({ children }) {
     if (hasConfig && auth) {
       await firebaseSignOut(auth);
     }
-    try {
-      localStorage.removeItem(DEMO_USER_KEY);
-      localStorage.removeItem(DEMO_PROFILE_KEY);
-    } catch {
-      // ignore
-    }
     setUser(null);
     setProfileState(null);
+    setProfileStatus("loading");
   }, []);
 
   const value = {
     user,
     profile,
     loading,
+    profileStatus,
     error,
     setError,
     signUp,
     signIn,
     signOut,
     updateProfile,
-    getNextSetupStep: profile ? () => getNextSetupStep(profile) : () => "/eligibility",
+    reloadProfile,
+    getNextSetupStep: profile ? () => getNextSetupStep(profile) : () => "/calibration",
     isFirebaseReady: hasConfig,
   };
 

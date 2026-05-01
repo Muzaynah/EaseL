@@ -476,7 +476,7 @@ export default function Landing() {
         >
           <h2 className="font-easeL-display text-3xl sm:text-4xl">Ready to try the setup flow?</h2>
           <p className="mt-4 max-w-2xl text-lg sm:text-xl" style={{ color: "var(--easeL-text-on-dark-muted)" }}>
-            Create an account to walk through sign-up, then eligibility, calibration, tutorial, and
+            Create an account to walk through sign-up, then calibration, tutorial, and
             path assignment. Progress is shown as path, level, lesson, and step.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">

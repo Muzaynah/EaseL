@@ -7,14 +7,14 @@ import {
   RefreshCw,
   LogOut,
   CheckCircle2,
-  Trophy,
   Home,
   ArrowRight,
   RotateCcw,
   BookOpen,
-  Sparkles,
+  Pause,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useCursorPositionBridgeRef } from "../context/CursorPositionBridgeContext";
 import { useFaceMesh } from "../hooks/useFaceMesh";
 import { useGestureControl } from "../hooks/useGestureControl";
 import { useCalibratedCursor } from "../hooks/useCalibratedCursor";
@@ -23,17 +23,29 @@ import ScoreSprinkles from "../components/ScoreSprinkles";
 import BreakPrompt from "../components/BreakPrompt";
 import GhostStrokePreview from "../components/GhostStrokePreview";
 import LessonInstructionCard from "../components/LessonInstructionCard";
-import Cursor from "../components/Cursor";
 import MasteryToast from "../components/MasteryToast";
 import TroubleshootAssist from "../components/TroubleshootAssist";
-import { getStage, variantForAttempt } from "../utils/lessonContent";
+import {
+  getStage,
+  getEffectiveLessonVariant,
+  lessonCountInStage,
+  lessonIndexWithinStage,
+  lessonVariantDisplayName,
+} from "../utils/lessonContent";
 import { getStageLessonPath } from "../utils/lessonPath";
 import { distanceToPath, getNearestPointOnPath } from "../utils/lessonPath";
 import { calculateAdherence, computePathAccuracy } from "../utils/corridorGeometry";
 import { getCanvasCoordinates } from "../utils/canvasUtils";
 import { appendTrialLog, appendSessionLog, getTrialLog } from "../utils/persistence";
 import { resolveActivationConfig } from "../utils/activationConfig";
-import { sayPhrase, stopSpeech, playSuccessBeep, playCheerSound } from "../utils/screenerAudio";
+import {
+  sayPhrase,
+  stopSpeech,
+  playSuccessBeep,
+  playCheerSound,
+  speakInstruction,
+} from "../utils/screenerAudio";
+import { saveLessonResultCloud } from "../firebase/cloudData";
 import {
   filterTrials,
   getAdaptedStage,
@@ -41,12 +53,22 @@ import {
   computeFatigueIndex,
   evaluateMastery,
   getMasteryFeedback,
+  STAGE_UNLOCK_ADHERENCE,
+  didTrialPass,
+  getDynamicRequiredAdherence,
 } from "../utils/stageAdaptation";
+
+function lessonPointInsideCanvas(px, py, vp) {
+  if (!vp) return false;
+  return px >= vp.left && px <= vp.right && py >= vp.top && py <= vp.bottom;
+}
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 700;
 /** Duration of score % animation, sprinkles, and cheer — kept in sync (ms). */
 const SCORE_REVEAL_MS = 800;
+/** Hold mouth open outside canvas → pause lesson (unlock universal cursor navigation). */
+const LESSON_PAUSE_HOLD_MS = 3000;
 // Max |Δ path index| per frame. Forward: smooth growth; backward: re-sync
 // when the user re-enters the corridor or their true path position is
 // behind the visible stroke tip (nearest-point can only move monotonically
@@ -87,11 +109,6 @@ function qualityTierFromDistance(dist, th) {
   if (n <= 0.82) return 3;
   if (n <= 1) return 4;
   return 5;
-}
-
-function distToStrokeRgb(dist, th) {
-  const tier = qualityTierFromDistance(dist, th);
-  return hexToRgb(STROKE_QUALITY_HEX[tier]);
 }
 
 /**
@@ -185,6 +202,12 @@ const START_LOCK_MS = 420;
 const OFF_CORRIDOR_HARD_MULTIPLIER = 1.15;
 const OFF_CORRIDOR_SOFT_MULTIPLIER = 1.02;
 const ACCEPTANCE_BUFFER_PX = 4;
+const CAREGIVER_CONTROLS_HIDE_MS = 2400;
+const CAREGIVER_MOUSE_REVEAL_DELTA = 24;
+const DEMO_COUNTDOWN_MS = 2700;
+const DEMO_COUNTDOWN_STEP_MS = 900;
+const LESSON_CAGE_PADDING = 20;
+const CANCEL_TRACE_FADE_MS = 420;
 
 function normalizePathToSegmentStart(path, seg) {
   if (!Array.isArray(path) || path.length === 0 || !seg?.start) return path;
@@ -322,7 +345,8 @@ export default function Path2Lesson() {
   const { user, profile, updateProfile } = useAuth();
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
-  const cursorElRef = useRef(null);
+  const lessonCursorBridge = useCursorPositionBridgeRef();
+  const railDotRef = useRef(null);
   const buttonRefs = useRef({});
   // Raw user-path for the current segment, used for adherence scoring only.
   // It is no longer drawn on the canvas — the visible stroke is the rail.
@@ -337,7 +361,7 @@ export default function Path2Lesson() {
   const wobbleIndicesRef = useRef([]);
   /** Per centerline vertex: last { dist, threshold } sampled while the tip was near that index. */
   const railVertexDistRef = useRef(null);
-  /** Latest quality for HTML cursor colour + “perfect” pulse on canvas. */
+  /** Latest quality for “perfect” pulse on canvas */
   const latestQualityRef = useRef({
     dist: 0,
     threshold: 1,
@@ -357,6 +381,8 @@ export default function Path2Lesson() {
   const lastHeadCanvasPosRef = useRef(null);
   const stallFramesRef = useRef(0);
   const reachedHalfwayRef = useRef(false);
+  const manualMouthLatchRef = useRef(false);
+  const lastManualMouthToggleRef = useRef(0);
 
   const stageFromUrl = Number(searchParams.get("stage"));
   const stageRaw = Number.isFinite(stageFromUrl) && stageFromUrl >= 3
@@ -405,8 +431,13 @@ export default function Path2Lesson() {
   const [masteryToast, setMasteryToast] = useState(null);
   const [instructionDismiss, setInstructionDismiss] = useState(0);
   const [masteryHint, setMasteryHint] = useState("");
-  const [attemptFeedback, setAttemptFeedback] = useState("");
   const [scoreSprinklesOn, setScoreSprinklesOn] = useState(false);
+  const [lessonPaused, setLessonPaused] = useState(false);
+  const [caregiverControlsVisible, setCaregiverControlsVisible] = useState(false);
+  const [countdown, setCountdown] = useState(null);
+  const [countdownDeadlineMs, setCountdownDeadlineMs] = useState(null);
+  const [countdownNowMs, setCountdownNowMs] = useState(0);
+  const [masteryProgressVisual, setMasteryProgressVisual] = useState(0);
   const [debugScoring] = useState(true);
   const [, setDebugFrame] = useState({
     dist: 0,
@@ -430,6 +461,10 @@ export default function Path2Lesson() {
 
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
+  const lessonPausedRef = useRef(false);
+  lessonPausedRef.current = lessonPaused;
+  const pauseAccumMsRef = useRef(0);
+  const pauseLastTsRef = useRef(null);
   const corridorRef = useRef(null);
   corridorRef.current = corridor;
   const segmentIndexRef = useRef(0);
@@ -461,6 +496,43 @@ export default function Path2Lesson() {
 
   const currentSegmentRef = useRef(null);
   currentSegmentRef.current = currentSegment;
+  const canceledStrokeRef = useRef(null);
+  const caregiverHideTimerRef = useRef(null);
+  const caregiverMouseRef = useRef({ x: null, y: null });
+
+  const revealCaregiverControls = useCallback(() => {
+    setCaregiverControlsVisible(true);
+    if (caregiverHideTimerRef.current) clearTimeout(caregiverHideTimerRef.current);
+    caregiverHideTimerRef.current = setTimeout(() => {
+      setCaregiverControlsVisible(false);
+    }, CAREGIVER_CONTROLS_HIDE_MS);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const handleMouseMove = (e) => {
+      const prev = caregiverMouseRef.current;
+      if (prev.x == null || prev.y == null) {
+        caregiverMouseRef.current = { x: e.clientX, y: e.clientY };
+        return;
+      }
+      const moved = Math.hypot(e.clientX - prev.x, e.clientY - prev.y);
+      caregiverMouseRef.current = { x: e.clientX, y: e.clientY };
+      if (moved >= CAREGIVER_MOUSE_REVEAL_DELTA) {
+        revealCaregiverControls();
+      }
+    };
+    const handleKeyboardIntent = () => revealCaregiverControls();
+
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    window.addEventListener("keydown", handleKeyboardIntent);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("keydown", handleKeyboardIntent);
+      if (caregiverHideTimerRef.current) clearTimeout(caregiverHideTimerRef.current);
+    };
+  }, [revealCaregiverControls]);
 
   // New corridor on stage / attempt change — reset everything.
   useEffect(() => {
@@ -561,7 +633,13 @@ export default function Path2Lesson() {
       results.reduce((s, r) => s + r.meanDev * r.points, 0) / totalPoints;
     const totalDuration = results.reduce((s, r) => s + r.duration, 0);
     const finalAdherence = Math.max(0, Math.min(100, Math.round(weightedAdh)));
-    const requiredAd = adaptedStage.requiredAdherence ?? 50;
+    const stageTrialsBefore = filterTrials(getTrialLog(), {
+      userId: user?.uid ?? "local",
+      mode: 2,
+      stage: stage.stage,
+    });
+    const requiredAd = getDynamicRequiredAdherence(stage, stageTrialsBefore);
+    const unlockQualified = finalAdherence >= STAGE_UNLOCK_ADHERENCE;
     const totalOut = results.reduce((s, r) => s + (r.outsideCount ?? 0), 0);
     const totalIn = results.reduce((s, r) => s + (r.insideCount ?? 0), 0);
     const offPathPercent =
@@ -570,6 +648,9 @@ export default function Path2Lesson() {
       jitterSamplesRef.current.length > 0
         ? jitterSamplesRef.current.reduce((a, b) => a + b, 0) / jitterSamplesRef.current.length
         : 0;
+    const targetMasteryAttempts = Math.max(1, stage.trialsForMastery ?? 5);
+    const beforeWindow = stageTrialsBefore.slice(-targetMasteryAttempts);
+    const masteryBefore = beforeWindow.filter((t) => didTrialPass(t, stage)).length;
 
     appendTrialLog({
       userId: user?.uid ?? "local",
@@ -584,6 +665,7 @@ export default function Path2Lesson() {
       jitter: Number(jitter.toFixed(5)),
       activationErrors: activationErrorsRef.current,
       mouthEvents: mouthEventsRef.current,
+      requiredAdherence: requiredAd,
       success: finalAdherence >= requiredAd,
       activationMethod,
       assistance: {
@@ -604,7 +686,7 @@ export default function Path2Lesson() {
       });
       if (next != null && next > (profile?.currentStage ?? 0) && next <= 6) {
         const nextStageDef = getStage(next);
-        updateProfile({ ...profile, currentStage: next });
+        updateProfile({ ...profile, currentStage: next, currentLevel: next });
         const unlockedTitle = nextStageDef?.title ?? `Stage ${next}`;
         setMasteryToast(unlockedTitle);
         newUnlock = { stage: next, title: unlockedTitle };
@@ -621,7 +703,18 @@ export default function Path2Lesson() {
       offPathPercent,
       requiredAdherence: requiredAd,
       passed: finalAdherence >= requiredAd,
+      unlockQualified,
       unlock: newUnlock,
+      masteryProgress: {
+        before: masteryBefore,
+        after: Math.min(
+          targetMasteryAttempts,
+          [...stageTrialsBefore, { adherence: finalAdherence, success: finalAdherence >= requiredAd }]
+            .slice(-targetMasteryAttempts)
+            .filter((t) => didTrialPass(t, stage)).length,
+        ),
+        target: targetMasteryAttempts,
+      },
     });
     setPhase("reward");
 
@@ -632,25 +725,6 @@ export default function Path2Lesson() {
     });
     const mastery = evaluateMastery(stage, staged);
     setMasteryHint(getMasteryFeedback(stage, mastery));
-    if (finalAdherence < 20) {
-      setAttemptFeedback(
-        language === "ur"
-          ? "اچھی کوشش! آغاز کے سبز نقطے کے قریب رہنے کی کوشش کریں۔"
-          : "Nice try - keep close to the green start point first.",
-      );
-    } else if (finalAdherence < requiredAd) {
-      setAttemptFeedback(
-        language === "ur"
-          ? "تقریباً ہو گیا۔ اگلی بار تھوڑا آہستہ چلیں۔"
-          : "Almost there. Go a little slower on the next line.",
-      );
-    } else {
-      setAttemptFeedback(
-        language === "ur"
-          ? "بہت اچھا! اسی رفتار سے جاری رکھیں۔"
-          : "Great control. Keep this pace.",
-      );
-    }
   }, [user?.uid, stage, adaptedStage, attempt, activationMethod, profile, updateProfile, searchParams, language]);
 
   /** Finalise the current segment and either advance or finish the attempt. */
@@ -725,12 +799,71 @@ export default function Path2Lesson() {
     startTsRef.current = Date.now();
     lastAdherenceSampleRef.current = { x: seg?.start?.x ?? null, y: seg?.start?.y ?? null, ts: performance.now() };
     debugSamplesRef.current = [];
+    canceledStrokeRef.current = null;
     if (seg?.start) snapCursorToCanvasPoint(seg.start.x, seg.start.y);
     segmentStartLockUntilRef.current = performance.now() + START_LOCK_MS;
     lastHeadCanvasPosRef.current = seg?.start ? { x: seg.start.x, y: seg.start.y } : null;
     stallFramesRef.current = 0;
     reachedHalfwayRef.current = false;
   }, [freezeRecalibrationRef, snapCursorToCanvasPoint]);
+
+  const getLessonCageBounds = useCallback(() => {
+    const c = corridorRef.current;
+    const seg = currentSegmentRef.current;
+    const pts = seg?.centerline?.length ? seg.centerline : c?.centerline;
+    const corridorWidth = (c?.width ?? 120) * VISUAL_CORRIDOR_SCALE;
+    if (!pts?.length) {
+      return {
+        left: LESSON_CAGE_PADDING,
+        top: LESSON_CAGE_PADDING,
+        right: CANVAS_WIDTH - LESSON_CAGE_PADDING,
+        bottom: CANVAS_HEIGHT - LESSON_CAGE_PADDING,
+      };
+    }
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const p of pts) {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }
+    const pad = Math.max(LESSON_CAGE_PADDING, corridorWidth * 0.7);
+    return {
+      left: Math.max(0, minX - pad),
+      top: Math.max(0, minY - pad),
+      right: Math.min(CANVAS_WIDTH, maxX + pad),
+      bottom: Math.min(CANVAS_HEIGHT, maxY + pad),
+    };
+  }, []);
+
+  const cancelCurrentStroke = useCallback(() => {
+    if (phaseRef.current !== "trial" || !isDrawingRef.current) return;
+    const seg = currentSegmentRef.current;
+    if (seg?.centerline?.length) {
+      canceledStrokeRef.current = {
+        centerline: seg.centerline,
+        upto: maxProjIdxRef.current ?? 0,
+        ts: performance.now(),
+      };
+    }
+    isDrawingRef.current = false;
+    if (freezeRecalibrationRef) freezeRecalibrationRef.current = false;
+    setIsDrawing(false);
+    // Reset active stroke progress so next mouth-open starts fresh.
+    userPathRef.current = seg?.start ? [{ x: seg.start.x, y: seg.start.y }] : [];
+    wobbleIndicesRef.current = [];
+    maxProjIdxRef.current = 0;
+    guideIdxRef.current = 0;
+    startTsRef.current = null;
+    debugSamplesRef.current = [];
+    stallFramesRef.current = 0;
+    lastHeadCanvasPosRef.current = null;
+    reachedHalfwayRef.current = false;
+    railVertexDistRef.current = null;
+  }, [freezeRecalibrationRef]);
 
   useEffect(() => {
     if (phase !== "trial" || !isDrawing || !currentSegment?.centerline?.length) {
@@ -744,19 +877,9 @@ export default function Path2Lesson() {
     return () => clearInterval(id);
   }, [phase, isDrawing, currentSegment]);
 
-  // First mouth-open starts drawing; mouth-close is ignored.
-  const handlePenToggle = useCallback(
-    (down) => {
-      if (!down) return;
-      startDrawingSegment();
-    },
-    [startDrawingSegment],
-  );
-
   const { processLandmarks } = useGestureControl({
     cursorPosRef,
     activationMethod,
-    onPenToggle: handlePenToggle,
     onMouthEvent: () => {
       mouthEventsRef.current += 1;
     },
@@ -780,6 +903,66 @@ export default function Path2Lesson() {
         if (jitterSamplesRef.current.length > 400) jitterSamplesRef.current.shift();
       }
 
+      const upperM = landmarks[13];
+      const lowerM = landmarks[14];
+      const mouthHHold = Math.abs(upperM.y - lowerM.y);
+      const mouthOpenHold = mouthHHold > activationConfig.mouthOpenThreshold;
+      const pauseClk = performance.now();
+      // Manual in-lesson toggle: mouth-open starts/stops stroke reliably.
+      if (phaseRef.current === "trial" && !lessonPausedRef.current) {
+        if (mouthOpenHold && !manualMouthLatchRef.current) {
+          const now = performance.now();
+          if (now - lastManualMouthToggleRef.current > 550) {
+            manualMouthLatchRef.current = true;
+            lastManualMouthToggleRef.current = now;
+            if (isDrawingRef.current) {
+              cancelCurrentStroke();
+            } else {
+              startDrawingSegment();
+            }
+          }
+        } else if (!mouthOpenHold) {
+          manualMouthLatchRef.current = false;
+        }
+      } else {
+        manualMouthLatchRef.current = false;
+      }
+      const pauseStep =
+        pauseLastTsRef.current != null
+          ? Math.min(120, Math.max(8, pauseClk - pauseLastTsRef.current))
+          : 33;
+      pauseLastTsRef.current = pauseClk;
+      if (!lessonPausedRef.current && phaseRef.current === "trial") {
+        if (mouthOpenHold) {
+          const rawHold = cursorPosRef.current;
+          const cvHold = canvasRef.current?.getBoundingClientRect();
+          const outsideCv =
+            cvHold &&
+            !lessonPointInsideCanvas(rawHold.x, rawHold.y, {
+              left: cvHold.left,
+              top: cvHold.top,
+              right: cvHold.right,
+              bottom: cvHold.bottom,
+            });
+          if (outsideCv) {
+            pauseAccumMsRef.current += pauseStep;
+            if (pauseAccumMsRef.current >= LESSON_PAUSE_HOLD_MS) {
+              setLessonPaused(true);
+              pauseAccumMsRef.current = 0;
+            }
+          } else pauseAccumMsRef.current = 0;
+        } else pauseAccumMsRef.current = 0;
+      } else {
+        pauseAccumMsRef.current = 0;
+      }
+
+      if (lessonPausedRef.current) {
+        displayCursorRef.current.x = cursorPosRef.current.x;
+        displayCursorRef.current.y = cursorPosRef.current.y;
+        drawScene();
+        return;
+      }
+
       // Cursor-on-rail model: during a trial the visible cursor is ALWAYS
       // glued to the current rail tip.  Before drawing begins the rail tip
       // sits at the segment's start dot (index 0), so the cursor visually
@@ -793,13 +976,10 @@ export default function Path2Lesson() {
       if (!inTrial || !seg?.centerline?.length) {
         displayCursorRef.current.x = cursorPosRef.current.x;
         displayCursorRef.current.y = cursorPosRef.current.y;
-      } else if (!isDrawingRef.current && seg?.start) {
-        // In-trial but waiting for mouth-open: park the cursor exactly on
-        // the green start dot.  This is what prevents the old "big jump"
-        // at activation — the cursor was already there.
-        const startScreen = canvasToScreen(seg.start.x, seg.start.y);
-        displayCursorRef.current.x = startScreen.x;
-        displayCursorRef.current.y = startScreen.y;
+      } else if (!isDrawingRef.current) {
+        // Free cursor between strokes so caregiver/user can navigate controls.
+        displayCursorRef.current.x = cursorPosRef.current.x;
+        displayCursorRef.current.y = cursorPosRef.current.y;
       }
 
       if (
@@ -808,11 +988,30 @@ export default function Path2Lesson() {
         canvasRef.current &&
         seg?.centerline?.length
       ) {
+        const rect = canvasRef.current.getBoundingClientRect();
+        const cageNow = getLessonCageBounds();
+        const sxMarginLeft = (cageNow.left / CANVAS_WIDTH) * rect.width;
+        const sxMarginRight = (cageNow.right / CANVAS_WIDTH) * rect.width;
+        const syMarginTop = (cageNow.top / CANVAS_HEIGHT) * rect.height;
+        const syMarginBottom = (cageNow.bottom / CANVAS_HEIGHT) * rect.height;
+        const clampedScreenX = Math.max(
+          rect.left + sxMarginLeft,
+          Math.min(rect.left + sxMarginRight, cursorPosRef.current.x),
+        );
+        const clampedScreenY = Math.max(
+          rect.top + syMarginTop,
+          Math.min(rect.top + syMarginBottom, cursorPosRef.current.y),
+        );
+        cursorPosRef.current.x = clampedScreenX;
+        cursorPosRef.current.y = clampedScreenY;
         const { x, y } = getCanvasCoordinates(
           canvasRef.current,
-          cursorPosRef.current.x,
-          cursorPosRef.current.y,
+          clampedScreenX,
+          clampedScreenY,
         );
+        const cage = getLessonCageBounds();
+        const clampedX = Math.max(cage.left, Math.min(cage.right, x));
+        const clampedY = Math.max(cage.top, Math.min(cage.bottom, y));
         const c = corridorRef.current;
         const lockActive = performance.now() < segmentStartLockUntilRef.current;
         if (lockActive && seg?.start) {
@@ -824,7 +1023,7 @@ export default function Path2Lesson() {
           return;
         }
 
-        const near = getNearestPointOnPath({ x, y }, seg.centerline);
+        const near = getNearestPointOnPath({ x: clampedX, y: clampedY }, seg.centerline);
         const Lpath = seg.centerline.length;
         const pathFloat = Math.max(
           0,
@@ -832,14 +1031,16 @@ export default function Path2Lesson() {
         );
         const prevIdx = maxProjIdxRef.current ?? 0;
         const along = pathFloat - prevIdx;
-        const dist = distanceToPath({ x, y }, seg.centerline);
+        const dist = distanceToPath({ x: clampedX, y: clampedY }, seg.centerline);
         const threshold = effectiveScoringWidth(c.width) / 2;
         const inCorridor = dist <= threshold;
         const hardOffCorridor = dist > threshold * OFF_CORRIDOR_HARD_MULTIPLIER;
         const softOffCorridor = dist > threshold * OFF_CORRIDOR_SOFT_MULTIPLIER;
         const lastHead = lastHeadCanvasPosRef.current;
-        const headMove = lastHead ? Math.hypot(x - lastHead.x, y - lastHead.y) : 0;
-        lastHeadCanvasPosRef.current = { x, y };
+        const headMove = lastHead
+          ? Math.hypot(clampedX - lastHead.x, clampedY - lastHead.y)
+          : 0;
+        lastHeadCanvasPosRef.current = { x: clampedX, y: clampedY };
         if (Math.abs(along) < 0.1 && headMove > 2.5 && !softOffCorridor) {
           stallFramesRef.current += 1;
         } else {
@@ -912,23 +1113,23 @@ export default function Path2Lesson() {
         const last = lastAdherenceSampleRef.current;
         const movedEnough =
           last.x == null ||
-          Math.hypot(x - last.x, y - last.y) >= ADHERENCE_MIN_SAMPLE_DIST;
+          Math.hypot(clampedX - last.x, clampedY - last.y) >= ADHERENCE_MIN_SAMPLE_DIST;
         const elapsedEnough = now - (last.ts ?? 0) >= ADHERENCE_MIN_SAMPLE_MS;
         const progressedEnough = along > 0.35;
         let sampled = false;
         if (movedEnough || (elapsedEnough && progressedEnough)) {
-          userPathRef.current.push({ x, y });
-          lastAdherenceSampleRef.current = { x, y, ts: now };
+          userPathRef.current.push({ x: clampedX, y: clampedY });
+          lastAdherenceSampleRef.current = { x: clampedX, y: clampedY, ts: now };
           sampled = true;
           if (debugScoring) {
             debugSamplesRef.current.push({
-              x,
-              y,
+              x: clampedX,
+              y: clampedY,
               inCorridor,
               dist,
               threshold,
-              nearX: near?.point?.x ?? x,
-              nearY: near?.point?.y ?? y,
+              nearX: near?.point?.x ?? clampedX,
+              nearY: near?.point?.y ?? clampedY,
             });
             if (debugSamplesRef.current.length > 120) debugSamplesRef.current.shift();
           }
@@ -1019,6 +1220,10 @@ export default function Path2Lesson() {
       canvasToScreen,
       segmentsFor,
       freezeRecalibrationRef,
+      activationConfig,
+      cancelCurrentStroke,
+      startDrawingSegment,
+      getLessonCageBounds,
     ],
   );
 
@@ -1040,10 +1245,7 @@ export default function Path2Lesson() {
       stopSpeech();
       return;
     }
-    if (phase === "demo") {
-      sayPhrase("watchMe", language);
-      setTimeout(() => sayPhrase("trace", language), 1400);
-    }
+    if (phase === "trial") sayPhrase("openMouth", language);
     return () => stopSpeech();
   }, [phase, language, muted]);
 
@@ -1093,6 +1295,47 @@ export default function Path2Lesson() {
       ctx.moveTo(startPoint.x, startPoint.y);
       for (let i = railIdx + 1; i < activeSeg.centerline.length; i++) {
         ctx.lineTo(activeSeg.centerline[i].x, activeSeg.centerline[i].y);
+      }
+
+      // If the user cancelled a stroke, briefly fade the cancelled partial trace.
+      if (canceledStrokeRef.current?.centerline?.length) {
+        const age = performance.now() - (canceledStrokeRef.current.ts ?? 0);
+        if (age < CANCEL_TRACE_FADE_MS) {
+          const alpha = 1 - age / CANCEL_TRACE_FADE_MS;
+          const cl = canceledStrokeRef.current.centerline;
+          const endIdx = Math.min(cl.length - 1, Math.floor(canceledStrokeRef.current.upto ?? 0));
+          if (endIdx > 0) {
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.65));
+            ctx.lineWidth = TRACE_WIDTH;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.strokeStyle = "#94A3B8";
+            ctx.beginPath();
+            ctx.moveTo(cl[0].x, cl[0].y);
+            for (let i = 1; i <= endIdx; i++) ctx.lineTo(cl[i].x, cl[i].y);
+            ctx.stroke();
+            ctx.restore();
+          }
+        } else {
+          canceledStrokeRef.current = null;
+        }
+      }
+
+      // During active drawing, show the interaction cage boundary.
+      if (isDrawingRef.current) {
+        const cage = getLessonCageBounds();
+        ctx.save();
+        ctx.strokeStyle = "rgba(99,102,241,0.28)";
+        ctx.setLineDash([8, 8]);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(
+          cage.left,
+          cage.top,
+          Math.max(1, cage.right - cage.left),
+          Math.max(1, cage.bottom - cage.top),
+        );
+        ctx.restore();
       }
       ctx.stroke();
       ctx.setLineDash([]);
@@ -1282,6 +1525,11 @@ export default function Path2Lesson() {
     cursorPosRef.current.y = window.innerHeight / 2;
   }, [cursorPosRef]);
 
+  const resumeLessonPause = useCallback(() => {
+    setLessonPaused(false);
+    pauseAccumMsRef.current = 0;
+  }, []);
+
   const beginTrial = useCallback(() => {
     if (phaseRef.current !== "demo") return;
     // Snap the cursor to the first segment's start so the user isn't
@@ -1297,6 +1545,49 @@ export default function Path2Lesson() {
     setPhase("trial");
   }, [recenter, segmentsFor, snapCursorToCanvasPoint]);
 
+  // Spoken instruction + 3-2-1 countdown before trial begins.
+  useEffect(() => {
+    if (phase !== "demo") {
+      setCountdown(null);
+      setCountdownDeadlineMs(null);
+      return undefined;
+    }
+    const spokenGuide =
+      language === "ur"
+        ? "سبز نقطے سے شروع کریں، نقطوں والی لکیر پر چلیں، اور شروع کرنے کے لیے منہ کھولیں۔"
+        : "Start at the green dot, trace the dotted line, and open your mouth to begin.";
+    if (!muted) speakInstruction(spokenGuide, { language });
+    const deadline = Date.now() + DEMO_COUNTDOWN_MS;
+    setCountdownDeadlineMs(deadline);
+    setCountdownNowMs(Date.now());
+    let current = 3;
+    setCountdown(current);
+    if (!muted) speakInstruction(String(current), { language });
+    const id = setInterval(() => {
+      current -= 1;
+      if (current <= 0) {
+        clearInterval(id);
+        setCountdown(null);
+        beginTrial();
+        return;
+      }
+      setCountdown(current);
+      if (!muted) speakInstruction(String(current), { language });
+    }, DEMO_COUNTDOWN_STEP_MS);
+    return () => clearInterval(id);
+  }, [phase, beginTrial, muted, language]);
+
+  useEffect(() => {
+    if (!countdownDeadlineMs) return undefined;
+    let raf = 0;
+    const tick = () => {
+      setCountdownNowMs(Date.now());
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [countdownDeadlineMs]);
+
   const finishNow = useCallback(() => {
     if (phaseRef.current !== "trial") return;
     if (!isDrawingRef.current) return;
@@ -1306,21 +1597,18 @@ export default function Path2Lesson() {
     completeSegment();
   }, [completeSegment, freezeRecalibrationRef]);
 
-  function saveToGallery() {
+  async function saveToGallery() {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !user?.uid || !finishedPayload) return;
     try {
       const thumbnail = canvas.toDataURL("image/png");
-      const list = JSON.parse(localStorage.getItem("easeL_gallery") || "[]");
-      list.push({
+      await saveLessonResultCloud(user.uid, {
         title: `${stage.title} (${language === "ur" ? stage.titleUr ?? stage.title : stage.title})`,
-        type: "lesson",
         stage: stage.stage,
-        color: "quality",
-        createdAt: Date.now(),
+        score: finishedPayload.adherence,
+        passed: finishedPayload.passed,
         thumbnail,
       });
-      localStorage.setItem("easeL_gallery", JSON.stringify(list));
       setSaved(true);
     } catch (e) {
       console.warn("saveToGallery failed", e);
@@ -1349,12 +1637,25 @@ export default function Path2Lesson() {
   useEffect(() => {
     if (phase !== "reward" || !finishedPayload) {
       setScoreSprinklesOn(false);
+      setMasteryProgressVisual(0);
       return;
     }
     setScoreSprinklesOn(true);
     playCheerSound();
+    const masteryNow = finishedPayload.masteryProgress
+      ? Math.max(
+          0,
+          Math.min(1, finishedPayload.masteryProgress.after / finishedPayload.masteryProgress.target),
+        )
+      : 0;
+    const masteryBefore = finishedPayload.masteryProgress
+      ? Math.max(0, Math.min(1, finishedPayload.masteryProgress.before / finishedPayload.masteryProgress.target))
+      : 0;
+    setMasteryProgressVisual(masteryBefore);
+    const anim = setTimeout(() => setMasteryProgressVisual(masteryNow), 70);
     const t = setTimeout(() => setScoreSprinklesOn(false), SCORE_REVEAL_MS);
     return () => {
+      clearTimeout(anim);
       clearTimeout(t);
     };
   }, [phase, finishedPayload, attempt]);
@@ -1366,20 +1667,31 @@ export default function Path2Lesson() {
       const target = displayCursorRef.current;
       smoothed.x += (target.x - smoothed.x) * 0.35;
       smoothed.y += (target.y - smoothed.y) * 0.35;
-      if (cursorElRef.current) {
-        cursorElRef.current.style.left = smoothed.x + "px";
-        cursorElRef.current.style.top = smoothed.y + "px";
-        const q = latestQualityRef.current;
-        if (q.active) {
-          const rgb = distToStrokeRgb(q.dist, q.threshold);
-          cursorElRef.current.style.backgroundColor = `rgb(${rgb.r},${rgb.g},${rgb.b})`;
-          cursorElRef.current.style.boxShadow = `0 0 8px rgba(${rgb.r},${rgb.g},${rgb.b},0.55), 0 2px 6px rgba(0,0,0,0.12)`;
-        } else {
-          cursorElRef.current.style.backgroundColor = "#64748B";
-          cursorElRef.current.style.boxShadow = isDrawingRef.current
-            ? "0 0 6px rgba(100,116,139,0.35), 0 2px 6px rgba(0,0,0,0.12)"
-            : "0 2px 8px rgba(0, 0, 0, 0.1)";
+      const br = lessonCursorBridge?.current;
+      if (br) {
+        const raw = cursorPosRef.current;
+        br.raw.x = raw.x;
+        br.raw.y = raw.y;
+        if (canvasRef.current) {
+          const r = canvasRef.current.getBoundingClientRect();
+          br.canvasViewport = { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
         }
+        br.lessonPaused = lessonPaused;
+        br.showUniversalCursor = true;
+      }
+      if (railDotRef.current) {
+        railDotRef.current.style.left = `${smoothed.x}px`;
+        railDotRef.current.style.top = `${smoothed.y}px`;
+        const raw = cursorPosRef.current;
+        const vp = br?.canvasViewport;
+        const inCv = lessonPointInsideCanvas(raw.x, raw.y, vp);
+        const drift = Math.hypot(smoothed.x - raw.x, smoothed.y - raw.y);
+        const showRailMark =
+          !lessonPaused &&
+          phaseRef.current === "trial" &&
+          inCv &&
+          (drift > 14 || isDrawingRef.current);
+        railDotRef.current.style.visibility = showRailMark ? "visible" : "hidden";
       }
       raf = requestAnimationFrame(loop);
     };
@@ -1391,13 +1703,18 @@ export default function Path2Lesson() {
     }
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [lessonPaused]);
 
   if (sessionTimer.capped) {
     return <BreakPrompt kind="cap" language={language} onExit={handleExit} />;
   }
 
-  const variant = variantForAttempt(stage, attempt);
+  const activeVariantKey = getEffectiveLessonVariant(stage, attempt, forcedVariant);
+  const variantPretty = activeVariantKey
+    ? lessonVariantDisplayName(language, activeVariantKey)
+    : "";
+  const lessonIdx = lessonIndexWithinStage(stage, activeVariantKey);
+  const lessonTotal = lessonCountInStage(stage);
   const title = language === "ur" ? stage.titleUr ?? stage.title : stage.title;
   const segmentsArr = segmentsFor(corridor);
   const totalSegments = segmentsArr.length;
@@ -1407,7 +1724,7 @@ export default function Path2Lesson() {
   // canvas border glow.  Framework §7.2 — we already log adherence; here
   // we also surface it visually as encouragement while the user draws.
   const mood =
-    phase === "trial" && adherence >= 65
+      phase === "trial" && adherence >= 65
       ? "good"
       : phase === "trial" && adherence > 0 && adherence < 35
       ? "off"
@@ -1417,7 +1734,7 @@ export default function Path2Lesson() {
       ? "bg-emerald-100 text-emerald-700 border-emerald-300"
       : mood === "off"
       ? "bg-rose-100 text-rose-700 border-rose-300"
-      : "bg-indigo-50 text-indigo-700 border-indigo-200";
+      : "easeL-accent-bg easeL-accent-text-strong easeL-accent-border border";
   const canvasMoodClass =
     mood === "good"
       ? "ring-4 ring-emerald-300/60"
@@ -1443,12 +1760,20 @@ export default function Path2Lesson() {
       ? "bg-emerald-500"
       : mood === "off"
       ? "bg-rose-400"
-      : "bg-indigo-500";
+      : "bg-[var(--easeL-primary)]";
+  const gaugeRadius = 64;
+  const gaugeCircumference = 2 * Math.PI * gaugeRadius;
+  const scoreGaugeProgress = finishedPayload ? Math.max(0, Math.min(1, finishedPayload.adherence / 100)) : 0;
+  const passGaugeProgress = finishedPayload
+    ? Math.max(0, Math.min(1, (finishedPayload.requiredAdherence ?? 0) / 100))
+    : 0;
+  const passAngle = passGaugeProgress * Math.PI * 2 - Math.PI / 2;
+  const passMarkerX = 80 + Math.cos(passAngle) * gaugeRadius;
+  const passMarkerY = 80 + Math.sin(passAngle) * gaugeRadius;
 
   return (
     <div
-      className="relative w-screen min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/30 flex flex-col items-center pt-20 pb-4 px-4 overflow-hidden"
-      style={{ cursor: "none" }}
+      className="easeL-page-bg relative flex min-h-screen w-screen flex-col items-center overflow-hidden px-4 pb-4 pt-20"
     >
       <MasteryToast message={masteryToast} language={language} />
       <LessonInstructionCard
@@ -1459,42 +1784,54 @@ export default function Path2Lesson() {
         dismissSignal={instructionDismiss}
       />
 
-      <div className="w-full max-w-[1200px] flex items-center justify-between gap-3 mb-2 z-20 flex-wrap">
-        <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/95 shadow border border-slate-200/80">
+      <div className="w-full max-w-[1200px] flex items-center justify-between gap-3 mb-2 z-20">
+        <div className="min-w-0 flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/95 shadow border border-slate-200/80">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
             Level {stage.stage}
           </span>
-          <span className="text-slate-800 font-bold text-base">{title}</span>
-          {variant && (
-            <span className="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-semibold capitalize">
-              {variant}
+          {lessonTotal > 1 && (
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+              ·{" "}
+              {language === "ur"
+                ? `سبق ${lessonIdx} (${lessonTotal} میں سے)`
+                : `Lesson ${lessonIdx} of ${lessonTotal}`}
             </span>
           )}
-          {phase === "trial" && showSegmentCounter && (
-            <span className="px-3 py-1 rounded-lg bg-slate-100 text-slate-700 text-sm font-semibold">
-                  {language === "ur"
-                ? `مرحلہ ${segmentIndex + 1} / ${totalSegments}`
-                : `Step ${segmentIndex + 1} of ${totalSegments}`}
+          <span className="truncate text-base font-bold text-slate-800">{title}</span>
+          {activeVariantKey && (
+            <span className="easeL-accent-bg easeL-accent-text-strong rounded-lg px-2.5 py-1 text-xs font-semibold">
+              {variantPretty || activeVariantKey}
             </span>
           )}
         </div>
 
-        {phase === "trial" && (
+        <div className="flex items-center gap-2 shrink-0">
           <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 shadow-sm transition-colors ${moodPillClass}`}
+            className={`flex min-h-[42px] items-center gap-2 px-3 py-1.5 rounded-xl border-2 shadow-sm transition-colors ${
+            phase === "trial" ? moodPillClass : "bg-white/85 text-slate-400 border-slate-200"
+          }`}
           >
             {mood === "good" && <CheckCircle2 className="w-4 h-4" />}
-            <span className="text-[11px] font-semibold uppercase tracking-wide opacity-70">
+            <span className="text-[10px] font-semibold uppercase tracking-wide opacity-70">
               {language === "ur" ? "ارادہ" : "Intent"}
             </span>
-            <span className="text-xl font-extrabold tabular-nums">{adherence}%</span>
+            <span className="text-lg font-extrabold tabular-nums">
+              {phase === "trial" ? `${adherence}%` : "--"}
+            </span>
           </div>
-        )}
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div
+          className={`flex items-center gap-2 overflow-x-auto transition-opacity duration-300 ${
+            caregiverControlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          onMouseEnter={revealCaregiverControls}
+        >
           <TroubleshootAssist />
           <button
             type="button"
+            ref={(el) => {
+              buttonRefs.current.recenter = el;
+            }}
             onClick={recenter}
             className="inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold shadow-sm text-sm"
             title="Recenter cursor"
@@ -1502,18 +1839,11 @@ export default function Path2Lesson() {
             <RefreshCw className="w-4 h-4" />
             {language === "ur" ? "مرکز" : "Recenter"}
           </button>
-          {phase === "trial" && isDrawing && (
-            <button
-              type="button"
-              onClick={finishNow}
-              className="inline-flex items-center gap-1.5 min-h-10 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow text-sm"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              {language === "ur" ? "ختم کریں" : "Finish line"}
-            </button>
-          )}
           <button
             type="button"
+            ref={(el) => {
+              buttonRefs.current.mute = el;
+            }}
             onClick={() => setMuted((m) => !m)}
             className="inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold shadow-sm text-sm"
             aria-label={muted ? "Unmute" : "Mute"}
@@ -1522,6 +1852,9 @@ export default function Path2Lesson() {
             {language === "ur" ? (muted ? "آواز بند" : "آواز") : muted ? "Muted" : "Sound"}
           </button>
           <button
+            ref={(el) => {
+              buttonRefs.current.exit = el;
+            }}
             onClick={handleExit}
             className="inline-flex items-center gap-1.5 min-h-10 px-4 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold shadow-sm border-2 border-slate-300 text-sm"
           >
@@ -1529,15 +1862,16 @@ export default function Path2Lesson() {
             {language === "ur" ? "ختم" : "Exit"}
           </button>
         </div>
+        </div>
       </div>
 
       <div className="w-full max-w-[1200px] mb-2 z-10">
-        <div className="rounded-xl bg-indigo-600 text-white px-4 py-2 shadow border border-indigo-700/50 flex items-center justify-between gap-3">
+        <div className="easeL-hud-bar flex items-center justify-between gap-3 rounded-xl px-4 py-2 shadow">
           <p className="text-sm font-semibold">
             {phase === "demo"
               ? language === "ur"
-                ? "پہلے دیکھیں…"
-                : "Watch the shape draw itself…"
+                ? "تیار ہو جائیں…"
+                : "Get ready…"
               : phase === "trial"
               ? showSegmentCounter
                 ? language === "ur"
@@ -1558,52 +1892,82 @@ export default function Path2Lesson() {
               ? "نتیجہ…"
               : "Here’s your result…"}
           </p>
-          <span className="text-xs font-medium text-indigo-100 bg-indigo-800/40 px-2 py-1 rounded-lg">
+          <span className="rounded-lg bg-black/20 px-2 py-1 text-xs font-medium text-white/95">
             {Math.floor(sessionTimer.elapsedMs / 60000)}:
             {String(Math.floor((sessionTimer.elapsedMs % 60000) / 1000)).padStart(2, "0")}
           </span>
         </div>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <span className="px-2.5 py-1 rounded-lg bg-white/95 border border-slate-200 text-slate-700 text-[11px] font-semibold">
-            Green dot = start
-          </span>
-          <span className="px-2.5 py-1 rounded-lg bg-white/95 border border-slate-200 text-slate-700 text-[11px] font-semibold">
-            Follow the blue line at your pace
-          </span>
-          <span className="px-2.5 py-1 rounded-lg bg-white/95 border border-slate-200 text-slate-700 text-[11px] font-semibold">
-            Slightly outside still counts
-          </span>
-        </div>
-        {masteryHint ? (
-          <div className="mt-2 rounded-xl bg-white/90 border border-indigo-200 text-indigo-800 px-3 py-2 text-xs font-semibold">
-            {masteryHint}
-          </div>
-        ) : null}
-        {attemptFeedback ? (
-          <div className="mt-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-2 text-xs font-semibold">
-            {attemptFeedback}
-          </div>
-        ) : null}
       </div>
 
-      <canvas
-        ref={canvasRef}
-        width={CANVAS_WIDTH}
-        height={CANVAS_HEIGHT}
-        className={`rounded-3xl shadow-2xl border-2 border-slate-200/90 bg-white transition-[box-shadow] ${canvasMoodClass}`}
+      <div className="relative z-10 w-full flex justify-center">
+        <div
+          className="relative w-full"
+          style={{
+            maxWidth: `min(1100px, calc((100vh - 300px) * ${CANVAS_WIDTH} / ${CANVAS_HEIGHT}))`,
+          }}
+        >
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_WIDTH}
+            height={CANVAS_HEIGHT}
+            className={`rounded-3xl shadow-2xl border-2 border-slate-200/90 bg-white transition-[box-shadow] ${canvasMoodClass}`}
+            style={{
+              width: "100%",
+              height: "auto",
+              aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`,
+              verticalAlign: "top",
+              display: "block",
+            }}
+          />
+          {lessonPaused ? (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="lesson-paused-title"
+              className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl bg-white/92 px-6 py-10 shadow-inner ring-2 ring-inset ring-slate-200/90 pointer-events-auto z-10"
+            >
+              <Pause className="mb-3 h-12 w-12 text-[var(--easeL-primary)]" aria-hidden />
+              <p
+                id="lesson-paused-title"
+                className="text-2xl sm:text-3xl font-extrabold text-slate-800 mb-2 text-center"
+              >
+                {language === "ur" ? "روک دیا" : "Paused"}
+              </p>
+              <p className="text-slate-600 mb-6 text-center text-sm sm:text-base max-w-xs">
+                {language === "ur"
+                  ? "اوپر بٹن تک رسائی؛ جاری رکھنے کے لیے کلک کریں۔"
+                  : "Use the toolbar above when you're ready; tap Resume to continue tracing."}
+              </p>
+              <button
+                type="button"
+                ref={(el) => {
+                  buttonRefs.current.resume = el;
+                }}
+                className="easeL-btn-solid px-8 py-3 rounded-2xl text-lg font-bold min-w-[200px]"
+                onClick={resumeLessonPause}
+              >
+                {language === "ur" ? "دوبارہ شروع کریں" : "Resume lesson"}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+      <div
+        ref={railDotRef}
+        aria-hidden
+        className="fixed pointer-events-none z-[850] rounded-full border-2 border-white/75 bg-white/35 shadow-md"
         style={{
-          width: "100%",
-          height: "auto",
-          aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`,
-          // Fit within the viewport on common laptop screens: cap by the
-          // physical width of the canvas, the available horizontal space, and
-          // the space left after the navbar + header + progress bar + webcam.
-          maxWidth: `min(1100px, calc((100vh - 260px) * ${CANVAS_WIDTH} / ${CANVAS_HEIGHT}))`,
+          width: 12,
+          height: 12,
+          transform: "translate(-50%, -50%)",
+          left: "50%",
+          top: "40%",
+          visibility: "hidden",
         }}
       />
 
-      {phase === "trial" && (
-        <div className="w-full max-w-[1200px] mt-2 px-2 z-20">
+      <div className="w-full max-w-[1200px] mt-2 px-2 z-20 min-h-[42px]">
+        <div className={`${phase === "trial" ? "opacity-100" : "opacity-0"} transition-opacity`}>
           <div className="flex items-center justify-between mb-1 text-xs font-semibold text-slate-600">
             <span>
               {language === "ur" ? "ترقی" : "Progress"}
@@ -1615,7 +1979,22 @@ export default function Path2Lesson() {
                 </span>
               )}
             </span>
-            <span className="tabular-nums text-slate-500">{progressPct}%</span>
+            <div className="flex items-center gap-2">
+              {phase === "trial" && isDrawing && (
+                <button
+                  type="button"
+                  ref={(el) => {
+                    buttonRefs.current.finish = el;
+                  }}
+                  onClick={finishNow}
+                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  {language === "ur" ? "مکمل" : "Finish"}
+                </button>
+              )}
+              <span className="tabular-nums text-slate-500">{progressPct}%</span>
+            </div>
           </div>
           <div className="h-3 w-full rounded-full bg-slate-200 overflow-hidden shadow-inner">
             <div
@@ -1624,7 +2003,7 @@ export default function Path2Lesson() {
             />
           </div>
         </div>
-      )}
+      </div>
 
       <GhostStrokePreview
         canvasRef={canvasRef}
@@ -1668,27 +2047,57 @@ export default function Path2Lesson() {
           ctx.fillStyle = "#16A34A";
           ctx.fill();
         }}
-        onDone={() => {
-          beginTrial();
-        }}
+        onDone={() => {}}
       />
 
-      {phase === "trial" && !isDrawing && (
-        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-          <div className="px-6 py-3 rounded-2xl bg-white/95 border-2 border-indigo-300 text-indigo-800 font-semibold shadow-lg">
-            {language === "ur"
-              ? "منہ کھول کر لکیر بنانا شروع کریں"
-              : "Open your mouth to start drawing"}
+      {phase === "demo" && countdown != null && (
+        <div className="fixed top-[230px] left-1/2 z-30 -translate-x-1/2 pointer-events-none">
+          <div
+            className="rounded-3xl border bg-white/95 px-5 py-4 shadow-2xl backdrop-blur-sm"
+            style={{ borderColor: "color-mix(in srgb, var(--easeL-primary) 35%, transparent)" }}
+          >
+            <div className="flex items-center gap-4">
+              <div
+                className="grid h-20 w-20 place-items-center rounded-full"
+                style={{
+                  background: `conic-gradient(var(--easeL-primary) ${Math.max(
+                    0,
+                    Math.min(1, (countdownDeadlineMs - countdownNowMs) / DEMO_COUNTDOWN_MS),
+                  ) * 360}deg, rgba(148,163,184,0.25) 0deg)`,
+                }}
+              >
+                <div className="grid h-16 w-16 place-items-center rounded-full bg-white">
+                  <span className="easeL-accent-text-strong text-4xl font-extrabold tabular-nums">
+                    {countdown}
+                  </span>
+                </div>
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {language === "ur" ? "تیار ہو جائیں" : "Get ready"}
+                </p>
+                <p className="text-lg font-extrabold text-slate-800">
+                  {language === "ur" ? "سبز نقطے سے شروع کریں" : "Start at the green dot"}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {phase === "trial" && (
-        <div className="absolute left-4 bottom-4 z-30 rounded-xl bg-white/92 text-slate-700 border border-slate-300 px-3 py-2 text-[11px] font-semibold">
-          The line uses a few clear colours for how close you stay to the path
-          (green and teal through amber to red). A bright white-and-gold ring
-          on the tip means you’re on track—keep it steady. The pointer matches
-          the line colour.
+      {phase === "trial" && !isDrawing && (
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+          <div
+            className="rounded-2xl bg-white/95 px-6 py-3 font-semibold shadow-lg"
+            style={{
+              border: "2px solid color-mix(in srgb, var(--easeL-primary) 32%, transparent)",
+              color: "var(--easeL-primary)",
+            }}
+          >
+            {language === "ur"
+              ? "شروع/ختم کرنے کیلئے منہ کھولیں"
+              : "Open your mouth to start or stop drawing"}
+          </div>
         </div>
       )}
 
@@ -1707,19 +2116,6 @@ export default function Path2Lesson() {
                   : "bg-gradient-to-br from-amber-50 to-orange-50/80 border-amber-100/80"
               }`}
             >
-              <div
-                className={`w-12 h-12 mx-auto mb-2 rounded-2xl flex items-center justify-center shadow-md ${
-                  finishedPayload.passed
-                    ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white"
-                    : "bg-gradient-to-br from-amber-500 to-orange-500 text-white"
-                }`}
-              >
-                {finishedPayload.passed ? (
-                  <Trophy className="w-7 h-7" />
-                ) : (
-                  <Sparkles className="w-7 h-7" />
-                )}
-              </div>
               <h2
                 id="result-title"
                 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight"
@@ -1734,7 +2130,13 @@ export default function Path2Lesson() {
               </h2>
               <p className="text-slate-600 text-xs sm:text-sm mt-0.5">
                 {title}
-                {variant ? ` · ${variant}` : ""}
+                {lessonTotal > 1
+                  ? language === "ur"
+                    ? ` · سبق ${lessonIdx}: ${variantPretty || activeVariantKey || ""}`
+                    : ` · Lesson ${lessonIdx}: ${variantPretty || activeVariantKey || ""}`
+                  : activeVariantKey
+                  ? ` · ${variantPretty || activeVariantKey}`
+                  : ""}
               </p>
             </div>
 
@@ -1751,54 +2153,102 @@ export default function Path2Lesson() {
                   <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-slate-500 mb-0.5">
                     {language === "ur" ? "آپ کا نمبر" : "Your score"}
                   </p>
+                  <div className="mx-auto mt-1 h-40 w-40">
+                    <svg viewBox="0 0 160 160" className="h-full w-full">
+                      <circle cx="80" cy="80" r={gaugeRadius} fill="none" stroke="#E2E8F0" strokeWidth="12" />
+                      <circle
+                        cx="80"
+                        cy="80"
+                        r={gaugeRadius}
+                        fill="none"
+                        stroke={finishedPayload.passed ? "#10B981" : "#F59E0B"}
+                        strokeWidth="12"
+                        strokeLinecap="round"
+                        transform="rotate(-90 80 80)"
+                        strokeDasharray={gaugeCircumference}
+                        strokeDashoffset={gaugeCircumference * (1 - scoreGaugeProgress)}
+                        className="transition-[stroke-dashoffset] duration-700 ease-out"
+                      />
+                      <circle cx={passMarkerX} cy={passMarkerY} r="4.5" fill="#334155" />
+                      <text x="80" y="86" textAnchor="middle" className="fill-slate-900 text-[28px] font-black tabular-nums">
+                        {finishedPayload.adherence}%
+                      </text>
+                    </svg>
+                  </div>
                   <p
-                    key={`score-${attempt}-${finishedPayload.adherence}`}
-                    className="easeL-score-reveal text-4xl sm:text-5xl font-black tabular-nums text-slate-900 leading-tight"
-                    style={{ animationDuration: `${SCORE_REVEAL_MS}ms` }}
+                    className={`-mt-1 text-sm font-bold ${
+                      finishedPayload.passed ? "text-emerald-700" : "text-amber-700"
+                    }`}
                   >
-                    {finishedPayload.adherence}
-                    <span className="text-xl sm:text-2xl font-bold text-slate-500">%</span>
+                    {finishedPayload.passed
+                      ? language === "ur"
+                        ? "کلیئر ہو گیا"
+                        : "Cleared"
+                      : language === "ur"
+                      ? "ابھی نہیں"
+                      : "Not quite yet"}
                   </p>
                 </div>
               </div>
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-[11px] sm:text-xs">
-                <span
-                  className={`px-2 py-0.5 rounded-full font-semibold ${
-                    finishedPayload.passed
-                      ? "bg-emerald-100 text-emerald-800 border border-emerald-200/80"
-                      : "bg-amber-100 text-amber-900 border border-amber-200/80"
-                  }`}
-                >
-                  {finishedPayload.passed
-                    ? language === "ur"
-                      ? "پاس"
-                      : "Passed"
-                    : language === "ur"
-                    ? "اگلی بار"
-                    : "Not quite yet"}
-                </span>
-                <span className="px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                  {language === "ur" ? "کامیابی کے لیے" : "To pass:"}{" "}
-                  {finishedPayload.requiredAdherence}%
-                </span>
+              <div
+                className={`mt-2 rounded-lg border px-3 py-1.5 text-[11px] font-semibold ${
+                  finishedPayload.unlockQualified
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                    : "bg-amber-50 border-amber-200 text-amber-900"
+                }`}
+              >
+                {language === "ur" ? "پیش رفت" : "Progression"}:{" "}
+                {finishedPayload.unlockQualified
+                  ? language === "ur"
+                    ? "اگلا مرحلہ کھل گیا"
+                    : "next stage unlocked"
+                  : language === "ur"
+                  ? `مزید ${STAGE_UNLOCK_ADHERENCE}% درکار`
+                  : `need ${STAGE_UNLOCK_ADHERENCE}% to unlock next stage`}
+                {" · "}
+                {language === "ur" ? "پاس حد" : "pass mark"} {finishedPayload.requiredAdherence}%
               </div>
+              {finishedPayload.masteryProgress ? (
+                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/90 px-3 py-2 text-left">
+                  <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-slate-600">
+                    <span>{language === "ur" ? "مہارت کی پیش رفت" : "Mastery progress"}</span>
+                    <span className="tabular-nums">
+                      {finishedPayload.masteryProgress.after >
+                      finishedPayload.masteryProgress.before ? (
+                        <>
+                          {finishedPayload.masteryProgress.before}/
+                          {finishedPayload.masteryProgress.target}
+                          {" \u2192 "}
+                          {finishedPayload.masteryProgress.after}/
+                          {finishedPayload.masteryProgress.target}
+                        </>
+                      ) : (
+                        <>
+                          {finishedPayload.masteryProgress.after}/
+                          {finishedPayload.masteryProgress.target}
+                          {" · "}
+                          {language === "ur" ? "کوئی اضافہ نہیں" : "no gain this attempt"}
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
+                    <div
+                      className="h-full rounded-full bg-emerald-500 transition-[width] duration-700 ease-out"
+                      style={{ width: `${Math.round(masteryProgressVisual * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ) : null}
             </div>
-
-            {attemptFeedback ? (
-              <div className="px-5 pb-2 shrink-0">
-                <div className="rounded-xl bg-slate-50 border border-slate-200/80 px-3 py-2 text-left text-xs sm:text-sm text-slate-600 leading-snug">
-                  <p className="font-semibold text-slate-700 mb-0.5 text-[10px] uppercase tracking-wide">
-                    {language === "ur" ? "کیسا رہا؟" : "How it went"}
-                  </p>
-                  <p>{attemptFeedback}</p>
-                </div>
-              </div>
-            ) : null}
 
             {finishedPayload.unlock ? (
               <div className="px-5 pb-2 shrink-0">
-                <div className="rounded-xl border-2 border-indigo-200 bg-indigo-50/90 px-3 py-2 text-left">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">
+                <div
+                  className="rounded-xl border-2 px-3 py-2 text-left easeL-accent-bg"
+                  style={{ borderColor: "color-mix(in srgb, var(--easeL-primary) 30%, transparent)" }}
+                >
+                  <p className="easeL-accent-text-strong text-[10px] font-bold uppercase tracking-wider">
                     {language === "ur" ? "نیا مرحلہ" : "New stage"}
                   </p>
                   <p className="text-sm font-bold text-slate-900">
@@ -1811,7 +2261,7 @@ export default function Path2Lesson() {
                         navigate(`/lesson-path2?stage=${finishedPayload.unlock.stage}`);
                       }
                     }}
-                    className="mt-1.5 inline-flex items-center gap-1 text-xs font-bold text-indigo-700 hover:text-indigo-900"
+                    className="easeL-accent-text-strong mt-1.5 inline-flex items-center gap-1 text-xs font-bold underline-offset-2 hover:opacity-90"
                   >
                     {language === "ur" ? "اس مرحلہ پر جائیں" : "Start this level"}
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -1824,12 +2274,12 @@ export default function Path2Lesson() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <button
                   type="button"
-                  onClick={() => saveToGallery()}
+                  onClick={saveToGallery}
                   disabled={saved}
                   className={`inline-flex items-center justify-center gap-2 min-h-12 px-4 rounded-2xl font-bold shadow-md transition-all ${
                     saved
                       ? "bg-emerald-500 text-white cursor-default"
-                      : "bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:opacity-95"
+                      : "bg-[var(--easeL-primary)] text-white hover:opacity-95"
                   }`}
                 >
                   <Save className="w-5 h-5" />
@@ -1854,8 +2304,17 @@ export default function Path2Lesson() {
               {stage.stage < 6 ? (
                 <button
                   type="button"
-                  onClick={() => navigate(`/lesson-path2?stage=${stage.stage + 1}`)}
-                  className="inline-flex items-center justify-center gap-2 min-h-12 px-4 rounded-2xl font-bold bg-slate-900 text-white hover:bg-slate-800"
+                  onClick={() => {
+                    if (finishedPayload?.unlockQualified) {
+                      navigate(`/lesson-path2?stage=${stage.stage + 1}`);
+                    }
+                  }}
+                  disabled={!finishedPayload?.unlockQualified}
+                  className={`inline-flex items-center justify-center gap-2 min-h-12 px-4 rounded-2xl font-bold ${
+                    finishedPayload?.unlockQualified
+                      ? "bg-slate-900 text-white hover:bg-slate-800"
+                      : "bg-slate-200 text-slate-500 cursor-not-allowed"
+                  }`}
                 >
                   {language === "ur" ? "اگلی سطح" : "Next stage"}
                   <ArrowRight className="w-5 h-5" />
@@ -1907,16 +2366,6 @@ export default function Path2Lesson() {
           style={{ aspectRatio: "4/3" }}
         />
       </div>
-
-      <Cursor
-        ref={cursorElRef}
-        variant="lesson"
-        liveRefColor
-        size={isDrawing ? 8 : 10}
-        color="#4338CA"
-        isPenDown={isDrawing || phase === "trial"}
-        tool="pencil"
-      />
 
       {sessionTimer.onBreak && (
         <BreakPrompt

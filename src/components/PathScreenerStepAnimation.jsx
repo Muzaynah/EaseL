@@ -82,8 +82,12 @@ function Step2Animation() {
     <div className="relative w-full flex items-center justify-center" style={{ minHeight: ANIM_HEIGHT }}>
       <div className="flex items-center justify-center" style={{ width: size, height: size }}>
         <div
-          className="relative rounded-full border-4 border-indigo-500 bg-indigo-100/60 shadow-inner overflow-hidden"
-          style={{ width: size, height: size }}
+          className="easeL-accent-bg relative overflow-hidden rounded-full border-4 shadow-inner"
+          style={{
+            borderColor: "color-mix(in srgb, var(--easeL-primary) 45%, transparent)",
+            width: size,
+            height: size,
+          }}
           aria-hidden
         >
           <div
@@ -143,7 +147,11 @@ function Step3Animation({ variant }) {
                 animation: `lip-s3-dot-${i} 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite`,
               }}
             >
-              <span className={`lip-s3-num ${isPurple ? "text-purple-900" : "text-indigo-900"}`}>{i}</span>
+              <span
+                className={`lip-s3-num ${isPurple ? "text-[color:var(--easeL-accent-rose)]" : "text-[color:var(--easeL-primary)]"}`}
+              >
+                {i}
+              </span>
               <Check className="lip-s3-check w-6 h-6 text-white absolute inset-0 m-auto opacity-0" strokeWidth={3} />
             </div>
           </div>
@@ -209,8 +217,12 @@ function Step4Animation() {
     <div className="flex items-center justify-center w-full" style={{ minHeight: ANIM_HEIGHT }}>
       <div className="relative w-full max-w-md mx-auto flex items-center justify-center" style={{ minHeight: 120 }}>
         <div
-          className="absolute left-[8%] right-[8%] h-14 rounded-lg border-4 border-indigo-500 bg-indigo-100/60"
-          style={{ top: "50%", transform: "translateY(-50%)" }}
+          className="easeL-accent-bg absolute left-[8%] right-[8%] h-14 rounded-lg border-4"
+          style={{
+            borderColor: "color-mix(in srgb, var(--easeL-primary) 45%, transparent)",
+            top: "50%",
+            transform: "translateY(-50%)",
+          }}
         />
         <div
           className="absolute top-1/2 w-6 h-6 rounded-full border-2 border-white shadow -translate-y-1/2"
@@ -250,8 +262,11 @@ export default function PathScreenerStepAnimation({ step }) {
 
   return (
     <div
-      className="w-full rounded-2xl bg-indigo-50 border-2 border-dashed border-indigo-200 flex items-center justify-center overflow-hidden py-4"
-      style={{ minHeight: ANIM_HEIGHT + 32 }}
+      className="easeL-accent-bg flex w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed py-4"
+      style={{
+        borderColor: "color-mix(in srgb, var(--easeL-primary) 30%, transparent)",
+        minHeight: ANIM_HEIGHT + 32,
+      }}
       aria-hidden
     >
       {content}

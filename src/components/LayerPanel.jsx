@@ -110,7 +110,7 @@ export default function LayerPanel({
         <button
           type="button"
           onClick={() => onLayerAdd?.()}
-          className="flex-1 min-h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-95 transition-all flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
+          className="easeL-btn-solid flex flex-1 min-h-12 items-center justify-center gap-2 hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-[color:var(--easeL-focus-ring)] focus:ring-offset-2"
           aria-label="Add layer"
         >
           <Plus className="w-5 h-5" />

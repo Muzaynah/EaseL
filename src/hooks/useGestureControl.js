@@ -1,11 +1,12 @@
 // hooks/useGestureControl.js
 import { useRef, useCallback } from "react";
+import { resolvePointerTarget } from "../utils/interactiveTarget";
 
 export function useGestureControl({
   onPenToggle,
   onButtonHover,
   onButtonClick,
-  /** Called when user activates (mouth/dwell) but cursor is not over any registered button. */
+  /** Called when user activates (mouth/dwell) but cursor is not over any clickable target. */
   onActivateOutside,
   /** Fires for every mouth-open event even if it was rejected (for false-positive tracking). */
   onMouthEvent,
@@ -40,7 +41,7 @@ export function useGestureControl({
   const dwellStartRef = useRef(null);
   const dwellPosRef = useRef(null);
 
-  const dispatchPointerEvent = (type, target) => {
+  const dispatchPointerEvent = useCallback((type, target) => {
     if (!target) return;
 
     target.dispatchEvent(
@@ -52,12 +53,11 @@ export function useGestureControl({
         pointerType: "mouse",
       })
     );
-  };
+  }, []);
 
   const processLandmarks = useCallback(
     (landmarks, isPenDown) => {
-      if (!landmarks)
-        return { position: cursorPos.current, hoveredBtn: null };
+      if (!landmarks) return { position: cursorPos.current, hoveredBtn: null };
 
       const nose = landmarks[1];
       const leftEar = landmarks[234];
@@ -67,22 +67,17 @@ export function useGestureControl({
       const midY = (leftEar.y + rightEar.y) / 2;
 
       const yaw = nose.x - midX;
-      const pitch = (nose.y - midY) - 0.04;
+      const pitch = nose.y - midY - 0.04;
 
       const deadzone = 0.015;
       const sensitivity = 80;
       const friction = 0.65;
 
-      let dx =
-        Math.abs(yaw) > deadzone
-          ? (yaw - Math.sign(yaw) * deadzone) * sensitivity
-          : 0;
-      let dy =
-        Math.abs(pitch) > deadzone
-          ? (pitch - Math.sign(pitch) * deadzone) * sensitivity
-          : 0;
+      const dx =
+        Math.abs(yaw) > deadzone ? (yaw - Math.sign(yaw) * deadzone) * sensitivity : 0;
+      const dy =
+        Math.abs(pitch) > deadzone ? (pitch - Math.sign(pitch) * deadzone) * sensitivity : 0;
 
-      // Only update position when using internal ref; when external ref is passed, caller updates it.
       if (!externalCursorPosRef) {
         cursorPos.current.x -= dx * friction;
         cursorPos.current.y += dy * friction;
@@ -90,21 +85,16 @@ export function useGestureControl({
         cursorPos.current.y = Math.max(0, Math.min(window.innerHeight, cursorPos.current.y));
       }
 
-      // Check for any interactive element at cursor position
-      const elementAtCursor = document.elementFromPoint(
-        cursorPos.current.x,
-        cursorPos.current.y
-      );
+      const rawAtCursor = document.elementFromPoint(cursorPos.current.x, cursorPos.current.y);
 
-      // Check if hovering over a button in buttonRefs
+      /** Registered hotspots (canvas, screeners): take priority over DOM hit-test */
       let hoveredBtn = null;
       let hoveredElement = null;
-      
-      Object.keys(buttonRefs.current).forEach((id) => {
+
+      Object.keys(buttonRefs.current || {}).forEach((id) => {
         const btn = buttonRefs.current[id];
         if (!btn) return;
         const rect = btn.getBoundingClientRect();
-
         if (
           cursorPos.current.x >= rect.left &&
           cursorPos.current.x <= rect.right &&
@@ -115,29 +105,19 @@ export function useGestureControl({
           hoveredElement = btn;
         }
       });
-      
-      // Check if hovering over any clickable element (buttons, links, etc.)
-      let isOverInteractive = false;
-      if (elementAtCursor) {
-        const tagName = elementAtCursor.tagName.toLowerCase();
-        isOverInteractive = 
-          tagName === 'button' || 
-          tagName === 'a' || 
-          elementAtCursor.onclick ||
-          elementAtCursor.role === 'button' ||
-          hoveredElement !== null;
-        
-        // Dispatch hover events to any interactive element
-        if (isOverInteractive) {
-          dispatchPointerEvent("pointerenter", elementAtCursor);
-          dispatchPointerEvent("pointermove", elementAtCursor);
-        }
-      }
-      
+
+      const domClickTarget = resolvePointerTarget(rawAtCursor);
+
+      /** Primary activation target — registered refs first (legacy), else any accessible control */
+      const primaryClickTarget = hoveredElement ?? domClickTarget;
+
       onButtonHover?.(hoveredBtn);
 
       const now = performance.now();
-      const useMouthActivation = activationMethod === "click" || activationMethod === "mouth" || !activationMethod;
+      const useMouthActivation =
+        activationMethod === "click" ||
+        activationMethod === "mouth" ||
+        !activationMethod;
 
       if (useMouthActivation) {
         const upperLip = landmarks[13];
@@ -164,43 +144,45 @@ export function useGestureControl({
             return { position: cursorPos.current, hoveredBtn };
           }
           lastToggleTime.current = now;
-          if (isOverInteractive && hoveredElement) {
-            dispatchPointerEvent("pointerdown", hoveredElement);
-            dispatchPointerEvent("pointerup", hoveredElement);
-            dispatchPointerEvent("click", hoveredElement);
+
+          if (primaryClickTarget) {
+            dispatchPointerEvent("pointerdown", primaryClickTarget);
+            dispatchPointerEvent("pointerup", primaryClickTarget);
+            dispatchPointerEvent("click", primaryClickTarget);
             onButtonClick?.(hoveredBtn);
           } else {
-            if (!hoveredElement) onActivateOutside?.();
-            if (isOverInteractive && elementAtCursor) {
-              dispatchPointerEvent("pointerdown", elementAtCursor);
-              dispatchPointerEvent("pointerup", elementAtCursor);
-              dispatchPointerEvent("click", elementAtCursor);
-            } else {
-              onPenToggle?.(!isPenDown);
-            }
+            onActivateOutside?.();
+            onPenToggle?.(!isPenDown);
           }
         }
+
         if (isMouthOpen) wasMouthOpen.current = true;
         else if (isMouthClosed) wasMouthOpen.current = false;
       } else if (activationMethod === "dwell") {
         const x = cursorPos.current.x;
         const y = cursorPos.current.y;
         const prev = dwellPosRef.current;
-        const dist = prev
-          ? Math.hypot(x - prev.x, y - prev.y)
-          : dwellRadius + 1;
+        const dist = prev ? Math.hypot(x - prev.x, y - prev.y) : dwellRadius + 1;
         if (dist <= dwellRadius) {
           if (dwellStartRef.current === null) dwellStartRef.current = now;
-          if (now - dwellStartRef.current >= dwellMs && now - lastToggleTime.current > cooldownMs) {
+          if (
+            now - dwellStartRef.current >= dwellMs &&
+            now - lastToggleTime.current > cooldownMs
+          ) {
             lastToggleTime.current = now;
             dwellStartRef.current = null;
-            if (isOverInteractive && hoveredElement) {
-              dispatchPointerEvent("pointerdown", hoveredElement);
-              dispatchPointerEvent("pointerup", hoveredElement);
-              dispatchPointerEvent("click", hoveredElement);
+            const domT = resolvePointerTarget(
+              document.elementFromPoint(cursorPos.current.x, cursorPos.current.y)
+            );
+            const primary = hoveredElement ?? domT;
+
+            if (primary) {
+              dispatchPointerEvent("pointerdown", primary);
+              dispatchPointerEvent("pointerup", primary);
+              dispatchPointerEvent("click", primary);
               onButtonClick?.(hoveredBtn);
             } else {
-              if (!hoveredElement) onActivateOutside?.();
+              onActivateOutside?.();
               onPenToggle?.(!isPenDown);
             }
           }
@@ -212,7 +194,21 @@ export function useGestureControl({
 
       return { position: cursorPos.current, hoveredBtn };
     },
-    [buttonRefs, onButtonHover, onPenToggle, onButtonClick, onActivateOutside, mouthOpenThreshold, framesToConfirm, cooldownMs, activationMethod, dwellMs, dwellRadius]
+    [
+      buttonRefs,
+      onButtonHover,
+      onPenToggle,
+      onButtonClick,
+      onActivateOutside,
+      onMouthEvent,
+      mouthOpenThreshold,
+      framesToConfirm,
+      cooldownMs,
+      activationMethod,
+      dwellMs,
+      dwellRadius,
+      dispatchPointerEvent,
+    ]
   );
 
   return { cursorPos, processLandmarks };

@@ -10,7 +10,8 @@ import { assignPathProfile } from "../utils/profileSchema";
 import { firstStageForMode } from "../utils/lessonContent";
 import Cursor from "../components/Cursor";
 import PathScreenerStepAnimation from "../components/PathScreenerStepAnimation";
-import { Check, Volume2, HelpCircle, X, AlertCircle, Target, Route } from "lucide-react";
+import SetupFailureCard from "../components/SetupFailureCard";
+import { Check, Volume2, HelpCircle, X, Target, Route } from "lucide-react";
 
 function getPathLevelCopy(pathId, pathLevel) {
   if (pathId === 1) {
@@ -583,32 +584,20 @@ export default function PathScreener() {
 
   if (failedLevel) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pt-24 px-6">
-        <div className="max-w-lg w-full bg-white/95 backdrop-blur-md rounded-3xl p-10 shadow-2xl border-2 border-amber-200 text-center animate-fade-scale-in">
-          <div className="w-24 h-24 rounded-full bg-amber-500 flex items-center justify-center text-white mx-auto mb-6">
-            <AlertCircle className="w-14 h-14" strokeWidth={2.5} />
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-3">You failed this level</h1>
-          <p className="text-xl font-semibold text-amber-700 mb-2">Screening stopped</p>
-          <p className="text-lg text-slate-600 mb-8">
-            You didn’t pass this step after several attempts. You can try again or go back home.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              onClick={retryScreener}
-              className="min-h-14 px-8 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-lg shadow-lg hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all focus:outline-none focus:ring-4 focus:ring-indigo-300"
-            >
-              Try again
-            </button>
-            <button
-              onClick={() => navigate("/home", { replace: true })}
-              className="min-h-14 px-8 rounded-2xl border-4 border-indigo-500 text-indigo-700 font-bold text-lg hover:bg-indigo-50 hover:border-indigo-600 hover:scale-[1.02] active:scale-[0.98] transition-all focus:outline-none focus:ring-4 focus:ring-indigo-200"
-            >
-              Home
-            </button>
-          </div>
-        </div>
-      </div>
+      <SetupFailureCard
+        title="Screening needs more support"
+        subtitle="The screener stopped"
+        summary="The learner did not meet the required control checks in this run."
+        guidance={[
+          `Stabilization step: leaving target repeatedly can fail after ${FAILED_STABILIZATION_ATTEMPTS} retries.`,
+          `Corridor step: leaving the strip can fail after ${S4_MAX_DEVIATIONS_BEFORE_FAIL} deviations.`,
+          "Try in a calm environment with clear camera framing and short breaks.",
+        ]}
+        primaryLabel="Try screener again"
+        secondaryLabel="Back to Home"
+        onPrimary={retryScreener}
+        onSecondary={() => navigate("/home", { replace: true })}
+      />
     );
   }
 
@@ -660,7 +649,7 @@ export default function PathScreener() {
     ];
 
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pt-28 pb-10 px-6">
+      <div className="min-h-screen flex flex-col items-center justify-center easeL-page-bg pt-28 pb-10 px-6">
         <div className="max-w-2xl w-full bg-white/95 backdrop-blur-md rounded-3xl p-8 md:p-10 shadow-2xl border-2 border-emerald-100 animate-fade-scale-in">
           <div className="flex items-center gap-4 mb-6">
             <div className="w-16 h-16 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shrink-0">
@@ -672,16 +661,19 @@ export default function PathScreener() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 p-5 rounded-2xl border-2 border-indigo-200 bg-indigo-50/60 mb-6">
-            <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center text-indigo-600 shrink-0 shadow-sm">
+          <div
+            className="mb-6 flex items-center gap-4 rounded-2xl border-2 p-5 easeL-accent-bg"
+            style={{ borderColor: "color-mix(in srgb, var(--easeL-primary) 28%, transparent)" }}
+          >
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm easeL-accent-text-strong">
               <ModeIcon className="w-8 h-8" strokeWidth={2.2} />
             </div>
             <div>
-              <p className="text-sm text-indigo-700 font-semibold uppercase tracking-wide">
+              <p className="easeL-accent-text-strong text-sm font-semibold uppercase tracking-wide">
                 Assigned learning profile
               </p>
               <p className="text-xl font-bold text-slate-800">{pathLevel.fullLabel}</p>
-              <p className="text-sm font-semibold text-indigo-700 mt-1">{modeName}</p>
+              <p className="easeL-accent-text-strong mt-1 text-sm font-semibold">{modeName}</p>
               <p className="text-slate-600 text-sm mt-1">{modeBlurb}</p>
             </div>
           </div>
@@ -722,13 +714,13 @@ export default function PathScreener() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
             <button
               onClick={() => saveProfileAndNavigate("/home")}
-              className="min-h-14 px-8 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-lg shadow-lg hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all focus:outline-none focus:ring-4 focus:ring-indigo-300"
+              className="min-h-14 px-8 easeL-btn-solid rounded-2xl text-lg font-bold shadow-lg transition-all hover:scale-[1.02] hover:opacity-95 active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-[color:var(--easeL-focus-ring)]"
             >
               Continue to Home
             </button>
             <button
               onClick={() => saveProfileAndNavigate("/lessons")}
-              className="min-h-14 px-8 rounded-2xl border-4 border-indigo-500 text-indigo-700 font-bold text-lg hover:bg-indigo-50 hover:border-indigo-600 hover:scale-[1.02] active:scale-[0.98] transition-all focus:outline-none focus:ring-4 focus:ring-indigo-200"
+              className="min-h-14 rounded-2xl border-4 border-[color:var(--easeL-primary)] px-8 text-lg font-bold text-[color:var(--easeL-primary)] transition-all hover:scale-[1.02] hover:border-[color:var(--easeL-primary-mid)] hover:bg-[color-mix(in_srgb,var(--easeL-primary)_10%,white)] active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-[color:var(--easeL-focus-ring)]"
             >
               Start Lessons
             </button>
@@ -744,8 +736,10 @@ export default function PathScreener() {
         type="button"
         ref={(el) => { buttonRefs.current["listen-again"] = el; }}
         onClick={playInstructionAgain}
-        className={`inline-flex items-center gap-2 text-xl font-bold py-3 px-6 rounded-2xl border-2 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
-          cursorHoverId === "listen-again" ? "border-indigo-300 text-indigo-600 bg-white/70" : "border-transparent text-slate-700"
+        className={`inline-flex items-center gap-2 rounded-2xl border-2 px-6 py-3 text-xl font-bold transition-all focus:outline-none focus:ring-2 focus:ring-[color:var(--easeL-focus-ring)] ${
+          cursorHoverId === "listen-again"
+            ? "border-[color:color-mix(in_srgb,var(--easeL-primary)_35%,transparent)] bg-white/70 text-[color:var(--easeL-primary)]"
+            : "border-transparent text-slate-700"
         }`}
       >
         <Volume2 className="w-7 h-7" aria-hidden /> Listen again
@@ -754,8 +748,10 @@ export default function PathScreener() {
         type="button"
         ref={(el) => { buttonRefs.current["help-btn"] = el; }}
         onClick={openHelpDialog}
-        className={`inline-flex items-center gap-2 text-xl font-bold py-3 px-6 rounded-2xl border-2 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
-          cursorHoverId === "help-btn" ? "border-indigo-300 text-indigo-600 bg-white/70" : "border-transparent text-slate-700"
+        className={`inline-flex items-center gap-2 rounded-2xl border-2 px-6 py-3 text-xl font-bold transition-all focus:outline-none focus:ring-2 focus:ring-[color:var(--easeL-focus-ring)] ${
+          cursorHoverId === "help-btn"
+            ? "border-[color:color-mix(in_srgb,var(--easeL-primary)_35%,transparent)] bg-white/70 text-[color:var(--easeL-primary)]"
+            : "border-transparent text-slate-700"
         }`}
         aria-label="Help: show instruction again"
       >
@@ -777,16 +773,18 @@ export default function PathScreener() {
 
   const helpDialogOverlay = showHelpDialog && (
     <div className="fixed inset-0 z-[55] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm pt-24 pb-8 px-6" aria-modal="true" role="dialog" aria-labelledby="help-dialog-title">
-      <div className="bg-white rounded-3xl shadow-2xl border-2 border-indigo-100 max-w-2xl w-full p-10 md:p-12 flex flex-col items-center gap-8 relative">
+      <div className="easeL-auth-card relative flex w-full max-w-2xl flex-col items-center gap-8 p-10 md:p-12">
         <button
           type="button"
           onClick={() => { setShowHelpDialog(false); stopSpeech(); }}
-          className="absolute top-6 right-6 p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="absolute right-6 top-6 rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-[color:var(--easeL-focus-ring)]"
           aria-label="Close help"
         >
           <X className="w-8 h-8" />
         </button>
-        <p id="help-dialog-title" className="text-2xl font-bold text-indigo-600">Step {step} of 5</p>
+        <p id="help-dialog-title" className="easeL-accent-text-strong text-2xl font-bold">
+          Step {step} of 5
+        </p>
         <p className="text-3xl md:text-4xl font-bold text-slate-800 leading-snug text-center">
           {STEP_INSTRUCTIONS[step]}
         </p>
@@ -803,11 +801,11 @@ export default function PathScreener() {
       aria-hidden={instructionAcknowledged}
     >
       <div
-        className={`bg-white rounded-3xl shadow-2xl border-2 border-indigo-100 max-w-2xl w-full p-10 md:p-12 flex flex-col items-center gap-8 transition-opacity duration-500 ${
+        className={`easeL-auth-card flex w-full max-w-2xl flex-col items-center gap-8 p-10 transition-opacity duration-500 md:p-12 ${
           dialogFading ? "opacity-0" : "opacity-100"
         }`}
       >
-        <p className="text-2xl font-bold text-indigo-600">Step {step} of 5</p>
+        <p className="easeL-accent-text-strong text-2xl font-bold">Step {step} of 5</p>
         <p className="text-3xl md:text-4xl font-bold text-slate-800 leading-snug text-center">
           {STEP_INSTRUCTIONS[step]}
         </p>
@@ -838,8 +836,12 @@ export default function PathScreener() {
         <div className="text-center w-full max-w-2xl mx-auto flex flex-col items-center gap-8">
           <div className="relative flex items-center justify-center" style={{ width: zoneR * 2, height: zoneR * 2 }}>
             <div
-              className="absolute inset-0 rounded-full border-4 border-indigo-500 bg-indigo-100/60 shadow-inner"
-              style={{ width: zoneR * 2, height: zoneR * 2 }}
+              className="easeL-accent-bg absolute inset-0 rounded-full border-4 shadow-inner"
+              style={{
+                borderColor: "color-mix(in srgb, var(--easeL-primary) 45%, transparent)",
+                width: zoneR * 2,
+                height: zoneR * 2,
+              }}
             />
             <div
               className="absolute left-1/2 top-1/2 rounded-full bg-emerald-400 transition-all duration-100 ease-out -translate-x-1/2 -translate-y-1/2"
@@ -868,8 +870,8 @@ export default function PathScreener() {
                 <button
                   key={i}
                   ref={(el) => { buttonRefs.current[id] = el; }}
-                  className={`w-24 h-24 md:w-28 md:h-28 rounded-full border-4 font-bold text-2xl flex items-center justify-center transition-all shadow-lg focus:outline-none focus:ring-4 focus:ring-indigo-400 focus:ring-offset-2 ${
-                    selected ? "bg-emerald-500 border-emerald-700 text-white scale-105" : cursorOver ? "bg-indigo-300 scale-105 shadow-xl" : "bg-indigo-200 border-indigo-600 text-indigo-900"
+                  className={`flex h-24 w-24 items-center justify-center rounded-full border-4 text-2xl font-bold shadow-lg transition-all focus:outline-none focus:ring-4 focus:ring-[color:var(--easeL-focus-ring)] focus:ring-offset-2 md:h-28 md:w-28 ${
+                    selected ? "scale-105 border-emerald-700 bg-emerald-500 text-white" : cursorOver ? "scale-105 bg-[color:color-mix(in_srgb,var(--easeL-primary)_42%,white)] shadow-xl" : "border-[color:var(--easeL-primary)] bg-[color-mix(in_srgb,var(--easeL-primary)_22%,white)] text-[color:var(--easeL-primary)]"
                   }`}
                 >
                   {selected ? <Check className="w-12 h-12 md:w-14 md:h-14" /> : i}
@@ -884,8 +886,9 @@ export default function PathScreener() {
       return (
         <div className="text-center w-full max-w-2xl mx-auto flex flex-col items-center">
           <div
-            className="absolute left-0 right-0 border-4 border-indigo-500 bg-indigo-100/50 shadow-lg rounded-lg"
+            className="easeL-accent-bg absolute left-0 right-0 rounded-lg border-4 shadow-lg"
             style={{
+              borderColor: "color-mix(in srgb, var(--easeL-primary) 45%, transparent)",
               top: corridorY - corridorH / 2,
               height: corridorH,
               left: corridorLeft,
@@ -901,7 +904,7 @@ export default function PathScreener() {
       if (s5Round2Transition) {
         return (
           <div className="text-center w-full max-w-2xl mx-auto flex flex-col items-center gap-8">
-            <p className="text-4xl md:text-5xl font-bold text-purple-600 animate-pulse">Round 2</p>
+            <p className="animate-pulse text-4xl font-bold text-[color:var(--easeL-accent-rose)] md:text-5xl">Round 2</p>
             <p className="text-2xl text-slate-600">Select the 3 circles again.</p>
           </div>
         );
@@ -918,8 +921,8 @@ export default function PathScreener() {
                 <button
                   key={i}
                   ref={(el) => { buttonRefs.current[id] = el; }}
-                  className={`w-24 h-24 md:w-28 md:h-28 rounded-full border-4 font-bold text-2xl flex items-center justify-center transition-all shadow-lg focus:outline-none focus:ring-4 focus:ring-purple-400 focus:ring-offset-2 ${
-                    selected ? "bg-emerald-500 border-emerald-700 text-white scale-105" : cursorOver ? "bg-purple-300 scale-105 shadow-xl" : "bg-purple-200 border-purple-600 text-purple-900"
+                  className={`flex h-24 w-24 items-center justify-center rounded-full border-4 text-2xl font-bold shadow-lg transition-all focus:outline-none focus:ring-4 focus:ring-[color:var(--easeL-focus-ring)] focus:ring-offset-2 md:h-28 md:w-28 ${
+                    selected ? "scale-105 border-emerald-700 bg-emerald-500 text-white" : cursorOver ? "scale-105 bg-[color:color-mix(in_srgb,var(--easeL-accent-rose)_38%,white)] shadow-xl" : "border-[color:var(--easeL-accent-rose)] bg-[color-mix(in_srgb,var(--easeL-accent-rose)_20%,white)] text-[color:#4a1f42]"
                   }`}
                 >
                   {selected ? <Check className="w-12 h-12 md:w-14 md:h-14" /> : i}
@@ -934,10 +937,13 @@ export default function PathScreener() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pt-24 pb-20 flex flex-col overflow-hidden relative">
+    <div className="min-h-screen easeL-page-bg pt-24 pb-20 flex flex-col overflow-hidden relative">
       <video ref={videoRef} className="hidden" autoPlay muted playsInline />
-      <header className="shrink-0 pt-8 pb-8 px-6 text-center border-b border-indigo-100/80 bg-white/40">
-        <p className="text-2xl font-bold text-indigo-600 mb-4">Step {step} of 5</p>
+      <header
+        className="shrink-0 border-b bg-white/40 px-6 pb-8 pt-8 text-center"
+        style={{ borderColor: "color-mix(in srgb, var(--easeL-primary) 15%, transparent)" }}
+      >
+        <p className="easeL-accent-text-strong mb-4 text-2xl font-bold">Step {step} of 5</p>
         <p className="text-3xl md:text-4xl lg:text-[2.25rem] font-bold text-slate-800 leading-snug max-w-4xl mx-auto">
           {STEP_INSTRUCTIONS[step]}
         </p>
@@ -952,18 +958,21 @@ export default function PathScreener() {
           {content()}
         </div>
       </main>
-      <footer className="shrink-0 py-6 px-6 flex flex-col items-center gap-3 border-t border-indigo-100/80 bg-white/30">
+      <footer
+        className="flex shrink-0 flex-col items-center gap-3 bg-white/30 px-6 py-6"
+        style={{ borderTop: "1px solid color-mix(in srgb, var(--easeL-primary) 15%, transparent)" }}
+      >
         {listenAgainBtn}
         <button
           type="button"
           onClick={skipTask}
-          className="text-xs text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-300 rounded px-2 py-1"
+          className="rounded px-2 py-1 text-xs text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-[color:var(--easeL-focus-ring)]"
           title="Skip task"
         >
           Skip
         </button>
       </footer>
-      <Cursor ref={cursorRef} size={24} color="#6366f1" isPenDown={false} tool="brush" />
+      <Cursor ref={cursorRef} size={24} isPenDown={false} tool="brush" />
       {helpDialogOverlay}
       {taskCompleteOverlay}
       {instructionOverlay}

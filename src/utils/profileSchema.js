@@ -41,7 +41,6 @@ export function createDefaultProfile(account) {
       language: account.caregiverReported?.language ?? "en",
       sessionLengthPreference: account.caregiverReported?.sessionLengthPreference ?? 15,
     },
-    eligibilityPassed: null,
     calibration: {
       sensitivity: 50,
       deadzone: 25,

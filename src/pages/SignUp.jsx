@@ -52,7 +52,7 @@ export default function SignUp() {
           sessionLengthPreference: Number(sessionLengthPreference) || 15,
         },
       });
-      navigate(nextPath || "/eligibility", { replace: true });
+      navigate(nextPath || "/calibration", { replace: true });
     } catch (err) {
       setError(err.message || "Sign up failed");
     } finally {

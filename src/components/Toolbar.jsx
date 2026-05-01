@@ -41,7 +41,9 @@ export default function Toolbar({
   const isHovered = (id) => hoveredButton === id;
 
   return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white/90 backdrop-blur-md p-2.5 rounded-3xl shadow-2xl border border-white/60 z-[150] max-w-[95vw] overflow-x-auto">
+    <div
+      className="easeL-auth-card absolute bottom-6 left-1/2 z-[150] flex max-w-[95vw] -translate-x-1/2 items-center gap-3 overflow-x-auto p-2.5"
+    >
       
       {/* Tools Section */}
       <div className="flex items-center gap-2 px-2">
@@ -49,9 +51,9 @@ export default function Toolbar({
           ref={setBtnRef("pencil")}
           className={`p-3 rounded-2xl transition-all duration-200 text-lg ${
             tool === "pencil"
-              ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg scale-105"
+              ? "scale-105 bg-[var(--easeL-primary)] text-white shadow-lg"
               : "bg-gradient-to-br from-slate-50 to-slate-100 text-slate-600 hover:from-slate-100 hover:to-slate-200"
-          } ${isHovered("pencil") ? "ring-4 ring-blue-400 ring-offset-2 ring-offset-white" : ""}`}
+          } ${isHovered("pencil") ? "ring-4 ring-[color:var(--easeL-focus-ring)] ring-offset-2 ring-offset-white" : ""}`}
           title="Pencil"
         >
           ✏️
@@ -60,9 +62,9 @@ export default function Toolbar({
           ref={setBtnRef("eraser")}
           className={`p-3 rounded-2xl transition-all duration-200 text-lg ${
             tool === "eraser"
-              ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg scale-105"
+              ? "scale-105 bg-[var(--easeL-primary)] text-white shadow-lg"
               : "bg-gradient-to-br from-slate-50 to-slate-100 text-slate-600 hover:from-slate-100 hover:to-slate-200"
-          } ${isHovered("eraser") ? "ring-4 ring-blue-400 ring-offset-2 ring-offset-white" : ""}`}
+          } ${isHovered("eraser") ? "ring-4 ring-[color:var(--easeL-focus-ring)] ring-offset-2 ring-offset-white" : ""}`}
           title="Eraser"
         >
           🧽
@@ -81,7 +83,7 @@ export default function Toolbar({
               brushColor === color 
                 ? "ring-4 ring-offset-2 ring-offset-white scale-110 shadow-xl" 
                 : "hover:shadow-lg"
-            } ${isHovered(`col-${color}`) ? "ring-4 ring-blue-400 ring-offset-2 ring-offset-white" : ""}`}
+            } ${isHovered(`col-${color}`) ? "ring-4 ring-[color:var(--easeL-focus-ring)] ring-offset-2 ring-offset-white" : ""}`}
             style={{ 
               backgroundColor: color,
               ringColor: brushColor === color ? color : undefined
@@ -101,9 +103,9 @@ export default function Toolbar({
             ref={setBtnRef(`sz-${value}`)}
             className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 ${
               brushSize === value
-                ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg scale-105"
+                ? "scale-105 bg-[var(--easeL-primary)] text-white shadow-lg"
                 : "bg-gradient-to-br from-slate-50 to-slate-100 text-slate-600 hover:from-slate-100 hover:to-slate-200"
-            } ${isHovered(`sz-${value}`) ? "ring-4 ring-blue-400 ring-offset-2 ring-offset-white" : ""}`}
+            } ${isHovered(`sz-${value}`) ? "ring-4 ring-[color:var(--easeL-focus-ring)] ring-offset-2 ring-offset-white" : ""}`}
             title={`Size: ${label}`}
           >
             <div
@@ -131,7 +133,7 @@ export default function Toolbar({
             canUndo
               ? "bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 hover:from-blue-100 hover:to-blue-200 shadow-md hover:shadow-lg active:scale-95"
               : "bg-gradient-to-br from-slate-50 to-slate-100 text-slate-300 cursor-not-allowed opacity-50"
-          } ${isHovered("undo") && canUndo ? "ring-4 ring-blue-400 ring-offset-2 ring-offset-white" : ""}`}
+          } ${isHovered("undo") && canUndo ? "ring-4 ring-[color:var(--easeL-focus-ring)] ring-offset-2 ring-offset-white" : ""}`}
           title="Undo"
         >
           ↶
@@ -143,7 +145,7 @@ export default function Toolbar({
             canRedo
               ? "bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 hover:from-blue-100 hover:to-blue-200 shadow-md hover:shadow-lg active:scale-95"
               : "bg-gradient-to-br from-slate-50 to-slate-100 text-slate-300 cursor-not-allowed opacity-50"
-          } ${isHovered("redo") && canRedo ? "ring-4 ring-blue-400 ring-offset-2 ring-offset-white" : ""}`}
+          } ${isHovered("redo") && canRedo ? "ring-4 ring-[color:var(--easeL-focus-ring)] ring-offset-2 ring-offset-white" : ""}`}
           title="Redo"
         >
           ↷
@@ -151,7 +153,7 @@ export default function Toolbar({
         <button
           ref={setBtnRef("clear")}
           className={`p-3 text-lg rounded-2xl transition-all duration-200 bg-gradient-to-br from-red-50 to-red-100 text-red-600 hover:from-red-100 hover:to-red-200 shadow-md hover:shadow-lg active:scale-95 ${
-            isHovered("clear") ? "ring-4 ring-blue-400 ring-offset-2 ring-offset-white" : ""
+            isHovered("clear") ? "ring-4 ring-[color:var(--easeL-focus-ring)] ring-offset-2 ring-offset-white" : ""
           }`}
           title="Clear Canvas"
         >

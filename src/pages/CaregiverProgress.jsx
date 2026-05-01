@@ -1,5 +1,4 @@
-import { useMemo, createElement } from "react";
-import { Link } from "react-router-dom";
+import { useMemo, useState, createElement } from "react";
 import {
   BookOpen,
   CheckCircle2,
@@ -9,9 +8,16 @@ import {
   Activity,
   Timer,
   AlertTriangle,
+  X,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { getTrialLog, getSessionLog, getSettings, getTelemetryLog } from "../utils/persistence";
+import {
+  getTrialLog,
+  getSessionLog,
+  getSettings,
+  getTelemetryLog,
+  getCloudLogState,
+} from "../utils/persistence";
 import {
   computeStageLadder,
   summariseSessions,
@@ -19,7 +25,11 @@ import {
   recentJitter,
   computeFatigueIndex,
 } from "../utils/stageAdaptation";
-import { buildCaregiverExport, downloadCaregiverExport } from "../utils/dataExport";
+import {
+  buildCaregiverReadableReport,
+  downloadCaregiverReportPdf,
+  downloadCaregiverReportPng,
+} from "../utils/dataExport";
 
 const MS_PER_HOUR = 1000 * 60 * 60;
 
@@ -53,6 +63,9 @@ function formatDuration(ms) {
  */
 export default function CaregiverProgress() {
   const { user, profile } = useAuth();
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [reportData, setReportData] = useState(null);
+  const [downloadFormat, setDownloadFormat] = useState("pdf");
 
   const data = useMemo(() => {
     const trialLog = getTrialLog();
@@ -88,17 +101,29 @@ export default function CaregiverProgress() {
     ? data.sessions[0].fatigueIndex
     : computeFatigueIndex(data.trialLog.slice(-10));
 
-  const handleExport = () => {
-    const ok =
-      typeof window !== "undefined" &&
-      window.confirm(
-        "Export a JSON file with your child's derived performance metrics? " +
-          "No raw video or biometric data is included. EaseL is not a medical device.",
-      );
-    if (!ok) return;
+  const generateReport = () => {
     const settings = getSettings();
-    const payload = buildCaregiverExport({ profile, settings });
-    downloadCaregiverExport(payload);
+    const next = buildCaregiverReadableReport({
+      profile,
+      settings,
+      userId: user?.uid ?? "local",
+    });
+    setReportData(next);
+    return next;
+  };
+
+  const openReportPreview = () => {
+    const next = generateReport();
+    if (next) setPreviewOpen(true);
+  };
+
+  const handleDownloadFromPreview = () => {
+    if (!reportData) return;
+    if (downloadFormat === "png") {
+      downloadCaregiverReportPng(reportData);
+      return;
+    }
+    downloadCaregiverReportPdf(reportData);
   };
 
   const avgAdherence =
@@ -108,12 +133,66 @@ export default function CaregiverProgress() {
             data.adherenceSpark.length,
         )
       : null;
+
+  const cloudLogState = getCloudLogState();
+
+  if (cloudLogState === "loading") {
+    return (
+      <div className="easeL-page-bg flex min-h-screen items-center justify-center pt-24">
+        <div className="easeL-auth-card p-8 text-center">
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-[var(--easeL-primary)]" />
+          <p className="font-semibold text-slate-700">Loading cloud progress data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (cloudLogState === "denied") {
+    return (
+      <div className="easeL-page-bg flex min-h-screen items-center justify-center px-6 pt-24">
+        <div className="max-w-lg rounded-3xl border border-amber-200 bg-white p-8 text-center shadow-xl">
+          <h2 className="text-2xl font-bold text-slate-800">Permission denied</h2>
+          <p className="mt-2 text-slate-600">
+            We could not read cloud progress logs for this account. Please check Firestore rules.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="easeL-btn-outline mt-4 w-auto px-5"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (cloudLogState === "network") {
+    return (
+      <div className="easeL-page-bg flex min-h-screen items-center justify-center px-6 pt-24">
+        <div className="max-w-lg rounded-3xl border border-rose-200 bg-white p-8 text-center shadow-xl">
+          <h2 className="text-2xl font-bold text-slate-800">Network error</h2>
+          <p className="mt-2 text-slate-600">
+            We could not fetch cloud progress logs. Please retry after reconnecting.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="easeL-btn-outline mt-4 w-auto px-5"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pt-24 pb-16 px-6">
+    <div className="easeL-page-bg min-h-screen px-6 pb-16 pt-24">
       <div className="max-w-6xl mx-auto space-y-8">
         <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-indigo-600 uppercase tracking-wider">
+            <p className="easeL-accent-text-strong text-sm font-semibold uppercase tracking-wider">
               Caregiver dashboard
             </p>
             <h1 className="text-3xl font-bold text-slate-800 mt-1">
@@ -124,22 +203,15 @@ export default function CaregiverProgress() {
               Used by caregivers and clinicians. This is not a medical report.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="w-full md:w-auto">
             <button
               type="button"
-              onClick={handleExport}
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white text-slate-700 font-semibold border-2 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
+              onClick={openReportPreview}
+              className="inline-flex items-center gap-2 rounded-2xl border border-[color:color-mix(in_srgb,var(--easeL-primary)_28%,white)] bg-[color-mix(in_srgb,var(--easeL-primary)_10%,white)] px-5 py-3 font-semibold text-[color:var(--easeL-primary)] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[color-mix(in_srgb,var(--easeL-primary)_16%,white)] hover:shadow-md"
             >
-              <Download className="w-4 h-4" />
-              Export JSON
+              <Download className="h-4 w-4" />
+              <span>Preview & Download Report</span>
             </button>
-            <Link
-              to="/home"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95"
-            >
-              <BookOpen className="w-4 h-4" />
-              Back to app
-            </Link>
           </div>
         </header>
 
@@ -197,7 +269,7 @@ export default function CaregiverProgress() {
                   key={row.stage}
                   className={`flex items-center justify-between px-4 py-3 rounded-2xl border-2 ${
                     onThisStage
-                      ? "bg-indigo-50 border-indigo-300"
+                      ? "border-[color:color-mix(in_srgb,var(--easeL-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--easeL-primary)_10%,white)]"
                       : mastered
                       ? "bg-emerald-50 border-emerald-200"
                       : "bg-white border-slate-200"
@@ -320,15 +392,118 @@ export default function CaregiverProgress() {
           quick reference — it is not a clinical assessment.
         </section>
       </div>
+
+      {previewOpen && reportData && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/50 px-4 py-8 backdrop-blur-sm">
+          <div className="relative max-h-[88vh] w-full max-w-4xl overflow-auto rounded-3xl border border-white/60 bg-white p-6 shadow-2xl md:p-8">
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(false)}
+              className="absolute right-4 top-4 rounded-xl p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              aria-label="Close report preview"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <p className="text-sm font-semibold uppercase tracking-wide easeL-accent-text-strong">
+              Report preview
+            </p>
+            <h2 className="mt-1 text-2xl font-bold text-slate-800">EaseL Progress Report</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Child: {reportData.childName} · Path {reportData.pathId} · Level {reportData.pathLevel}
+            </p>
+
+            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <PreviewStat label="Sessions" value={reportData.summary.sessions} />
+              <PreviewStat label="Attempts" value={reportData.summary.attempts} />
+              <PreviewStat
+                label="Average adherence"
+                value={
+                  reportData.summary.avgAdherence != null
+                    ? `${reportData.summary.avgAdherence}%`
+                    : "—"
+                }
+              />
+              <PreviewStat label="Trend" value={reportData.summary.adherenceTrend} />
+              <PreviewStat
+                label="Mastered levels"
+                value={reportData.summary.levelsMastered}
+              />
+              <PreviewStat
+                label="Needs support"
+                value={reportData.summary.levelsNeedingSupport}
+              />
+            </div>
+
+            <PreviewList title="Readable Summary" items={reportData.narrative} />
+            <PreviewList title="Strengths" items={reportData.strengths} />
+            <PreviewList title="Support Focus" items={reportData.supportsNeeded} />
+            <PreviewList title="Recommendations" items={reportData.recommendations} />
+
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Download
+              </p>
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <select
+                  value={downloadFormat}
+                  onChange={(e) => setDownloadFormat(e.target.value)}
+                  className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[color:var(--easeL-focus-ring)]"
+                >
+                  <option value="pdf">PDF (.pdf)</option>
+                  <option value="png">Image (.png)</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={handleDownloadFromPreview}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[color:var(--easeL-primary)] px-4 font-semibold text-white transition-all hover:opacity-95"
+                >
+                  <Download className="h-4 w-4" />
+                  Download
+                </button>
+              </div>
+            </div>
+
+            <p className="mt-4 text-xs text-slate-500">{reportData.disclaimer}</p>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function PreviewStat({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-lg font-bold text-slate-800">{value}</p>
+    </div>
+  );
+}
+
+function PreviewList({ title, items }) {
+  return (
+    <section className="mt-5 rounded-2xl border border-slate-200 bg-white px-4 py-4">
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">{title}</h3>
+      <div className="mt-2 space-y-2">
+        {items.map((item, idx) => (
+          <p key={`${title}-${idx}`} className="text-sm text-slate-700">
+            • {item}
+          </p>
+        ))}
+      </div>
+    </section>
   );
 }
 
 function SummaryTile({ icon: Icon, label, value }) {
   return (
     <div className="bg-white/90 backdrop-blur rounded-2xl p-4 shadow-lg border border-white/50 flex items-center gap-3">
-      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center">
-        {createElement(Icon, { className: "w-5 h-5 text-indigo-600" })}
+      <div
+        className="flex h-10 w-10 items-center justify-center rounded-xl"
+        style={{ background: "color-mix(in srgb, var(--easeL-primary) 16%, white)" }}
+      >
+        {createElement(Icon, { className: "easeL-accent-text-strong h-5 w-5" })}
       </div>
       <div>
         <p className="text-xs text-slate-500 uppercase tracking-wide">{label}</p>

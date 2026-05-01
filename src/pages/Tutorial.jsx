@@ -101,21 +101,32 @@ export default function Tutorial() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pt-32 pb-20 flex flex-col items-center justify-center px-6">
-      <div className="max-w-lg w-full bg-white/90 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/50 text-center animate-fade-scale-in">
+    <div className="easeL-page-bg flex min-h-screen flex-col items-center justify-center px-6 pb-20 pt-32">
+      <div
+        className="animate-fade-scale-in w-full max-w-lg rounded-3xl p-8 text-center shadow-2xl"
+        style={{
+          background: "color-mix(in srgb, var(--easeL-bg-section) 94%, transparent)",
+          border: "2px solid var(--easeL-border-subtle)",
+        }}
+      >
         <div className="flex justify-end -mt-1 -mr-1 mb-2">
           <button
             type="button"
             onClick={() => setMuted((m) => !m)}
-            className="p-2 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+            className="rounded-full p-2 transition-colors hover:opacity-90"
+            style={{ color: "var(--easeL-text-muted)" }}
             aria-label={muted ? "Unmute" : "Mute"}
           >
             {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
           </button>
         </div>
 
-        <h1 className="text-2xl font-bold text-slate-800 mb-2">Your movement moves your brush</h1>
-        <p className="text-slate-600 text-lg mb-6">{INSTRUCTION}</p>
+        <h1 className="mb-2 text-2xl font-bold" style={{ color: "var(--easeL-text)" }}>
+          Your movement moves your brush
+        </h1>
+        <p className="mb-6 text-lg" style={{ color: "var(--easeL-text-muted)" }}>
+          {INSTRUCTION}
+        </p>
 
         <div className="relative w-full max-w-md aspect-video rounded-2xl overflow-hidden bg-slate-900 border-4 border-white/80 shadow-2xl mx-auto mb-8">
           <video
@@ -130,13 +141,19 @@ export default function Tutorial() {
         <button
           type="button"
           onClick={handleComplete}
-          className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95 transition-all text-lg"
+          className="easeL-btn-solid w-full text-lg transition-all"
         >
           Continue
         </button>
       </div>
 
-      <Cursor size={24} color="#6366f1" isPenDown={false} tool="brush" left={cursorPos.x} top={cursorPos.y} />
+      <Cursor
+        size={24}
+        isPenDown={false}
+        tool="brush"
+        left={cursorPos.x}
+        top={cursorPos.y}
+      />
     </div>
   );
 }

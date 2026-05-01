@@ -10,7 +10,11 @@ import {
 } from "lucide-react";
 import { useAppState } from "../context/AppStateContext";
 import { getTrialLog, getSessionLog } from "../utils/persistence";
-import { buildCaregiverExport, downloadCaregiverExport } from "../utils/dataExport";
+import {
+  buildCaregiverReadableReport,
+  downloadCaregiverReportPdf,
+  downloadCaregiverReportPng,
+} from "../utils/dataExport";
 
 const MS_PER_HOUR = 1000 * 60 * 60;
 
@@ -32,9 +36,24 @@ export default function Profile({ user, onSignOut }) {
   const { profile, settings } = useAppState();
   const [exported, setExported] = useState(false);
 
-  const handleExport = () => {
-    const payload = buildCaregiverExport({ profile, settings });
-    downloadCaregiverExport(payload);
+  const handleExportPdf = () => {
+    const report = buildCaregiverReadableReport({
+      profile,
+      settings,
+      userId: user?.uid ?? "local",
+    });
+    downloadCaregiverReportPdf(report);
+    setExported(true);
+    setTimeout(() => setExported(false), 2500);
+  };
+
+  const handleExportPng = () => {
+    const report = buildCaregiverReadableReport({
+      profile,
+      settings,
+      userId: user?.uid ?? "local",
+    });
+    downloadCaregiverReportPng(report);
     setExported(true);
     setTimeout(() => setExported(false), 2500);
   };
@@ -56,15 +75,6 @@ export default function Profile({ user, onSignOut }) {
   const practiceHours = (totalPracticeMs / MS_PER_HOUR).toFixed(1);
 
   const setup = [
-    {
-      label: "Eligibility",
-      value:
-        profile?.eligibilityPassed === true
-          ? "Passed"
-          : profile?.eligibilityPassed === false
-          ? "Failed"
-          : "Not completed",
-    },
     {
       label: "Calibration",
       value: formatDate(profile?.calibration?.lastCalibratedAt),
@@ -139,11 +149,14 @@ export default function Profile({ user, onSignOut }) {
     : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pt-24 pb-16 px-6">
+    <div className="easeL-page-bg min-h-screen px-6 pb-16 pt-24">
       <div className="max-w-3xl mx-auto space-y-8">
         <div className="bg-white/90 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/50">
           <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shrink-0">
+            <div
+              className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full text-2xl font-bold text-white"
+              style={{ background: "var(--easeL-primary)" }}
+            >
               {initials}
             </div>
             <div className="flex-1 min-w-0">
@@ -203,37 +216,37 @@ export default function Profile({ user, onSignOut }) {
         <div className="bg-white/90 backdrop-blur-md rounded-3xl p-4 shadow-2xl border border-white/50 space-y-1">
           <Link
             to="/calibration"
-            className="flex items-center gap-3 p-4 rounded-2xl hover:bg-indigo-50 transition-colors text-slate-700"
+            className="flex items-center gap-3 rounded-2xl p-4 text-slate-700 transition-colors hover:bg-[color-mix(in_srgb,var(--easeL-primary)_8%,white)]"
           >
-            <Target className="w-5 h-5 text-indigo-500" />
+            <Target className="easeL-accent-text-strong h-5 w-5" />
             Re-run calibration
           </Link>
           <Link
             to="/screener"
-            className="flex items-center gap-3 p-4 rounded-2xl hover:bg-indigo-50 transition-colors text-slate-700"
+            className="flex items-center gap-3 rounded-2xl p-4 text-slate-700 transition-colors hover:bg-[color-mix(in_srgb,var(--easeL-primary)_8%,white)]"
           >
-            <RefreshCcw className="w-5 h-5 text-indigo-500" />
+            <RefreshCcw className="easeL-accent-text-strong h-5 w-5" />
             Re-run screener
           </Link>
           <Link
             to="/settings"
-            className="flex items-center gap-3 p-4 rounded-2xl hover:bg-indigo-50 transition-colors text-slate-700"
+            className="flex items-center gap-3 rounded-2xl p-4 text-slate-700 transition-colors hover:bg-[color-mix(in_srgb,var(--easeL-primary)_8%,white)]"
           >
-            <SettingsIcon className="w-5 h-5 text-indigo-500" />
+            <SettingsIcon className="easeL-accent-text-strong h-5 w-5" />
             Settings
           </Link>
           <button
             type="button"
-            onClick={handleExport}
-            className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-indigo-50 transition-colors text-slate-700 text-left"
+            onClick={handleExportPdf}
+            className="group flex w-full items-center gap-3 rounded-2xl border border-[color:color-mix(in_srgb,var(--easeL-primary)_25%,white)] bg-[color-mix(in_srgb,var(--easeL-primary)_8%,white)] p-4 text-left text-[color:var(--easeL-primary)] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[color-mix(in_srgb,var(--easeL-primary)_13%,white)] hover:shadow-md"
           >
             {exported ? (
               <Check className="w-5 h-5 text-emerald-600" />
             ) : (
-              <Download className="w-5 h-5 text-indigo-500" />
+              <Download className="h-5 w-5 transition-transform group-hover:scale-110" />
             )}
             <div className="flex-1">
-              <p className="font-medium">Export caregiver data (JSON)</p>
+              <p className="font-medium">Export progress report (PDF)</p>
               <p className="text-xs text-slate-500 mt-0.5">
                 Only derived metrics — no video, no biometric templates (§9.2).
               </p>
@@ -241,6 +254,19 @@ export default function Profile({ user, onSignOut }) {
             {exported && (
               <span className="text-emerald-600 text-sm font-medium">Downloaded</span>
             )}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportPng}
+            className="group flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-[color:color-mix(in_srgb,var(--easeL-primary)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--easeL-primary)_6%,white)] hover:shadow-md"
+          >
+            <Download className="easeL-accent-text-strong h-5 w-5 transition-transform group-hover:scale-110" />
+            <div className="flex-1">
+              <p className="font-medium">Export progress report (PNG)</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Shareable one-page summary in readable language.
+              </p>
+            </div>
           </button>
           <button
             type="button"

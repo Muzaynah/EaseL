@@ -116,6 +116,81 @@
   cursor: not-allowed;
 }
 
+/* Inline / toolbar primary (replaces indigo→purple Tailwind gradients) */
+.easeL-btn-solid {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  padding: 0 1.25rem;
+  border-radius: var(--easeL-radius-lg);
+  background: var(--easeL-primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.0625rem;
+  line-height: 1.25;
+  box-shadow: var(--easeL-shadow-soft);
+  transition: opacity 0.2s;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.easeL-btn-solid:hover:not(:disabled) {
+  opacity: 0.95;
+}
+
+.easeL-btn-solid:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.easeL-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  padding: 0 1.25rem;
+  border-radius: var(--easeL-radius-lg);
+  background: var(--easeL-bg-section);
+  color: var(--easeL-text);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  border: 2px solid var(--easeL-border-subtle);
+  transition: background 0.2s, border-color 0.2s;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.easeL-btn-outline:hover:not(:disabled) {
+  border-color: var(--easeL-primary-mid);
+  background: color-mix(in srgb, var(--easeL-primary) 6%, white);
+}
+
+.easeL-chip-selected {
+  background: color-mix(in srgb, var(--easeL-primary) 16%, white);
+  color: var(--easeL-primary);
+  border: 1px solid color-mix(in srgb, var(--easeL-primary) 40%, transparent);
+}
+
+/* Semantic aliases — use instead of raw Tailwind indigo/purple across lessons & screeners */
+.easeL-accent-bg {
+  background: color-mix(in srgb, var(--easeL-primary) 12%, white);
+}
+.easeL-accent-border {
+  border-color: color-mix(in srgb, var(--easeL-primary) 40%, transparent);
+}
+.easeL-accent-text-strong {
+  color: var(--easeL-primary);
+}
+.easeL-hud-bar {
+  background: var(--easeL-primary);
+  color: #fff;
+  border: 1px solid color-mix(in srgb, var(--easeL-primary) 55%, #1a1526);
+}
+
 .easeL-input {
   width: 100%;
   min-height: 3rem;

@@ -107,15 +107,19 @@ export default function LessonInstructionCard({
     <button
       type="button"
       onClick={() => setVisible(false)}
-      className="fixed left-1/2 top-28 z-40 -translate-x-1/2 max-w-[560px] w-[90%] px-6 py-4 rounded-3xl bg-white/95 backdrop-blur-md border-2 border-indigo-300 shadow-2xl text-left animate-fade-scale-in"
+      className="easeL-auth-card animate-fade-scale-in fixed left-1/2 top-28 z-40 w-[90%] max-w-[560px] -translate-x-1/2 border-2 px-6 py-4 text-left shadow-2xl"
+      style={{ borderColor: "color-mix(in srgb, var(--easeL-primary) 35%, transparent)" }}
       aria-label="Dismiss instruction"
     >
       <div className="flex items-start gap-3">
-        <div className="shrink-0 w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white">
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white"
+          style={{ background: "var(--easeL-primary)" }}
+        >
           <Info className="w-5 h-5" />
         </div>
         <div className="flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 mb-1">
+          <p className="easeL-accent-text-strong mb-1 text-xs font-semibold uppercase tracking-wide">
             {language === "ur" ? "ہدایت" : "How to play"}
           </p>
           <p className="text-slate-800 text-base font-medium leading-snug">{copy}</p>

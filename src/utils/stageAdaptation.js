@@ -21,6 +21,7 @@ import { getStage } from "./lessonContent";
 // for CP users while still being meaningful.
 const DEFAULT_MASTERY_WINDOW = 4;   // last n attempts considered
 const DEFAULT_MASTERY_PASSES = 3;   // k of n must pass
+export const STAGE_UNLOCK_ADHERENCE = 80;
 
 // "Pass" means meeting the stage's required adherence (for trace stages) OR
 // the binary success flag from the trial (hold/activation stages).
@@ -62,10 +63,30 @@ export function mostRecent(trials, n) {
 export function didTrialPass(trial, stageDef) {
   if (!trial) return false;
   if (!stageDef) return Boolean(trial.success);
-  if (stageDef.requiredAdherence != null && typeof trial.adherence === "number") {
-    return trial.adherence >= stageDef.requiredAdherence;
+  const required =
+    typeof trial.requiredAdherence === "number"
+      ? trial.requiredAdherence
+      : stageDef.requiredAdherence;
+  if (required != null && typeof trial.adherence === "number") {
+    return trial.adherence >= required;
   }
   return Boolean(trial.success);
+}
+
+/**
+ * Dynamic pass threshold: starts higher than legacy stage thresholds and rises
+ * after recent successful attempts to push gradual mastery.
+ */
+export function getDynamicRequiredAdherence(stageDef, recentTrials) {
+  const base = Math.max(60, stageDef?.requiredAdherence ?? 50);
+  if (!Array.isArray(recentTrials) || recentTrials.length === 0) return base;
+  let streak = 0;
+  for (let i = recentTrials.length - 1; i >= 0; i--) {
+    if (recentTrials[i]?.success) streak += 1;
+    else break;
+  }
+  const raised = base + Math.min(20, streak * 5);
+  return Math.max(base, Math.min(90, raised));
 }
 
 // ---- fatigue index (§5.4, §7.2) ------------------------------------------
@@ -262,8 +283,15 @@ export function maybeAdvanceStage({ profile, trialLog, userId }) {
     mode: stageDef.mode,
     stage: current,
   });
-  const mastery = evaluateMastery(stageDef, stageTrials);
-  if (mastery.status === "advance") return current + 1;
+  const latest = stageTrials[stageTrials.length - 1];
+  // Fast progression rule: one strong pass unlocks the next stage immediately.
+  if (latest && typeof latest.adherence === "number" && latest.adherence >= STAGE_UNLOCK_ADHERENCE) {
+    return current + 1;
+  }
+  // For non-adherence stages (e.g. hold), one successful attempt advances.
+  if (latest && typeof latest.adherence !== "number" && latest.success) {
+    return current + 1;
+  }
   return null;
 }
 

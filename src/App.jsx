@@ -16,13 +16,22 @@ import Path2Lesson from "./screens/Path2Lesson";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Calibration from "./pages/Calibration";
-import EligibilityGate from "./pages/EligibilityGate";
 import PathScreener from "./pages/PathScreener";
 import Tutorial from "./pages/Tutorial";
 import CaregiverProgress from "./pages/CaregiverProgress";
+import GlobalEaseLCursor from "./components/GlobalEaseLCursor";
+import { CursorPositionBridgeProvider } from "./context/CursorPositionBridgeContext";
 
 export default function App() {
-  const { user, profile, loading: authLoading, signOut } = useAuth();
+  const {
+    user,
+    profile,
+    loading: authLoading,
+    signOut,
+    profileStatus,
+    reloadProfile,
+    error: authError,
+  } = useAuth();
   const { hydrated } = useAppState();
   const location = useLocation();
 
@@ -31,7 +40,7 @@ export default function App() {
   /**
    * ProtectedRoute: requires authentication + enforces setup order.
    * When the user's next required step isn't the current page, redirect to it.
-   * Accepts `allowDuringSetup` for the setup pages themselves (eligibility/calibration/etc.),
+   * Accepts `allowDuringSetup` for the setup pages themselves (calibration/tutorial/screener),
    * and `caregiver` for pages caregivers may access anytime (settings/profile).
    */
   const ProtectedRoute = ({ children, allowDuringSetup = false, caregiver = false }) => {
@@ -61,10 +70,46 @@ export default function App() {
     );
   }
 
+  if (isAuthenticated && (profileStatus === "missing" || profileStatus === "corrupt" || profileStatus === "error")) {
+    return (
+      <div className="easeL-loading-screen px-6">
+        <div className="max-w-xl rounded-3xl border border-rose-200 bg-white p-6 text-left shadow-xl">
+          <h2 className="text-2xl font-bold text-slate-800">Profile recovery required</h2>
+          <p className="mt-2 text-slate-600">
+            {profileStatus === "missing"
+              ? "Your cloud profile is missing. Please retry loading or sign out and sign in again."
+              : profileStatus === "corrupt"
+              ? "Your cloud profile data looks invalid. Please retry loading. If this persists, contact support."
+              : authError || "We could not load your cloud profile."}
+          </p>
+          <div className="mt-4 flex gap-2">
+            <button type="button" className="easeL-btn-solid w-auto px-4" onClick={() => reloadProfile()}>
+              Retry
+            </button>
+            <button
+              type="button"
+              className="easeL-btn-outline w-auto px-4"
+              onClick={() => signOut()}
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const inSetup = isSetupRoute(location.pathname);
 
   return (
-    <>
+    <CursorPositionBridgeProvider>
+      <>
+      <a
+        href="#main-content"
+        className="easeL-skip-link"
+      >
+        Skip to main content
+      </a>
       <Navbar
         isAuthenticated={isAuthenticated}
         user={user}
@@ -72,21 +117,15 @@ export default function App() {
         inSetup={inSetup}
         onSignOut={signOut}
       />
+      <GlobalEaseLCursor />
       <DevMenu />
-      <Routes>
+        <main id="main-content" tabIndex={-1}>
+          <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
 
         {/* Setup flow routes — reachable only in the correct order */}
-        <Route
-          path="/eligibility"
-          element={
-            <ProtectedRoute allowDuringSetup>
-              <EligibilityGate />
-            </ProtectedRoute>
-          }
-        />
         <Route
           path="/calibration"
           element={
@@ -189,7 +228,9 @@ export default function App() {
         />
 
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </>
+          </Routes>
+        </main>
+      </>
+    </CursorPositionBridgeProvider>
   );
 }

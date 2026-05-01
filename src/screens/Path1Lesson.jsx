@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, Target as TargetIcon, Play, Volume2, VolumeX, RefreshCw, LogOut, CheckCircle2 } from "lucide-react";
+import {
+  Eye,
+  Target as TargetIcon,
+  Play,
+  Volume2,
+  VolumeX,
+  RefreshCw,
+  LogOut,
+  Pause,
+  CircleCheck,
+  CircleX,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useCursorPositionBridgeRef } from "../context/CursorPositionBridgeContext";
 import { useFaceMesh } from "../hooks/useFaceMesh";
 import { useGestureControl } from "../hooks/useGestureControl";
 import { useCalibratedCursor } from "../hooks/useCalibratedCursor";
@@ -10,12 +22,8 @@ import { useSessionTimer } from "../hooks/useSessionTimer";
 import ReinforcementBurst from "../components/ReinforcementBurst";
 import BreakPrompt from "../components/BreakPrompt";
 import GhostStrokePreview from "../components/GhostStrokePreview";
-import LessonInstructionCard from "../components/LessonInstructionCard";
-import Cursor from "../components/Cursor";
 import MasteryToast from "../components/MasteryToast";
-import TroubleshootAssist from "../components/TroubleshootAssist";
 import { getStage } from "../utils/lessonContent";
-import { getStageLessonPath } from "../utils/lessonPath";
 import { appendTrialLog, appendSessionLog, getTrialLog } from "../utils/persistence";
 import { getEffectiveActivationMethod } from "../utils/profileSchema";
 import { resolveActivationConfig } from "../utils/activationConfig";
@@ -34,10 +42,171 @@ const CANVAS_HEIGHT = 700;
 // Full-fill time for the Stage 0 "any movement = fill" animation.  Shorter =
 // more immediate cause-and-effect feedback.  2.5 s feels instant to a child
 // while still giving caregivers time to confirm the movement was deliberate.
-const STAGE0_FILL_MS = 2500;
-const AUTOCOMPLETE_MS = 1400;
+const AUTOCOMPLETE_MS = 950;
 
 const STAGE_ICONS = { 0: Eye, 1: TargetIcon, 2: Play };
+const DIR_LESSONS = ["left", "right", "up", "down"];
+const TRACE_LESSONS = ["line", "circle", "slanted"];
+
+function buildSegmentCenterline(start, end, segments = 84) {
+  const pts = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    pts.push({
+      x: start.x + (end.x - start.x) * t,
+      y: start.y + (end.y - start.y) * t,
+    });
+  }
+  return pts;
+}
+
+function buildPath1LessonPath(stageDef, attemptIndex, width, height) {
+  if (stageDef.stage === 0) {
+    const dir = DIR_LESSONS[attemptIndex % DIR_LESSONS.length];
+    const cx = width / 2;
+    const cy = height / 2;
+    const len = 220;
+    const map = {
+      left: [{ x: cx + len / 2, y: cy }, { x: cx - len / 2, y: cy }],
+      right: [{ x: cx - len / 2, y: cy }, { x: cx + len / 2, y: cy }],
+      up: [{ x: cx, y: cy + len / 2 }, { x: cx, y: cy - len / 2 }],
+      down: [{ x: cx, y: cy - len / 2 }, { x: cx, y: cy + len / 2 }],
+    };
+    const centerline = map[dir];
+    return {
+      type: "straight",
+      centerline,
+      start: centerline[0],
+      end: centerline[1],
+      width: 80,
+      lessonDirection: dir,
+    };
+  }
+
+  if (stageDef.stage === 1) {
+    const marginX = 180;
+    const marginY = 140;
+    const x = marginX + Math.random() * (width - marginX * 2);
+    const y = marginY + Math.random() * (height - marginY * 2);
+    const holdRadius = Math.max(100, (stageDef.holdRadius ?? 140) - 40);
+    return {
+      type: "hold",
+      start: { x, y },
+      end: { x, y },
+      width: holdRadius * 2,
+      centerline: [{ x, y }],
+      holdRadius,
+      holdMs: 3000,
+    };
+  }
+
+  const variant = TRACE_LESSONS[attemptIndex % TRACE_LESSONS.length];
+  if (variant === "line") {
+    const start = { x: 270, y: height / 2 };
+    const end = { x: width - 270, y: height / 2 };
+    return {
+      type: "straight",
+      start,
+      end,
+      width: 96,
+      centerline: buildSegmentCenterline(start, end),
+      traceVariant: variant,
+    };
+  }
+  if (variant === "slanted") {
+    const start = { x: 280, y: height - 200 };
+    const end = { x: width - 280, y: 200 };
+    return {
+      type: "straight",
+      start,
+      end,
+      width: 96,
+      centerline: buildSegmentCenterline(start, end),
+      traceVariant: variant,
+    };
+  }
+  const cx = width / 2;
+  const cy = height / 2;
+  const r = 170;
+  const points = 90;
+  const centerline = [];
+  for (let i = 0; i <= points; i++) {
+    const t = (i / points) * Math.PI * 2 - Math.PI / 2;
+    centerline.push({ x: cx + Math.cos(t) * r, y: cy + Math.sin(t) * r });
+  }
+  return {
+    type: "closed",
+    centerline,
+    width: 96,
+    start: centerline[0],
+    end: centerline[centerline.length - 1],
+    traceVariant: variant,
+  };
+}
+
+function expectedDirectionVector(pathValue, fillHeadValue) {
+  const center = pathValue?.centerline;
+  if (!center || center.length < 2) return null;
+  const idx = Math.max(0, Math.min(center.length - 2, Math.floor(fillHeadValue)));
+  const from = center[idx];
+  const to = center[idx + 1];
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const mag = Math.hypot(dx, dy);
+  if (mag < 1e-6) return null;
+  return { x: dx / mag, y: dy / mag };
+}
+
+function directionLabel(d) {
+  if (d === "left") return "Left";
+  if (d === "right") return "Right";
+  if (d === "up") return "Up";
+  if (d === "down") return "Down";
+  return "Forward";
+}
+
+function classifyMovementDirection(dx, dy, minMagnitude = 1.2) {
+  const mag = Math.hypot(dx, dy);
+  if (mag < minMagnitude) return null;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return dx >= 0 ? "right" : "left";
+  }
+  return dy >= 0 ? "down" : "up";
+}
+
+function drawMidDirectionArrow(ctx, centerline) {
+  if (!centerline || centerline.length < 2) return;
+  const mid = Math.max(0, Math.floor((centerline.length - 1) / 2));
+  const from = centerline[Math.max(0, mid - 1)];
+  const to = centerline[Math.min(centerline.length - 1, mid + 1)];
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const mag = Math.hypot(dx, dy);
+  if (mag < 0.001) return;
+  const ux = dx / mag;
+  const uy = dy / mag;
+  const px = -uy;
+  const py = ux;
+  const cx = (from.x + to.x) / 2;
+  const cy = (from.y + to.y) / 2;
+  const headLen = 11;
+  const headHalfW = 8;
+
+  // Single centered arrow head, no extra line segment.
+  const tipX = cx + ux * 1.5;
+  const tipY = cy + uy * 1.5;
+  const baseX = tipX - ux * headLen;
+  const baseY = tipY - uy * headLen;
+  ctx.beginPath();
+  ctx.moveTo(baseX + px * headHalfW, baseY + py * headHalfW);
+  ctx.lineTo(tipX, tipY);
+  ctx.lineTo(baseX - px * headHalfW, baseY - py * headHalfW);
+  ctx.strokeStyle = "rgba(71, 85, 105, 0.66)";
+  ctx.lineWidth = 6;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.stroke();
+}
 
 /**
  * Mode 1 (Intent Capture) — single-screen, autocomplete-on-intent.
@@ -56,7 +225,8 @@ export default function Path1Lesson() {
   const { user, profile, updateProfile } = useAuth();
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
-  const cursorElRef = useRef(null);
+  const lessonCursorBridge = useCursorPositionBridgeRef();
+  const railDotRef = useRef(null);
   const buttonRefs = useRef({});
   const userStartTsRef = useRef(null);
   const activationErrorsRef = useRef(0);
@@ -64,8 +234,19 @@ export default function Path1Lesson() {
   const jitterSamplesRef = useRef([]);
   const lastFillTickRef = useRef(null);
   const fillHeadRef = useRef(0);
+  const autoFillRafRef = useRef(null);
+  const autoFillActiveRef = useRef(false);
+  const stage0IntentTriggeredRef = useRef(false);
+  const stage2CompletionTriggeredRef = useRef(false);
+  const stage2DriveRef = useRef(0);
+  const stage2SignedEmaRef = useRef(0);
+  const lastAdaptiveCueTsRef = useRef(0);
+  const adaptiveHideTimeoutRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const lastAdaptiveTextRef = useRef("");
   const holdStartRef = useRef(null);
-  const lastCursorXRef = useRef(null);
+  const lastCanvasPosRef = useRef(null);
+  const canvasCursorRef = useRef(null);
   // Position we actually draw the visible head-cursor at.  We decouple this
   // from cursorPosRef so we can snap the cursor onto the lesson path during
   // trials (so where the user sees the dot is literally where the progress is
@@ -112,9 +293,13 @@ export default function Path1Lesson() {
   const [masteryToast, setMasteryToast] = useState(null);
   const [instructionDismiss, setInstructionDismiss] = useState(0);
   const [countdown, setCountdown] = useState(null);
+  const [countdownDeadlineMs, setCountdownDeadlineMs] = useState(null);
+  const [countdownNowMs, setCountdownNowMs] = useState(0);
   const [stageUnlock, setStageUnlock] = useState(null);
   const [masteryHint, setMasteryHint] = useState("");
   const [attemptFeedback, setAttemptFeedback] = useState("");
+  const [adaptiveFeedback, setAdaptiveFeedback] = useState(null);
+  const [lessonPaused, setLessonPaused] = useState(false);
 
   // Framework §7.4 — the stage definition we hand to path generation and hit
   // tests is the user's raw stage SOFTENED by their recent performance.
@@ -136,6 +321,8 @@ export default function Path1Lesson() {
   pathRef.current = path;
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
+  const lessonPausedRef = useRef(false);
+  lessonPausedRef.current = lessonPaused;
   const stageRef = useRef(adaptedStage);
   stageRef.current = adaptedStage;
 
@@ -161,7 +348,47 @@ export default function Path1Lesson() {
     holdStartRef.current = null;
     setHoldProgress(0);
     userStartTsRef.current = null;
-    lastCursorXRef.current = null;
+    lastCanvasPosRef.current = null;
+    stage0IntentTriggeredRef.current = false;
+    stage2CompletionTriggeredRef.current = false;
+    stage2DriveRef.current = 0;
+    stage2SignedEmaRef.current = 0;
+    autoFillActiveRef.current = false;
+    if (autoFillRafRef.current != null) {
+      cancelAnimationFrame(autoFillRafRef.current);
+      autoFillRafRef.current = null;
+    }
+    if (adaptiveHideTimeoutRef.current) {
+      clearTimeout(adaptiveHideTimeoutRef.current);
+      adaptiveHideTimeoutRef.current = null;
+    }
+    setAdaptiveFeedback(null);
+  }, []);
+
+  const playErrorBeep = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+      const ctx = audioCtxRef.current;
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
+      }
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(230, ctx.currentTime);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.09, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.16);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.17);
+    } catch {
+      // Ignore audio failures; visual cue still appears.
+    }
   }, []);
 
   const advanceAttempt = useCallback((success, extraMetrics = {}) => {
@@ -210,14 +437,14 @@ export default function Path1Lesson() {
     } else if (st.shape === "hold") {
       setAttemptFeedback(
         language === "ur"
-          ? "بہت خوب! اگلی بار تھوڑا اور ساکن رہیں۔"
-          : "Great hold. Try staying still a little longer next time.",
+          ? "شاباش! آپ نے ہولڈ مکمل کیا۔"
+          : "Good job! You completed the hold.",
       );
     } else {
       setAttemptFeedback(
         language === "ur"
-          ? "بہت اچھا! اسی طرح حرکت جاری رکھیں۔"
-          : "Great movement. Keep this same smooth pace.",
+          ? "شاباش! حرکت بہترین تھی۔"
+          : "Good job! Your movement was excellent.",
       );
     }
     let unlockedNext = null;
@@ -235,7 +462,7 @@ export default function Path1Lesson() {
       });
       if (next != null && next <= 2 && next > (profile?.currentStage ?? 0)) {
         const nextStageDef = getStage(next);
-        updateProfile({ ...profile, currentStage: next });
+        updateProfile({ ...profile, currentStage: next, currentLevel: next });
         const unlockedTitle = nextStageDef?.title ?? `Stage ${next}`;
         setMasteryToast(unlockedTitle);
         unlockedNext = { stage: next, title: unlockedTitle };
@@ -253,7 +480,7 @@ export default function Path1Lesson() {
   }, [attempt, effectiveActivation, reinforcement, user?.uid, resetTrial, profile, updateProfile, searchParams, language]);
 
   useEffect(() => {
-    const p = getStageLessonPath(adaptedStage, attempt, CANVAS_WIDTH, CANVAS_HEIGHT);
+    const p = buildPath1LessonPath(adaptedStage, attempt, CANVAS_WIDTH, CANVAS_HEIGHT);
     setPath(p);
     resetTrial();
   }, [adaptedStage, attempt, resetTrial]);
@@ -306,6 +533,10 @@ export default function Path1Lesson() {
     cursorPosRef.current.y = window.innerHeight / 2;
   }, [cursorPosRef]);
 
+  const resumeLessonPause = useCallback(() => {
+    setLessonPaused(false);
+  }, []);
+
   // Helper: map canvas-internal (CANVAS_WIDTH x CANVAS_HEIGHT) coords to the
   // on-screen pixel position of the same point.  Used to snap the visible
   // cursor onto the lesson path during trials.
@@ -346,6 +577,13 @@ export default function Path1Lesson() {
       if (jitterSamplesRef.current.length > 200) jitterSamplesRef.current.shift();
     }
 
+    if (lessonPausedRef.current) {
+      displayCursorRef.current.x = cursorPosRef.current.x;
+      displayCursorRef.current.y = cursorPosRef.current.y;
+      drawScene();
+      return;
+    }
+
     const st = stageRef.current;
 
     // Default: the displayed cursor follows the raw head-tracked position.
@@ -359,54 +597,51 @@ export default function Path1Lesson() {
 
       const canvas = canvasRef.current;
       const rect = canvas.getBoundingClientRect();
-      const canvasX = ((cursorPosRef.current.x - rect.left) / rect.width) * canvas.width;
-      const canvasY = ((cursorPosRef.current.y - rect.top) / rect.height) * canvas.height;
+      const rawCanvasX = ((cursorPosRef.current.x - rect.left) / rect.width) * canvas.width;
+      const rawCanvasY = ((cursorPosRef.current.y - rect.top) / rect.height) * canvas.height;
+      const canvasX = Math.max(0, Math.min(canvas.width, rawCanvasX));
+      const canvasY = Math.max(0, Math.min(canvas.height, rawCanvasY));
+      canvasCursorRef.current = { x: canvasX, y: canvasY };
 
-      // Stage 0 — Cause→Effect: ANY horizontal cursor movement fills the bar.
-      // Teaches direct cause-effect: "I move, something happens." Direction-agnostic.
-      if (st.shape === "straight" && st.stage === 0 && pathRef.current.centerline) {
-        const center = pathRef.current.centerline;
-        const len = center.length;
-        const halfIndex = (len - 1) * 0.5;
-
-        if (lastCursorXRef.current == null) lastCursorXRef.current = canvasX;
-        const moved = Math.abs(canvasX - lastCursorXRef.current);
-        lastCursorXRef.current = canvasX;
-
-        const now = performance.now();
-        if (moved > 1) {
-          // Fill at a rate proportional to how fast the cursor is moving, capped.
-          const perMs = halfIndex / STAGE0_FILL_MS;
-          const elapsed = lastFillTickRef.current != null ? now - lastFillTickRef.current : 16;
-          const speedMultiplier = Math.min(3, moved / 3); // visual reward for bigger moves
-          const add = Math.min(
-            elapsed * perMs * (0.6 + speedMultiplier),
-            halfIndex - fillHeadRef.current,
-          );
-          fillHeadRef.current = Math.min(fillHeadRef.current + add, halfIndex);
-          setFillHead(fillHeadRef.current);
-          lastFillTickRef.current = now;
-          if (fillHeadRef.current >= halfIndex - 0.001) {
-            autocompleteFrom(halfIndex);
+      if (st.stage === 0 && pathRef.current.centerline) {
+        const dir = pathRef.current.lessonDirection;
+        const delta = lastCanvasPosRef.current
+          ? { x: canvasX - lastCanvasPosRef.current.x, y: canvasY - lastCanvasPosRef.current.y }
+          : { x: 0, y: 0 };
+        const movedDir = classifyMovementDirection(delta.x, delta.y, 1.2);
+        const axisDelta = dir === "left" ? -delta.x : dir === "right" ? delta.x : dir === "up" ? -delta.y : delta.y;
+        if (movedDir && movedDir !== dir) {
+          const now = Date.now();
+          if (adaptiveHideTimeoutRef.current) {
+            clearTimeout(adaptiveHideTimeoutRef.current);
+            adaptiveHideTimeoutRef.current = null;
+          }
+          const text =
+            language === "ur"
+              ? `آپ نے ${directionLabel(movedDir)} کی طرف حرکت کی۔ ${directionLabel(dir)} کی طرف حرکت کریں۔`
+              : `You moved ${directionLabel(movedDir)}. Move ${directionLabel(dir)}.`;
+          const shouldUpdateText = text !== lastAdaptiveTextRef.current;
+          if (shouldUpdateText || now - lastAdaptiveCueTsRef.current > 900) {
+            lastAdaptiveCueTsRef.current = now;
+            lastAdaptiveTextRef.current = text;
+            setAdaptiveFeedback({ text });
+            playErrorBeep();
           }
         } else {
-          lastFillTickRef.current = now;
+          if (!adaptiveHideTimeoutRef.current && adaptiveFeedback) {
+            adaptiveHideTimeoutRef.current = setTimeout(() => {
+              setAdaptiveFeedback(null);
+              lastAdaptiveTextRef.current = "";
+              adaptiveHideTimeoutRef.current = null;
+            }, 1000);
+          }
         }
-
-        // Glue the visible cursor to the leading edge of the fill so the
-        // trace reads as one cohesive object ("my movement pulls this dot
-        // along the line").  Because the fill advances from a rate-capped
-        // source, the cursor can never jump — it tracks the fill which
-        // itself grows smoothly from the start.
-        const i = Math.min(center.length - 1, Math.floor(fillHeadRef.current));
-        const frac = fillHeadRef.current - i;
-        const a = center[i];
-        const b = center[Math.min(center.length - 1, i + 1)];
-        const tipX = a.x + frac * (b.x - a.x);
-        const tipY = a.y + frac * (b.y - a.y);
-        const screen = canvasToScreen(tipX, tipY);
-        displayCursorRef.current.x = screen.x;
-        displayCursorRef.current.y = screen.y;
+        if (axisDelta > 1.2 && !stage0IntentTriggeredRef.current && !autoFillActiveRef.current) {
+          stage0IntentTriggeredRef.current = true;
+          fillHeadRef.current = 0;
+          setFillHead(0);
+          autocompleteFrom(0);
+        }
       }
 
       // Stage 1 — Hold inside target circle.  Cursor stays under raw head
@@ -431,39 +666,84 @@ export default function Path1Lesson() {
         }
       }
 
-      // Stage 2 — any cursor movement arms the activation; the ACTIVATION fires
-      // onPenToggle.  Visible cursor rides the partial fill so users can see
-      // what "armed" looks like.
-      if (st.shape === "straight" && st.stage === 2 && pathRef.current.centerline) {
+      if (st.stage === 2 && pathRef.current.centerline) {
         const center = pathRef.current.centerline;
-        const halfIndex = (center.length - 1) * 0.35;
-        if (lastCursorXRef.current == null) lastCursorXRef.current = canvasX;
-        const moved = Math.abs(canvasX - lastCursorXRef.current);
-        lastCursorXRef.current = canvasX;
-        if (moved > 1) {
-          const step = Math.min(0.3, moved / 8);
-          fillHeadRef.current = Math.min(fillHeadRef.current + step, halfIndex);
-          setFillHead(fillHeadRef.current);
-          if (fillHeadRef.current >= halfIndex - 0.001) {
-            autocompleteFrom(halfIndex);
+        const requiredIndex = (center.length - 1) * 0.78;
+        const isCircleTrace = pathRef.current.traceVariant === "circle";
+        const delta = lastCanvasPosRef.current
+          ? { x: canvasX - lastCanvasPosRef.current.x, y: canvasY - lastCanvasPosRef.current.y }
+          : { x: 0, y: 0 };
+        const expected = expectedDirectionVector(pathRef.current, fillHeadRef.current);
+        const signed = expected ? delta.x * expected.x + delta.y * expected.y : 0;
+        stage2SignedEmaRef.current = stage2SignedEmaRef.current * 0.82 + signed * 0.18;
+        const forwardSignal = Math.max(signed, stage2SignedEmaRef.current);
+        if (!stage2CompletionTriggeredRef.current) {
+          // Sustained-direction ramp: fill starts slow, then builds as the user
+          // keeps moving correctly (instead of jumping immediately).
+          const driveGainBase = isCircleTrace ? 0.023 : 0.012;
+          const driveGainSigned = isCircleTrace ? 0.011 : 0.006;
+          const driveGainSignedCap = isCircleTrace ? 0.032 : 0.018;
+          const driveDecay = isCircleTrace ? 0.04 : 0.026;
+          const fillBase = isCircleTrace ? 0.075 : 0.042;
+          const fillScale = isCircleTrace ? 0.36 : 0.19;
+          if (forwardSignal > 0.02) {
+            stage2DriveRef.current = Math.min(
+              1,
+              stage2DriveRef.current +
+                driveGainBase +
+                Math.min(driveGainSignedCap, forwardSignal * driveGainSigned)
+            );
+          } else {
+            stage2DriveRef.current = Math.max(0, stage2DriveRef.current - driveDecay);
+          }
+
+          if ((forwardSignal > 0 || stage2DriveRef.current > 0.12) && stage2DriveRef.current > 0) {
+            const add =
+              fillBase + stage2DriveRef.current * fillScale + Math.max(0, forwardSignal) * 0.04;
+            fillHeadRef.current = Math.min(requiredIndex, fillHeadRef.current + add);
+            setFillHead(fillHeadRef.current);
+          } else if (forwardSignal < -0.08) {
+            // Wrong direction gently decays progress to reinforce correction.
+            fillHeadRef.current = Math.max(0, fillHeadRef.current - 0.28);
+            setFillHead(fillHeadRef.current);
+          }
+          if (fillHeadRef.current >= requiredIndex - 0.001 && !autoFillActiveRef.current) {
+            stage2CompletionTriggeredRef.current = true;
+            autocompleteFrom(requiredIndex, 1050);
           }
         }
-        // Mirror the Stage-0 behaviour: the cursor rides the fill tip so
-        // the user sees a single object advancing along the line.
-        const i = Math.min(center.length - 1, Math.floor(fillHeadRef.current));
-        const frac = fillHeadRef.current - i;
-        const a = center[i];
-        const b = center[Math.min(center.length - 1, i + 1)];
-        const tipX = a.x + frac * (b.x - a.x);
-        const tipY = a.y + frac * (b.y - a.y);
-        const screen = canvasToScreen(tipX, tipY);
-        displayCursorRef.current.x = screen.x;
-        displayCursorRef.current.y = screen.y;
       }
+
+      if (pathRef.current?.centerline?.length && st.shape !== "hold") {
+        if (st.stage === 0) {
+          const center = pathRef.current.centerline;
+          const i = Math.min(center.length - 1, Math.floor(fillHeadRef.current));
+          const frac = Math.max(0, fillHeadRef.current - i);
+          const a = center[i];
+          const b = center[Math.min(center.length - 1, i + 1)];
+          const tipX = a.x + frac * (b.x - a.x);
+          const tipY = a.y + frac * (b.y - a.y);
+          const screen = canvasToScreen(tipX, tipY);
+          displayCursorRef.current.x = screen.x;
+          displayCursorRef.current.y = screen.y;
+        }
+      }
+      lastCanvasPosRef.current = { x: canvasX, y: canvasY };
     }
 
     drawScene();
-  }, [updateCursorFromLandmarks, processLandmarks, cursorPosRef, tiltStateRef, advanceAttempt, canvasToScreen]);
+  }, [
+    updateCursorFromLandmarks,
+    processLandmarks,
+    cursorPosRef,
+    tiltStateRef,
+    advanceAttempt,
+    canvasToScreen,
+    activationConfig,
+    language,
+    playErrorBeep,
+    adaptiveFeedback,
+  ]);
 
   const { startFaceMesh } = useFaceMesh({ videoRef, onResults: onFaceResults });
 
@@ -506,9 +786,33 @@ export default function Path1Lesson() {
       const target = displayCursorRef.current;
       smoothed.x += (target.x - smoothed.x) * 0.35;
       smoothed.y += (target.y - smoothed.y) * 0.35;
-      if (cursorElRef.current) {
-        cursorElRef.current.style.left = smoothed.x + "px";
-        cursorElRef.current.style.top = smoothed.y + "px";
+      const br = lessonCursorBridge?.current;
+      if (br) {
+        const raw = cursorPosRef.current;
+        br.raw.x = raw.x;
+        br.raw.y = raw.y;
+        if (canvasRef.current) {
+          const r = canvasRef.current.getBoundingClientRect();
+          br.canvasViewport = { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+        }
+        br.lessonPaused = lessonPaused;
+        br.showUniversalCursor = true;
+      }
+      if (railDotRef.current) {
+        railDotRef.current.style.left = `${smoothed.x}px`;
+        railDotRef.current.style.top = `${smoothed.y}px`;
+        const raw = cursorPosRef.current;
+        const vp = br?.canvasViewport;
+        const inCv = lessonPointInsideCanvas(raw.x, raw.y, vp);
+        const drift = Math.hypot(smoothed.x - raw.x, smoothed.y - raw.y);
+        const holdTrial = phaseRef.current === "trial" && stageRef.current?.shape === "hold";
+        const showRailMark =
+          !lessonPaused && inCv && (holdTrial || (phaseRef.current === "trial" && drift > 14));
+        railDotRef.current.style.visibility = showRailMark ? "visible" : "hidden";
+        railDotRef.current.style.width = holdTrial ? "18px" : "12px";
+        railDotRef.current.style.height = holdTrial ? "18px" : "12px";
+        railDotRef.current.style.background = holdTrial ? "rgba(34,197,94,0.85)" : "rgba(255,255,255,0.35)";
+        railDotRef.current.style.borderColor = holdTrial ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.75)";
       }
       raf = requestAnimationFrame(loop);
     };
@@ -521,26 +825,39 @@ export default function Path1Lesson() {
     }
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [lessonPaused]);
 
-  function autocompleteFrom(fromIndex) {
+  function autocompleteFrom(fromIndex, durationMs = AUTOCOMPLETE_MS) {
     const center = pathRef.current?.centerline;
-    if (!center?.length) return;
+    if (!center?.length || phaseRef.current !== "trial") return;
+    if (autoFillActiveRef.current) return;
+    autoFillActiveRef.current = true;
+    if (autoFillRafRef.current != null) {
+      cancelAnimationFrame(autoFillRafRef.current);
+      autoFillRafRef.current = null;
+    }
     const toIndex = center.length - 1;
     const start = performance.now();
     const step = (now) => {
-      const t = Math.min(1, (now - start) / AUTOCOMPLETE_MS);
+      if (phaseRef.current !== "trial") {
+        autoFillActiveRef.current = false;
+        autoFillRafRef.current = null;
+        return;
+      }
+      const t = Math.min(1, (now - start) / durationMs);
       const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
       const head = fromIndex + eased * (toIndex - fromIndex);
       fillHeadRef.current = head;
       setFillHead(head);
       if (t < 1) {
-        requestAnimationFrame(step);
+        autoFillRafRef.current = requestAnimationFrame(step);
       } else {
+        autoFillActiveRef.current = false;
+        autoFillRafRef.current = null;
         advanceAttempt(true, { intentAligned: true, autocompleted: true });
       }
     };
-    requestAnimationFrame(step);
+    autoFillRafRef.current = requestAnimationFrame(step);
   }
 
   function drawScene() {
@@ -569,11 +886,6 @@ export default function Path1Lesson() {
       ctx.setLineDash([14, 10]);
       ctx.stroke();
       ctx.setLineDash([]);
-      // Center dot as target
-      ctx.beginPath();
-      ctx.arc(p.start.x, p.start.y, 18, 0, Math.PI * 2);
-      ctx.fillStyle = "#4F46E5";
-      ctx.fill();
       if (phaseRef.current === "trial" && holdStartRef.current != null) {
         const held = Math.min((performance.now() - holdStartRef.current) / (p.holdMs ?? 2000), 1);
         ctx.beginPath();
@@ -589,25 +901,41 @@ export default function Path1Lesson() {
         ctx.lineCap = "round";
         ctx.stroke();
       }
+      // Always show the actual checked cursor position in hold lessons so
+      // visual feedback exactly matches the pass/fail logic.
+      const c = canvasCursorRef.current;
+      if (c) {
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, 16, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(34, 197, 94, 0.92)";
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(255,255,255,0.95)";
+        ctx.stroke();
+      }
       return;
     }
 
-    ctx.strokeStyle = "rgba(100, 116, 139, 0.5)";
-    ctx.lineWidth = 16;
+    ctx.strokeStyle = "rgba(100, 116, 139, 0.24)";
+    ctx.lineWidth = 28;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.setLineDash([12, 12]);
     ctx.beginPath();
     ctx.moveTo(center[0].x, center[0].y);
     for (let i = 1; i < center.length; i++) ctx.lineTo(center[i].x, center[i].y);
     ctx.stroke();
+    ctx.strokeStyle = "rgba(71, 85, 105, 0.55)";
+    ctx.lineWidth = 6;
+    ctx.setLineDash([7, 10]);
+    ctx.stroke();
     ctx.setLineDash([]);
+    drawMidDirectionArrow(ctx, center);
 
     let tipX = center[0].x;
     let tipY = center[0].y;
     if (fillHead > 0) {
       ctx.strokeStyle = "#6366F1";
-      ctx.lineWidth = 14;
+      ctx.lineWidth = 16;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.beginPath();
@@ -632,10 +960,16 @@ export default function Path1Lesson() {
     ctx.arc(p.start.x, p.start.y, 18, 0, Math.PI * 2);
     ctx.fillStyle = "#16A34A";
     ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(255,255,255,0.92)";
+    ctx.stroke();
     ctx.beginPath();
     ctx.arc(p.end.x, p.end.y, 20, 0, Math.PI * 2);
     ctx.fillStyle = "#F59E0B";
     ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(255,255,255,0.92)";
+    ctx.stroke();
 
     // Pen-tip glow at the leading edge of the fill.  This doubles up with the
     // on-screen cursor (which is also snapped here) so it reads as ONE marker
@@ -662,14 +996,12 @@ export default function Path1Lesson() {
     const p = pathRef.current;
     const st = stageRef.current;
     if (p) {
-      if (st.shape === "hold") {
+      if (st.shape !== "hold" && p.start) {
         snapCursorToCanvasPoint(p.start.x, p.start.y);
-      } else if (p.start) {
-        snapCursorToCanvasPoint(p.start.x, p.start.y);
-      } else {
+      } else if (st.shape !== "hold") {
         recenter();
       }
-    } else {
+    } else if (st.shape !== "hold") {
       recenter();
     }
     setPhase("trial");
@@ -681,8 +1013,12 @@ export default function Path1Lesson() {
   useEffect(() => {
     if (phase !== "demo") {
       setCountdown(null);
+      setCountdownDeadlineMs(null);
       return undefined;
     }
+    const deadline = Date.now() + 2700;
+    setCountdownDeadlineMs(deadline);
+    setCountdownNowMs(Date.now());
     let current = 3;
     setCountdown(current);
     if (!muted) speakInstruction(String(current), { language });
@@ -699,6 +1035,26 @@ export default function Path1Lesson() {
     }, 900);
     return () => clearInterval(id);
   }, [phase, beginTrial, muted, language]);
+
+  useEffect(() => {
+    if (!countdownDeadlineMs) return undefined;
+    let raf = 0;
+    const tick = () => {
+      setCountdownNowMs(Date.now());
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [countdownDeadlineMs]);
+
+  useEffect(() => {
+    return () => {
+      if (adaptiveHideTimeoutRef.current) {
+        clearTimeout(adaptiveHideTimeoutRef.current);
+        adaptiveHideTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   function handleExit() {
     stopSpeech();
@@ -727,212 +1083,215 @@ export default function Path1Lesson() {
     setPhase("demo");
   }
 
+  const drawGhostBackdrop = useCallback(
+    (ctx) => {
+      if (!canvasRef.current || !path?.centerline) return;
+      const canvas = canvasRef.current;
+      ctx.fillStyle = "#FAFAFF";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "rgba(100, 116, 139, 0.24)";
+      ctx.lineWidth = 28;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(path.centerline[0].x, path.centerline[0].y);
+      for (let i = 1; i < path.centerline.length; i++) {
+        ctx.lineTo(path.centerline[i].x, path.centerline[i].y);
+      }
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(71, 85, 105, 0.55)";
+      ctx.lineWidth = 6;
+      ctx.setLineDash([7, 10]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      drawMidDirectionArrow(ctx, path.centerline);
+      ctx.beginPath();
+      ctx.arc(path.start.x, path.start.y, 18, 0, Math.PI * 2);
+      ctx.fillStyle = "#16A34A";
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(255,255,255,0.92)";
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(path.end.x, path.end.y, 20, 0, Math.PI * 2);
+      ctx.fillStyle = "#F59E0B";
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(255,255,255,0.92)";
+      ctx.stroke();
+    },
+    [path],
+  );
+
+  const handleGhostDone = useCallback(() => {
+    // Stage 0-2 use countdown-based auto-start instead of ghost-end.
+    if (stage.stage > 2) beginTrial();
+  }, [stage.stage, beginTrial]);
+
   const StageIcon = STAGE_ICONS[stage.stage] ?? Eye;
   const title = language === "ur" ? stage.titleUr ?? stage.title : stage.title;
-  const fillRatio =
-    path?.centerline?.length && fillHead > 0
-      ? Math.min(1, fillHead / (path.centerline.length - 1))
-      : 0;
 
   if (sessionTimer.capped) {
     return <BreakPrompt kind="cap" language={language} onExit={handleExit} />;
   }
 
+  const directionName = path?.lessonDirection
+    ? path.lessonDirection[0].toUpperCase() + path.lessonDirection.slice(1)
+    : null;
   const instruction =
-    phase === "demo"
-      ? language === "ur"
-        ? "پہلے میں دکھاتا ہوں…"
-        : "Watch the shape fill in…"
+    stage.stage === 0 && directionName
+      ? `Move ${directionName}`
       : stage.shape === "hold"
-      ? language === "ur"
-        ? "بڑے دائرے کے اندر آ کر ٹھہر جائیں۔"
-        : "Move the cursor into the circle and hold still."
-      : stage.stage === 2
-      ? language === "ur"
-        ? "سر حرکت دیں — لکیر خود مکمل ہوگی۔"
-        : "Move your head — the line will complete automatically."
-      : language === "ur"
-      ? "سر کو ہلائیں — لکیر بھرتی جائے گی۔"
-      : "Move your head — the line fills in as you move.";
+      ? "Move into the bubble and hold for 3 seconds."
+      : "Tilt in the path direction to move the trace.";
+  const countdownAction =
+    stage.stage === 0 && directionName
+      ? `Move ${directionName}`
+      : stage.shape === "hold"
+      ? "Hold Still"
+      : "Tilt Forward";
+  const countdownProgress =
+    countdownDeadlineMs != null
+      ? Math.max(0, Math.min(1, (countdownDeadlineMs - countdownNowMs) / 2700))
+      : 0;
+  const showPath1FeedbackCard = phase === "reinforce" || Boolean(adaptiveFeedback);
 
-  // Live mood feedback — mirrors Mode 2's accuracy pill but reads Stage-0/2
-  // fill progress or Stage 1 hold progress, whichever the current stage uses.
-  // The pill gets a warm green glow once the user is more than halfway to
-  // success; stays neutral indigo otherwise.
-  const m1Pct = Math.round(
-    (stage.shape === "hold" ? holdProgress : fillRatio) * 100,
-  );
-  const m1Mood = m1Pct >= 60 ? "good" : "neutral";
-  const m1CanvasMood =
-    m1Mood === "good" ? "ring-4 ring-emerald-300/60" : "ring-0";
 
   return (
     <div
-      className="relative w-screen min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/30 flex flex-col items-center pt-20 pb-4 px-4 overflow-hidden"
-      style={{ cursor: "none" }}
+      className="easeL-page-bg relative flex min-h-screen w-screen flex-col items-center overflow-hidden px-4 pb-4 pt-20"
     >
       <MasteryToast message={masteryToast} language={language} />
-      <LessonInstructionCard
-        stage={stage.stage}
-        mode={1}
-        language={language}
-        active={phase === "trial"}
-        dismissSignal={instructionDismiss}
-      />
       <div className="w-full max-w-[1200px] flex items-center justify-between gap-3 mb-2 z-20 flex-wrap">
         <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/95 shadow border border-slate-200/80">
-          <StageIcon className="w-5 h-5 text-indigo-600" />
+          <StageIcon className="easeL-accent-text-strong h-5 w-5" />
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
             Level {stage.stage}
           </span>
           <span className="text-slate-800 font-bold text-base">{title}</span>
         </div>
 
-        {phase === "trial" && (
-          <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 shadow-sm transition-colors ${
-              m1Mood === "good"
-                ? "bg-emerald-100 text-emerald-700 border-emerald-300"
-                : m1Mood === "off"
-                ? "bg-rose-100 text-rose-700 border-rose-300"
-                : "bg-indigo-50 text-indigo-700 border-indigo-200"
-            }`}
-          >
-            {m1Mood === "good" && <CheckCircle2 className="w-4 h-4" />}
-            <span className="text-[11px] font-semibold uppercase tracking-wide opacity-70">
-              {stage.shape === "hold"
-                ? language === "ur"
-                  ? "روکنا"
-                  : "Hold"
-                : language === "ur"
-                ? "ترقی"
-                : "Progress"}
-            </span>
-            <span className="text-xl font-extrabold tabular-nums">{m1Pct}%</span>
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <TroubleshootAssist />
+        <div className="flex items-center gap-3 flex-wrap">
           <button
             type="button"
+            ref={(el) => {
+              buttonRefs.current.recenter = el;
+            }}
             onClick={recenter}
-            className="inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold shadow-sm text-sm"
+            className="inline-flex items-center gap-2 min-h-14 px-6 rounded-2xl bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 font-bold shadow-sm text-lg"
             title="Recenter cursor"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-5 h-5" />
             {language === "ur" ? "مرکز" : "Recenter"}
           </button>
           <button
             type="button"
+            ref={(el) => {
+              buttonRefs.current.mute = el;
+            }}
             onClick={() => setMuted((m) => !m)}
-            className="inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold shadow-sm text-sm"
+            className="inline-flex items-center gap-2 min-h-14 px-6 rounded-2xl bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 font-bold shadow-sm text-lg"
             aria-label={muted ? "Unmute" : "Mute"}
           >
-            {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
             {language === "ur" ? (muted ? "آواز بند" : "آواز") : muted ? "Muted" : "Sound"}
           </button>
           <button
+            ref={(el) => {
+              buttonRefs.current.exit = el;
+            }}
             onClick={handleExit}
-            className="inline-flex items-center gap-1.5 min-h-10 px-4 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold shadow-sm border-2 border-slate-300 text-sm"
+            className="inline-flex items-center gap-2 min-h-14 px-6 rounded-2xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold shadow-sm border-2 border-slate-300 text-lg"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-5 h-5" />
             {language === "ur" ? "ختم" : "Exit"}
           </button>
         </div>
       </div>
 
       <div className="w-full max-w-[1200px] mb-3 z-10">
-        <div className="rounded-xl bg-indigo-600 text-white px-4 py-2 shadow border border-indigo-700/50 flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold">{instruction}</p>
-          <span className="text-xs font-medium text-indigo-100 bg-indigo-800/40 px-2 py-1 rounded-lg">
+        <div className="easeL-hud-bar flex items-center justify-between gap-3 rounded-xl px-4 py-2 shadow">
+          <p className="text-lg font-bold">{instruction}</p>
+          <span className="rounded-lg bg-black/20 px-2 py-1 text-xs font-medium text-white/95">
             {Math.floor(sessionTimer.elapsedMs / 60000)}:
             {String(Math.floor((sessionTimer.elapsedMs % 60000) / 1000)).padStart(2, "0")}
           </span>
         </div>
-        {masteryHint ? (
-          <div className="mt-2 rounded-xl bg-white/90 border border-indigo-200 text-indigo-800 px-3 py-2 text-xs font-semibold">
-            {masteryHint}
-          </div>
-        ) : null}
-        {attemptFeedback ? (
-          <div className="mt-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-2 text-xs font-semibold">
-            {attemptFeedback}
-          </div>
-        ) : null}
       </div>
 
-      <canvas
-        ref={canvasRef}
-        width={CANVAS_WIDTH}
-        height={CANVAS_HEIGHT}
-        className={`rounded-3xl shadow-2xl border-2 border-slate-200/90 bg-white transition-[box-shadow] ${m1CanvasMood}`}
+      <div className="relative z-10 w-full flex justify-center">
+        <div
+          className="relative w-full"
+          style={{
+            maxWidth: `min(1100px, calc((100vh - 260px) * ${CANVAS_WIDTH} / ${CANVAS_HEIGHT}))`,
+          }}
+        >
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_WIDTH}
+            height={CANVAS_HEIGHT}
+            className="rounded-3xl shadow-2xl border-2 border-slate-200/90 bg-white"
+            style={{
+              width: "100%",
+              height: "auto",
+              aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`,
+              verticalAlign: "top",
+              display: "block",
+            }}
+          />
+          {lessonPaused ? (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="m1-lesson-paused-title"
+              className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl bg-white/92 px-6 py-10 shadow-inner ring-2 ring-inset ring-slate-200/90 pointer-events-auto z-10"
+            >
+              <Pause className="mb-3 h-12 w-12 text-[var(--easeL-primary)]" aria-hidden />
+              <p
+                id="m1-lesson-paused-title"
+                className="text-2xl sm:text-3xl font-extrabold text-slate-800 mb-2 text-center"
+              >
+                {language === "ur" ? "روک دیا" : "Paused"}
+              </p>
+              <p className="text-slate-600 mb-6 text-center text-sm sm:text-base max-w-xs">
+                {language === "ur"
+                  ? "اوپر والے بٹن استعمال کریں؛ دوبارہ شروع کرنے کے لیے کلک کریں۔"
+                  : "Use the toolbar controls. Resume when you are ready to continue."}
+              </p>
+              <button
+                type="button"
+                ref={(el) => {
+                  buttonRefs.current.resume = el;
+                }}
+                className="easeL-btn-solid px-8 py-3 rounded-2xl text-lg font-bold min-w-[200px]"
+                onClick={resumeLessonPause}
+              >
+                {language === "ur" ? "دوبارہ شروع کریں" : "Resume lesson"}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+      <div
+        ref={railDotRef}
+        aria-hidden
+        className="fixed pointer-events-none z-[850] rounded-full border-2 border-white/75 bg-white/35 shadow-md"
         style={{
-          width: "100%",
-          height: "auto",
-          aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`,
-          maxWidth: `min(1100px, calc((100vh - 260px) * ${CANVAS_WIDTH} / ${CANVAS_HEIGHT}))`,
+          width: 12,
+          height: 12,
+          transform: "translate(-50%, -50%)",
+          left: "50%",
+          top: "40%",
+          visibility: "hidden",
         }}
       />
-
-      {phase === "trial" && (
-        <div className="w-full max-w-[1200px] mt-2 px-2 z-20">
-          <div className="flex items-center justify-between mb-1 text-xs font-semibold text-slate-600">
-            <span>
-              {stage.shape === "hold"
-                ? language === "ur"
-                  ? "روکنا"
-                  : "Holding"
-                : language === "ur"
-                ? "ترقی"
-                : "Progress"}
-            </span>
-            <span className="tabular-nums text-slate-500">{m1Pct}%</span>
-          </div>
-          <div className="h-3 w-full rounded-full bg-slate-200 overflow-hidden shadow-inner">
-            <div
-              className={`h-full ${
-                m1Mood === "good" ? "bg-emerald-500" : "bg-indigo-500"
-              } transition-[width,background-color] duration-200 rounded-full`}
-              style={{ width: `${m1Pct}%` }}
-            />
-          </div>
-        </div>
-      )}
 
       <GhostStrokePreview
         canvasRef={canvasRef}
         centerline={phase === "demo" && stage.shape !== "hold" ? path?.centerline : null}
         active={phase === "demo" && stage.shape !== "hold"}
-        drawBackdrop={(ctx) => {
-          if (!canvasRef.current || !path?.centerline) return;
-          const canvas = canvasRef.current;
-          ctx.fillStyle = "#FAFAFF";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.strokeStyle = "rgba(100, 116, 139, 0.5)";
-          ctx.lineWidth = 16;
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.setLineDash([12, 12]);
-          ctx.beginPath();
-          ctx.moveTo(path.centerline[0].x, path.centerline[0].y);
-          for (let i = 1; i < path.centerline.length; i++)
-            ctx.lineTo(path.centerline[i].x, path.centerline[i].y);
-          ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.beginPath();
-          ctx.arc(path.start.x, path.start.y, 18, 0, Math.PI * 2);
-          ctx.fillStyle = "#16A34A";
-          ctx.fill();
-          ctx.beginPath();
-          ctx.arc(path.end.x, path.end.y, 20, 0, Math.PI * 2);
-          ctx.fillStyle = "#F59E0B";
-          ctx.fill();
-        }}
-        onDone={() => {
-          // Stage 0-2 now use countdown-based auto-start instead of ghost-end.
-          if (stage.stage > 2) beginTrial();
-        }}
+        drawBackdrop={drawGhostBackdrop}
+        onDone={handleGhostDone}
       />
 
       {/* No explicit "Try it now" button — the ghost preview auto-advances to
@@ -940,9 +1299,78 @@ export default function Path1Lesson() {
           hint, not a gated step the user has to click through. */}
 
       {phase === "demo" && countdown != null && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
-          <div className="w-24 h-24 rounded-full bg-white/95 border-2 border-indigo-300 shadow-xl flex items-center justify-center">
-            <span className="text-4xl font-extrabold text-indigo-700 tabular-nums">{countdown}</span>
+        <div className="fixed top-[230px] left-1/2 z-30 -translate-x-1/2 pointer-events-none">
+          <div
+            className="rounded-3xl border bg-white/95 px-5 py-4 shadow-2xl backdrop-blur-sm"
+            style={{ borderColor: "color-mix(in srgb, var(--easeL-primary) 35%, transparent)" }}
+          >
+            <div className="flex items-center gap-4">
+              <div
+                className="grid h-20 w-20 place-items-center rounded-full"
+                style={{
+                  background: `conic-gradient(var(--easeL-primary) ${Math.max(
+                    0,
+                    Math.min(1, countdownProgress)
+                  ) * 360}deg, rgba(148,163,184,0.25) 0deg)`,
+                }}
+              >
+                <div className="grid h-16 w-16 place-items-center rounded-full bg-white">
+                  <span className="easeL-accent-text-strong text-4xl font-extrabold tabular-nums">
+                    {countdown}
+                  </span>
+                </div>
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {language === "ur" ? "تیار ہو جائیں" : "Get ready"}
+                </p>
+                <p className="text-lg font-extrabold text-slate-800">
+                  {countdownAction}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPath1FeedbackCard && (
+        <div className="fixed top-[230px] left-1/2 z-40 -translate-x-1/2 pointer-events-none">
+          <div
+            className={`min-w-[560px] max-w-[96vw] rounded-3xl border px-7 py-5 shadow-2xl backdrop-blur-sm ${
+              phase === "reinforce"
+                ? "bg-emerald-50/95 border-emerald-200"
+                : "bg-amber-50/95 border-amber-200"
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`mt-0.5 inline-flex h-12 w-12 items-center justify-center rounded-full ${
+                  phase === "reinforce" ? "bg-emerald-100" : "bg-amber-100"
+                }`}
+              >
+                {phase === "reinforce" ? (
+                  <CircleCheck className="h-6 w-6 text-emerald-600" />
+                ) : (
+                  <CircleX className="h-6 w-6 text-amber-700" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <p
+                  className={`text-sm font-semibold uppercase tracking-wide ${
+                    phase === "reinforce" ? "text-emerald-700" : "text-amber-700"
+                  }`}
+                >
+                  {phase === "reinforce" ? "Cleared!" : "Oops!"}
+                </p>
+                <p className="text-2xl font-extrabold text-slate-800 leading-tight">
+                  {phase === "reinforce"
+                    ? language === "ur"
+                      ? "شاباش!"
+                      : "Good job!"
+                    : adaptiveFeedback?.text}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -950,7 +1378,7 @@ export default function Path1Lesson() {
       {stageUnlock && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
           <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 shadow-2xl p-6">
-            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
+            <p className="easeL-accent-text-strong text-xs font-semibold uppercase tracking-wide">
               {language === "ur" ? "مبارک ہو" : "Congratulations"}
             </p>
             <h3 className="mt-1 text-2xl font-bold text-slate-800">
@@ -965,7 +1393,7 @@ export default function Path1Lesson() {
               <button
                 type="button"
                 onClick={goToUnlockedStage}
-                className="flex-1 min-h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow"
+                className="easeL-btn-solid flex-1 shadow"
               >
                 {language === "ur" ? "اگلا لیول" : "Go to next level"}
               </button>
@@ -981,17 +1409,7 @@ export default function Path1Lesson() {
         </div>
       )}
 
-      {/* Head cursor — always visible, always indigo (no grey "off" state).
-          During a trial we render it as a solid pen-tip so it reads as the
-          same object as the fill that's advancing on the canvas. */}
-      <Cursor
-        ref={cursorElRef}
-        size={24}
-        color="#4338CA"
-        isPenDown={phase === "trial"}
-        tool="pencil"
-      />
-
+      {/* Head cursor — always visible. Trial: subtle grey fill aligned with neutral nav brush. */}
       <div className="fixed bottom-4 right-4 z-20 w-32 overflow-hidden rounded-xl border-2 border-slate-200 bg-slate-900 shadow-lg">
         <video
           ref={videoRef}

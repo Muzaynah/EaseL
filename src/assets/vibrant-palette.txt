@@ -1,0 +1,5 @@
+#2a4d93, #ffffff
+#46459d, #ffffff
+#69469a, #ffffff
+#85428b, #ffffff
+#934961, #ffffff

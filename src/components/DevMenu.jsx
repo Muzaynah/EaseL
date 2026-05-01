@@ -13,7 +13,6 @@ const PAGE_LINKS = [
   { name: "Progress (caregiver)", path: "/progress" },
   { name: "Settings", path: "/settings" },
   { name: "Calibration", path: "/calibration" },
-  { name: "Eligibility", path: "/eligibility" },
   { name: "Tutorial", path: "/tutorial" },
   { name: "Screener", path: "/screener" },
   { name: "Landing", path: "/" },
@@ -69,7 +68,7 @@ export default function DevMenu() {
                 const v = e.target.value;
                 setModeOverride(v === "profile" ? null : Number(v));
               }}
-              className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+              className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[color:var(--easeL-focus-ring)]"
             >
               <option value="profile">Use stored profile</option>
               <option value="1">Simulate Path 1</option>
@@ -77,8 +76,8 @@ export default function DevMenu() {
             </select>
           </div>
 
-          <div className="p-3 border-b border-slate-100 bg-indigo-50/60">
-            <p className="text-xs font-semibold text-indigo-900 uppercase tracking-wide mb-2">
+          <div className="border-b border-slate-100 bg-[color-mix(in_srgb,var(--easeL-primary)_10%,white)] p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--easeL-primary)]">
               Jump directly to a lesson level
             </p>
             <div className="grid grid-cols-4 gap-1.5">
@@ -93,7 +92,8 @@ export default function DevMenu() {
                       setOpen(false);
                       navigate(`${path}?stage=${s.stage}`);
                     }}
-                    className="px-2 py-2 rounded-lg text-xs font-semibold bg-white border border-indigo-200 text-indigo-800 hover:bg-indigo-100"
+                    className="rounded-lg border px-2 py-2 text-xs font-semibold text-[color:var(--easeL-primary)] hover:bg-[color-mix(in_srgb,var(--easeL-primary)_8%,white)]"
+                    style={{ borderColor: "color-mix(in srgb, var(--easeL-primary) 35%, transparent)" }}
                     title={`${s.title} — Path ${mode}`}
                   >
                     L{s.stage}

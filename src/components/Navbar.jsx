@@ -4,7 +4,7 @@ import { Menu, X, User, Settings, LogOut, BookOpen, Image as ImageIcon, BarChart
 
 /**
  * Path-aware navbar per framework §8.2:
- *   Setup routes (eligibility/calibration/tutorial/screener): minimal — logo only.
+ *   Setup routes (calibration/tutorial/screener): minimal — logo only.
  *   Path 1 (Intent Assist): no navigation links, caregiver controls hidden behind avatar.
  *   Path 2 (Guided Control): full nav (Home / Lessons / Gallery).
  */

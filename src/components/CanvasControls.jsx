@@ -57,10 +57,10 @@ const CanvasControls = React.forwardRef(({
     flex items-center justify-center
     border border-slate-200/80 bg-white/95
     ${isActive
-      ? 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-lg border-indigo-400/50'
+      ? 'bg-[var(--easeL-primary)] text-white shadow-lg border-[color:color-mix(in_srgb,var(--easeL-primary)_45%,transparent)]'
       : 'text-slate-700 hover:bg-slate-100 hover:border-slate-300'
     }
-    ${hoveredButton === buttonId ? 'ring-2 ring-indigo-400 ring-offset-2 ring-offset-white' : ''}
+    ${hoveredButton === buttonId ? 'ring-2 ring-[color:var(--easeL-focus-ring)] ring-offset-2 ring-offset-white' : ''}
   `;
 
   const register = (id, el) => {

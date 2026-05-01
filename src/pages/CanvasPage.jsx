@@ -1,5 +1,6 @@
 // CanvasPage.jsx
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useFaceMesh } from "../hooks/useFaceMesh";
 import { useDrawing } from "../hooks/useDrawing";
 import { useGestureControl } from "../hooks/useGestureControl";
@@ -16,6 +17,12 @@ import CameraPreview from "../components/CameraPreview";
 import Cursor from "../components/Cursor";
 import StatusHUD from "../components/StatusHUD";
 import TroubleshootAssist from "../components/TroubleshootAssist";
+import { useAuth } from "../context/AuthContext";
+import {
+    getCanvasProjectCloud,
+    isFirestorePermissionError,
+    saveCanvasProjectCloud,
+} from "../firebase/cloudData";
 
 const BRUSH_SIZE_MAP = { S: 8, M: 20, L: 32, XL: 48 };
 
@@ -26,6 +33,8 @@ function getInitialBrushSize(settings) {
 
 export default function CanvasPage() {
     const { profile, settings } = useAppState();
+    const { user } = useAuth();
+    const [searchParams] = useSearchParams();
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
     const cursorRef = useRef(null);
@@ -63,6 +72,8 @@ export default function CanvasPage() {
         { id: "layer_1", name: "Layer 1", visible: true, canvasData: null },
     ]);
     const [activeLayerId, setActiveLayerId] = useState("layer_1");
+    const [currentProjectId, setCurrentProjectId] = useState(null);
+    const pendingProjectLayersRef = useRef(null);
 
     const buttonRefs = useRef({});
 
@@ -81,6 +92,7 @@ export default function CanvasPage() {
         canRedo,
         initCanvas,
         getLayerCanvasData,
+        loadProjectLayers,
     } = useDrawing({
         canvasRef,
         brushSize,
@@ -238,6 +250,10 @@ export default function CanvasPage() {
             setStrokeState("idle");
             setStateReason("control-click");
         }
+
+        // When activation clicks a generic DOM control (not a registered hotspot),
+        // useGestureControl can call us with null. Ignore safely.
+        if (!btnId) return;
         
         if (btnId === "clear") clear();
         else if (btnId === "undo") undo();
@@ -326,6 +342,49 @@ export default function CanvasPage() {
         if (canvasRef.current) initCanvas();
     }, [initCanvas]);
 
+    useEffect(() => {
+        const projectId = searchParams.get("project");
+        if (!projectId || !user?.uid) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const project = await getCanvasProjectCloud(user.uid, projectId);
+                if (!project || cancelled) return;
+                const projectLayers = Array.isArray(project.layers) ? project.layers : [];
+                if (!projectLayers.length) return;
+                setLayers(
+                    projectLayers.map((l, idx) => ({
+                        id: l.id || `layer_${idx + 1}`,
+                        name: l.name || `Layer ${idx + 1}`,
+                        visible: l.visible !== false,
+                        canvasData: null,
+                    })),
+                );
+                setActiveLayerId(project.activeLayerId || projectLayers[0]?.id || "layer_1");
+                setCurrentProjectId(project.id);
+                pendingProjectLayersRef.current = Object.fromEntries(
+                    projectLayers.map((l, idx) => [l.id || `layer_${idx + 1}`, l.canvasData || ""]),
+                );
+            } catch (e) {
+                if (isFirestorePermissionError(e)) {
+                    setStateReason("cloud-read-permission-denied");
+                    return;
+                }
+                console.warn("load project failed", e);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [searchParams, user?.uid]);
+
+    useEffect(() => {
+        const dataMap = pendingProjectLayersRef.current;
+        if (!dataMap || !layers.length) return;
+        pendingProjectLayersRef.current = null;
+        loadProjectLayers(dataMap);
+    }, [layers, loadProjectLayers]);
+
     // One-time: tell user how to view or disable lag diagnostics in console
     const hasLoggedDebugHint = useRef(false);
     useEffect(() => {
@@ -354,30 +413,47 @@ export default function CanvasPage() {
     const [saveStatus, setSaveStatus] = useState("idle"); // 'idle' | 'saving' | 'saved'
 
     async function saveProject() {
-        if (!canvasRef.current || saveStatus !== "idle") return;
+        if (!canvasRef.current || saveStatus !== "idle" || !user?.uid) return;
 
         setSaveStatus("saving");
 
         // Brief delay so user sees the loading state
         await new Promise((r) => setTimeout(r, 400));
-
-        const data = canvasRef.current.toDataURL();
-        const existing = JSON.parse(
-            localStorage.getItem("gesture-projects") || "[]"
-        );
-        existing.push(data);
-        localStorage.setItem("gesture-projects", JSON.stringify(existing));
-
-        setSaveStatus("saved");
-
-        // Cooldown: show "Saved!" for 2s, then re-enable save after 2.5s
-        setTimeout(() => setSaveStatus("idle"), 2500);
+        try {
+            const title = `Project ${new Date().toLocaleString()}`;
+            const serializedLayers = layers.map((l) => ({
+                id: l.id,
+                name: l.name,
+                visible: l.visible !== false,
+                canvasData: getLayerCanvasData(l.id),
+            }));
+            const projectId = await saveCanvasProjectCloud(user.uid, {
+                id: currentProjectId,
+                title,
+                width: canvasRef.current.width,
+                height: canvasRef.current.height,
+                activeLayerId,
+                layers: serializedLayers,
+                thumbnail: canvasRef.current.toDataURL("image/png"),
+            });
+            if (projectId) setCurrentProjectId(projectId);
+            setSaveStatus("saved");
+            setTimeout(() => setSaveStatus("idle"), 2500);
+        } catch (e) {
+            if (isFirestorePermissionError(e)) {
+                setStateReason("cloud-save-permission-denied");
+            } else {
+                console.warn("saveProject failed", e);
+                setStateReason("cloud-save-failed");
+            }
+            setSaveStatus("idle");
+        }
     }
 
     const canvasBg = settings?.canvasBg ?? "white";
 
     return (
-        <div className="relative w-screen h-screen pt-20 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 overflow-hidden font-sans select-none">
+        <div className="easeL-page-bg relative h-screen w-screen overflow-hidden pt-20 font-sans select-none">
             <div className="absolute inset-0 flex pt-20 items-center justify-center">
                 <DrawingCanvas canvasRef={canvasRef} canvasBg={canvasBg} />
             </div>
@@ -395,7 +471,6 @@ export default function CanvasPage() {
                 left={cursorPos.current.x}
                 top={cursorPos.current.y}
                 size={brushSize}
-                color={brushColor}
                 isPenDown={isPenDown}
                 tool={tool}
             />

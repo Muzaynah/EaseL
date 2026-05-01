@@ -398,6 +398,34 @@ export function useDrawing({ canvasRef, brushSize, brushColor, tool, layers = nu
     []
   );
 
+  const loadProjectLayers = useCallback(
+    async (layerDataMap) => {
+      if (!useLayers) return;
+      const list = layersRef.current || [];
+      const jobs = list.map(
+        (layer) =>
+          new Promise((resolve) => {
+            const entry = getLayerCanvas(layer.id);
+            if (!entry) return resolve();
+            const dataUrl = layerDataMap?.[layer.id];
+            entry.ctx.clearRect(0, 0, entry.canvas.width, entry.canvas.height);
+            if (!dataUrl) return resolve();
+            const img = new Image();
+            img.onload = () => {
+              entry.ctx.drawImage(img, 0, 0);
+              resolve();
+            };
+            img.onerror = () => resolve();
+            img.src = dataUrl;
+          }),
+      );
+      await Promise.all(jobs);
+      compositeToMain();
+      saveState();
+    },
+    [useLayers, getLayerCanvas, compositeToMain, saveState],
+  );
+
   // Re-composite when layer list or visibility changes
   useEffect(() => {
     if (useLayers && canvasRef.current) compositeToMain();
@@ -415,5 +443,6 @@ export function useDrawing({ canvasRef, brushSize, brushColor, tool, layers = nu
     canRedo,
     initCanvas,
     getLayerCanvasData,
+    loadProjectLayers,
   };
 }

@@ -133,7 +133,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pt-24 pb-16 px-6">
+    <div className="easeL-page-bg min-h-screen px-6 pb-16 pt-24">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-800">Settings</h1>
@@ -149,9 +149,7 @@ export default function Settings() {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`min-h-12 px-5 rounded-2xl font-medium whitespace-nowrap transition-all ${
-                  activeTab === tab
-                    ? "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-700"
-                    : "text-slate-600 hover:bg-white/80"
+                  activeTab === tab ? "easeL-chip-selected font-semibold" : "text-slate-600 hover:bg-white/80"
                 }`}
               >
                 {tab}
@@ -159,7 +157,7 @@ export default function Settings() {
             ))}
           </nav>
 
-          <div className="flex-1 bg-white/90 backdrop-blur-md rounded-3xl p-6 md:p-8 shadow-2xl border border-white/50">
+          <div className="easeL-auth-card flex-1 p-6 md:p-8">
             {activeTab === "Accessibility" && (
               <div className="space-y-6">
                 <div>
@@ -172,7 +170,7 @@ export default function Settings() {
                     max="100"
                     value={form.headSensitivity}
                     onChange={(e) => update("headSensitivity", Number(e.target.value))}
-                    className="w-full h-3 rounded-full appearance-none bg-slate-200 accent-indigo-500"
+                    className="w-full h-3 rounded-full appearance-none bg-slate-200 accent-[var(--easeL-primary)]"
                   />
                 </div>
                 <div>
@@ -185,7 +183,7 @@ export default function Settings() {
                     max="100"
                     value={form.gestureSensitivity}
                     onChange={(e) => update("gestureSensitivity", Number(e.target.value))}
-                    className="w-full h-3 rounded-full appearance-none bg-slate-200 accent-indigo-500"
+                    className="w-full h-3 rounded-full appearance-none bg-slate-200 accent-[var(--easeL-primary)]"
                   />
                 </div>
                 <div>
@@ -198,7 +196,7 @@ export default function Settings() {
                     max="100"
                     value={form.deadZone}
                     onChange={(e) => update("deadZone", Number(e.target.value))}
-                    className="w-full h-3 rounded-full appearance-none bg-slate-200 accent-indigo-500"
+                    className="w-full h-3 rounded-full appearance-none bg-slate-200 accent-[var(--easeL-primary)]"
                   />
                 </div>
 
@@ -222,13 +220,13 @@ export default function Settings() {
                           onClick={() => update("rollingNeutralStrength", preset.value)}
                           className={`text-left min-h-20 px-4 py-3 rounded-2xl border transition-colors ${
                             active
-                              ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200"
+                              ? "border-[color:var(--easeL-primary)] bg-[color-mix(in_srgb,var(--easeL-primary)_12%,white)] ring-2 ring-[color:color-mix(in_srgb,var(--easeL-primary)_35%,transparent)]"
                               : "border-slate-200 bg-white hover:bg-slate-50"
                           }`}
                         >
                           <span
                             className={`block font-semibold ${
-                              active ? "text-indigo-700" : "text-slate-700"
+                              active ? "easeL-accent-text-strong" : "text-slate-700"
                             }`}
                           >
                             {preset.label}
@@ -256,7 +254,7 @@ export default function Settings() {
                     step="5"
                     value={sessionLength}
                     onChange={(e) => setSessionLength(Number(e.target.value))}
-                    className="w-full h-3 rounded-full appearance-none bg-slate-200 accent-indigo-500"
+                    className="w-full h-3 rounded-full appearance-none bg-slate-200 accent-[var(--easeL-primary)]"
                   />
                 </div>
 
@@ -300,7 +298,7 @@ export default function Settings() {
                         onClick={() => setLanguage(o.value)}
                         className={`min-h-12 px-5 rounded-2xl font-medium transition-colors ${
                           language === o.value
-                            ? "bg-indigo-500 text-white"
+                            ? "bg-[var(--easeL-primary)] text-white"
                             : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                         }`}
                       >
@@ -313,7 +311,7 @@ export default function Settings() {
                 <Link
                   to="/calibration"
                   state={{ fromSettings: true }}
-                  className="inline-flex items-center justify-center min-h-12 px-6 rounded-2xl border-2 border-indigo-500 text-indigo-600 font-semibold hover:bg-indigo-50 transition-all"
+                  className="easeL-btn-outline inline-flex min-h-12 items-center justify-center px-6"
                 >
                   Recalibrate
                 </Link>
@@ -329,7 +327,7 @@ export default function Settings() {
                   <select
                     value={form.brushSize}
                     onChange={(e) => update("brushSize", e.target.value)}
-                    className="w-full min-h-12 px-4 rounded-2xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="easeL-input min-h-12 px-4"
                   >
                     {["S", "M", "L", "XL"].map((s) => (
                       <option key={s} value={s}>
@@ -350,8 +348,8 @@ export default function Settings() {
                         onClick={() => update("defaultBrushColor", c)}
                         className={`w-12 h-12 rounded-2xl border-2 transition-colors ${
                           form.defaultBrushColor === c
-                            ? "border-indigo-500 ring-2 ring-indigo-200 ring-offset-2"
-                            : "border-slate-200 hover:border-indigo-400"
+                            ? "border-[color:var(--easeL-primary)] ring-2 ring-[color:color-mix(in_srgb,var(--easeL-primary)_30%,transparent)] ring-offset-2"
+                            : "border-slate-200 hover:border-[color:color-mix(in_srgb,var(--easeL-primary)_45%,transparent)]"
                         }`}
                         style={{ backgroundColor: c }}
                         aria-label={`Color ${c}`}
@@ -370,7 +368,7 @@ export default function Settings() {
                         onClick={() => update("canvasBg", bg)}
                         className={`min-h-12 px-4 rounded-2xl font-medium capitalize ${
                           form.canvasBg === bg
-                            ? "bg-indigo-500 text-white"
+                            ? "bg-[var(--easeL-primary)] text-white"
                             : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                         }`}
                       >
@@ -388,7 +386,7 @@ export default function Settings() {
           <button
             type="button"
             onClick={handleSave}
-            className="inline-flex items-center justify-center gap-2 min-h-12 px-8 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95 transition-all"
+            className="easeL-btn-solid inline-flex min-h-12 items-center justify-center gap-2 px-8 transition-all"
           >
             <Save className="w-5 h-5" />
             Save changes
@@ -416,7 +414,7 @@ function Toggle({ value, onChange }) {
       type="button"
       onClick={() => onChange(!value)}
       className={`w-14 h-8 rounded-full transition-colors shrink-0 ${
-        value ? "bg-indigo-500" : "bg-slate-200"
+        value ? "bg-[var(--easeL-primary)]" : "bg-slate-200"
       }`}
     >
       <span

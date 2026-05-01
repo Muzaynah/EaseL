@@ -17,15 +17,18 @@ import {
   Home as HomeIcon,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebase/config";
 import {
   LESSON_STAGES,
   firstStageForMode,
   lastStageForMode,
   getStage,
   variantsForStage,
+  lessonCountInStage,
+  lessonIndexWithinStage,
+  lessonVariantDisplayName,
 } from "../utils/lessonContent";
+import { getTrialLog } from "../utils/persistence";
+import { didTrialPass, evaluateMastery, filterTrials } from "../utils/stageAdaptation";
 
 const ICONS = {
   eye: Eye,
@@ -49,25 +52,6 @@ const VARIANT_ICONS = {
   house: HomeIcon,
 };
 
-const VARIANT_LABELS = {
-  en: {
-    circle: "Circle",
-    square: "Square",
-    triangle: "Triangle",
-    sun: "Sun",
-    kite: "Kite",
-    house: "House",
-  },
-  ur: {
-    circle: "دائرہ",
-    square: "مربع",
-    triangle: "مثلث",
-    sun: "سورج",
-    kite: "پتنگ",
-    house: "گھر",
-  },
-};
-
 export default function LessonSelect() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
@@ -80,29 +64,36 @@ export default function LessonSelect() {
   const language = profile?.caregiverReported?.language ?? "en";
 
   useEffect(() => {
+    const resolveUnlockedStage = (src) => {
+      const a = Number(src?.currentStage);
+      const b = Number(src?.currentLevel);
+      const stage = Number.isFinite(a) ? a : 0;
+      const level = Number.isFinite(b) ? b : 0;
+      return Math.max(stage, level);
+    };
     async function load() {
       setLoadError(null);
       if (!user?.uid) {
-        setPathId(2);
+        setLoadError("Authentication required to load lessons.");
+        setPathId(null);
         setCurrentLevel(0);
         setLoading(false);
         return;
       }
       try {
-        if (db) {
-          const userDoc = await getDoc(doc(db, "profiles", user.uid));
-          const data = userDoc.data() || {};
-          setPathId(data.pathId ?? data.lipMode ?? 2);
-          setCurrentLevel(data.currentLevel ?? data.currentStage ?? 0);
+        if (!profile) {
+          setLoadError("Profile not available. Please retry from dashboard.");
+          setPathId(null);
+          setCurrentLevel(0);
         } else {
-          setPathId(profile?.pathId ?? profile?.lipMode ?? 2);
-          setCurrentLevel(profile?.currentLevel ?? profile?.currentStage ?? 0);
+          setPathId(profile.pathId ?? profile.lipMode ?? null);
+          setCurrentLevel(resolveUnlockedStage(profile));
         }
       } catch (e) {
         console.warn("LessonSelect load profile", e);
-        setLoadError("Could not load lessons. Showing default.");
-        setPathId(profile?.pathId ?? profile?.lipMode ?? 2);
-        setCurrentLevel(profile?.currentLevel ?? profile?.currentStage ?? 0);
+        setLoadError("Could not load lessons from cloud.");
+        setPathId(null);
+        setCurrentLevel(0);
       }
       setLoading(false);
     }
@@ -121,14 +112,32 @@ export default function LessonSelect() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/30 pt-24 flex flex-col items-center justify-center gap-4">
-        <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="easeL-page-bg flex min-h-screen flex-col items-center justify-center gap-4 pt-24">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[var(--easeL-border-subtle)] border-t-[var(--easeL-primary)]" />
         <p className="text-slate-600 font-medium">Loading path lessons...</p>
       </div>
     );
   }
 
-  const displayMode = pathId ?? 2;
+  if (loadError && pathId == null) {
+    return (
+      <div className="easeL-page-bg flex min-h-screen flex-col items-center justify-center gap-4 px-6 pt-24">
+        <div className="max-w-md rounded-3xl border border-rose-200 bg-white p-6 text-center shadow-xl">
+          <h2 className="text-xl font-bold text-slate-800">Could not load lessons</h2>
+          <p className="mt-2 text-slate-600">{loadError}</p>
+          <button
+            type="button"
+            onClick={() => navigate("/home")}
+            className="easeL-btn-solid mt-4 w-full"
+          >
+            Back to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const displayMode = pathId;
   const stages = LESSON_STAGES.filter((s) =>
     displayMode === 1 ? s.mode === 1 : s.mode === 2
   );
@@ -143,9 +152,31 @@ export default function LessonSelect() {
   );
   const currentStageDef = getStage(displayStage);
   const lessonPath = displayMode === 1 ? "/lesson-path1" : "/lesson-path2";
+  const trialLog = typeof window !== "undefined" ? getTrialLog() : [];
+  const stageProgress = new Map(
+    stages.map((s) => {
+      const stageTrials = filterTrials(trialLog, { userId: user?.uid ?? "local", mode: s.mode, stage: s.stage });
+      const mastery = evaluateMastery(s, stageTrials);
+      const targetAttempts = Math.max(1, s.trialsForMastery ?? 5);
+      const window = stageTrials.slice(-targetAttempts);
+      const passCount = window.filter((t) => didTrialPass(t, s)).length;
+      const mastered = mastery.status === "advance";
+      const masteryText = mastered
+        ? language === "ur"
+          ? "مہارت مکمل"
+          : "Mastered"
+        : language === "ur"
+        ? `مہارت: ${passCount}/${targetAttempts}`
+        : `Mastery: ${passCount}/${targetAttempts}`;
+      const progress = mastered
+        ? 1
+        : Math.max(0, Math.min(1, passCount / targetAttempts));
+      return [s.stage, { masteryText, mastered, progress }];
+    }),
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/30 pt-24 pb-16 px-4">
+    <div className="easeL-page-bg min-h-screen px-4 pb-16 pt-24">
       {loadError && (
         <div className="max-w-5xl mx-auto mb-4 px-4 py-2 rounded-xl bg-amber-100 text-amber-900 text-sm text-center">
           {loadError}
@@ -156,7 +187,7 @@ export default function LessonSelect() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate("/home")}
-              className="flex items-center justify-center w-12 h-12 rounded-2xl bg-white/95 shadow border border-slate-200/80 text-slate-700 hover:bg-indigo-50 transition-all"
+              className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200/80 bg-white/95 text-slate-700 shadow transition-all hover:bg-[color-mix(in_srgb,var(--easeL-primary)_10%,white)]"
               aria-label="Back to home"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -167,8 +198,15 @@ export default function LessonSelect() {
             <div className="px-4 py-2 rounded-xl bg-white/95 shadow border border-slate-200/80">
               <p className="text-sm text-slate-600">
                 Current level:{" "}
-                <span className="font-semibold text-indigo-600">
-                  Level {displayStage} · {currentStageDef?.title ?? ""}
+                <span className="easeL-accent-text-strong font-semibold">
+                  {language === "ur"
+                    ? `مرحلہ ${displayStage} · ${currentStageDef?.titleUr ?? currentStageDef?.title ?? ""}`
+                    : `Level ${displayStage} · ${currentStageDef?.title ?? ""}`}
+                  {lessonCountInStage(currentStageDef) > 1
+                    ? language === "ur"
+                      ? ` · ${lessonCountInStage(currentStageDef)} مختلف سبق`
+                      : ` · ${lessonCountInStage(currentStageDef)} numbered lessons`
+                    : null}
                 </span>
               </p>
             </div>
@@ -196,13 +234,13 @@ export default function LessonSelect() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => setPathId(1)}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium ${displayMode === 1 ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                        className={`flex-1 rounded-lg py-2 text-sm font-medium ${displayMode === 1 ? "bg-[var(--easeL-primary)] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                       >
                         Path 1
                       </button>
                       <button
                         onClick={() => setPathId(2)}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium ${displayMode === 2 ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                        className={`flex-1 rounded-lg py-2 text-sm font-medium ${displayMode === 2 ? "bg-[var(--easeL-primary)] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                       >
                         Path 2
                       </button>
@@ -215,7 +253,7 @@ export default function LessonSelect() {
                         <button
                           key={s.stage}
                           onClick={() => setCurrentLevel(s.stage)}
-                          className={`flex-1 min-w-[44px] py-2 rounded-lg text-sm font-medium ${displayStage === s.stage ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                          className={`flex-1 min-w-[44px] rounded-lg py-2 text-sm font-medium ${displayStage === s.stage ? "bg-[var(--easeL-primary)] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                         >
                           {s.stage}
                         </button>
@@ -225,13 +263,17 @@ export default function LessonSelect() {
                   <div className="pt-2 border-t border-slate-200 flex flex-col gap-2">
                     <button
                       onClick={() => { navigate(`/lesson-path1?stage=${displayStage}&lockStage=1`); setDevOpen(false); }}
-                      className="w-full py-2.5 rounded-lg text-sm font-medium bg-indigo-100 text-indigo-800 hover:bg-indigo-200"
+                      className="easeL-accent-bg easeL-accent-text-strong w-full rounded-lg py-2.5 text-sm font-medium hover:opacity-90"
                     >
                       Open Path 1 Lesson (level {displayStage})
                     </button>
                     <button
                       onClick={() => { navigate(`/lesson-path2?stage=${displayStage}&lockStage=1`); setDevOpen(false); }}
-                      className="w-full py-2.5 rounded-lg text-sm font-medium bg-purple-100 text-purple-800 hover:bg-purple-200"
+                      className="w-full rounded-lg py-2.5 text-sm font-semibold hover:opacity-90"
+                      style={{
+                        background: "color-mix(in srgb, var(--easeL-accent-rose) 22%, white)",
+                        color: "#4a1f3a",
+                      }}
                     >
                       Open Path 2 Lesson (level {displayStage})
                     </button>
@@ -269,16 +311,19 @@ export default function LessonSelect() {
                         : `${variants.length} shapes`
                       : null
                   }
+                  mastery={stageProgress.get(s.stage)}
                   language={language}
                   onStart={() => navigate(`${lessonPath}?stage=${s.stage}`)}
                 />,
               ];
             }
 
+            const totalInStage = lessonCountInStage(s);
             return variants.map((v) => {
               const VariantIcon = VARIANT_ICONS[v.variant] ?? StageIcon;
               const variantLabel =
-                VARIANT_LABELS[language]?.[v.variant] ?? v.label;
+                lessonVariantDisplayName(language, v.variant) || v.label;
+              const lessonNum = lessonIndexWithinStage(s, v.variant);
               return (
                 <StageCard
                   key={`stage-${s.stage}-${v.variant}`}
@@ -286,10 +331,10 @@ export default function LessonSelect() {
                   StageIcon={VariantIcon}
                   locked={false}
                   title={variantLabel}
-                  description={`${title} · ${s.description}`}
-                  subtitle={
-                    language === "ur" ? `مرحلہ ${s.stage}` : `Level ${s.stage}`
-                  }
+                  description={s.description}
+                  lessonNum={lessonNum}
+                  lessonTotal={totalInStage}
+                  mastery={stageProgress.get(s.stage)}
                   language={language}
                   onStart={() =>
                     navigate(
@@ -313,27 +358,44 @@ function StageCard({
   title,
   description,
   subtitle,
+  /** Sub-lesson index when this stage splits into variants (circle, square…). */
+  lessonNum,
+  lessonTotal,
   language,
+  mastery,
   onStart,
 }) {
+  const masteryProgress = Math.max(0, Math.min(1, mastery?.progress ?? 0));
   return (
     <div
       className={`rounded-3xl overflow-hidden shadow-lg border-2 transition-all flex flex-col ${
         locked
           ? "bg-white/80 border-slate-200 opacity-90"
-          : "bg-white border-slate-200/90 hover:shadow-2xl hover:border-indigo-300 hover:-translate-y-0.5"
+          : "border-slate-200/90 bg-white hover:-translate-y-0.5 hover:border-[color:color-mix(in_srgb,var(--easeL-primary)_35%,transparent)] hover:shadow-2xl"
       }`}
     >
-      <div className="aspect-[5/3] bg-gradient-to-br from-indigo-50 via-purple-50 to-white flex items-center justify-center border-b border-slate-200">
-        {createElement(StageIcon, { className: "w-14 h-14 text-indigo-500", strokeWidth: 1.75 })}
+      <div
+        className="flex aspect-[5/3] items-center justify-center border-b border-slate-200"
+        style={{
+          background: "linear-gradient(145deg, color-mix(in srgb, var(--easeL-primary) 10%, white), var(--easeL-bg-section))",
+        }}
+      >
+        {createElement(StageIcon, { className: "easeL-accent-text-strong h-14 w-14", strokeWidth: 1.75 })}
       </div>
       <div className="p-4 flex-1 flex flex-col">
-        <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-100 text-indigo-800">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <span className="easeL-accent-bg easeL-accent-text-strong rounded-lg px-2.5 py-1 text-xs font-semibold">
             Level {stage.stage}
           </span>
-          {subtitle && !locked && (
-            <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600">
+          {lessonTotal != null && lessonNum != null && lessonTotal > 1 && !locked && (
+            <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+              {language === "ur"
+                ? `سبق ${lessonNum} (${lessonTotal} میں سے)`
+                : `Lesson ${lessonNum} of ${lessonTotal}`}
+            </span>
+          )}
+          {subtitle && !locked && !(lessonTotal > 1 && lessonNum != null) && (
+            <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
               {subtitle}
             </span>
           )}
@@ -350,6 +412,38 @@ function StageCard({
         <p className="text-slate-600 text-sm mt-1 line-clamp-2 flex-1">
           {description}
         </p>
+        {!locked && mastery?.masteryText ? (
+          <div
+            className={`mt-2 rounded-lg border px-2.5 py-1.5 text-xs font-semibold ${
+              mastery.mastered
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                : "bg-amber-50 border-amber-200 text-amber-900"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span>{mastery.masteryText}</span>
+              {mastery.mastered ? (
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                  {language === "ur" ? "تیار" : "Ready"}
+                </span>
+              ) : (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">
+                  {language === "ur" ? "جاری" : "In progress"}
+                </span>
+              )}
+            </div>
+            {!mastery.mastered ? (
+              <div className="mt-2">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-amber-100">
+                  <div
+                    className="h-full rounded-full bg-amber-500 transition-[width] duration-300"
+                    style={{ width: `${Math.round(masteryProgress * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {locked ? (
           <div className="mt-3 flex items-center justify-center min-h-11 rounded-xl bg-slate-100 text-slate-500 font-medium cursor-not-allowed">
             {language === "ur" ? "بند" : "Locked"}
@@ -357,7 +451,7 @@ function StageCard({
         ) : (
           <button
             onClick={onStart}
-            className="mt-3 w-full min-h-11 rounded-xl font-semibold bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow hover:opacity-95 hover:shadow-lg transition-all"
+            className="easeL-btn-solid mt-3 w-full transition-all"
           >
             {language === "ur" ? "شروع کریں" : "Start"}
           </button>

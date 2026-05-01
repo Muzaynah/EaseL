@@ -1,7 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import {
-  getProfile,
-  setProfile as persistProfile,
   getSettings,
   setSettings as persistSettings,
   getCalibration,
@@ -13,14 +11,13 @@ const AppStateContext = createContext(null);
 
 export function AppStateProvider({ children }) {
   const { user, profile: authProfile, updateProfile: authUpdateProfile } = useAuth();
-  const [localProfile, setLocalProfile] = useState(getProfile);
   const [settings, setSettingsState] = useState(getSettings);
   const [calibration, setCalibrationState] = useState(getCalibration);
   const [hydrated, setHydrated] = useState(false);
   /** Session-only override for testing: null = use profile, 1 = simulate Path 1, 2 = simulate Path 2 */
   const [modeOverride, setModeOverride] = useState(null);
 
-  const profile = user && authProfile != null ? authProfile : localProfile;
+  const profile = authProfile;
 
   useEffect(() => {
     setHydrated(true);
@@ -34,12 +31,10 @@ export function AppStateProvider({ children }) {
   const setProfile = useCallback(
     (next) => {
       const updated = typeof next === "function" ? next(profile) : next;
-      if (user && authUpdateProfile) {
-        authUpdateProfile(updated);
-      } else {
-        const persisted = persistProfile(updated);
-        setLocalProfile(persisted);
+      if (!user || !authUpdateProfile) {
+        throw new Error("Authenticated cloud profile is required.");
       }
+      authUpdateProfile(updated);
     },
     [user, profile, authUpdateProfile]
   );

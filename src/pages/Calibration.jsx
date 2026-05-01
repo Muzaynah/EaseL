@@ -44,15 +44,23 @@ function LiveBar({ value, leftLabel, rightLabel, detectedLeft, detectedRight }) 
       <div className="relative h-4 bg-slate-200 rounded-full overflow-hidden">
         {leftPct > 0 && (
           <div
-            className="absolute inset-y-0 bg-indigo-400 transition-all duration-75 rounded-l-full"
-            style={{ width: `${leftPct}%`, right: "50%" }}
+            className="absolute inset-y-0 rounded-l-full transition-all duration-75"
+            style={{
+              background: "var(--easeL-primary-mid)",
+              width: `${leftPct}%`,
+              right: "50%",
+            }}
           />
         )}
         <div className="absolute inset-y-0 w-0.5 bg-slate-700 left-1/2 -translate-x-px z-10" />
         {rightPct > 0 && (
           <div
-            className="absolute inset-y-0 bg-indigo-400 transition-all duration-75 rounded-r-full"
-            style={{ width: `${rightPct}%`, left: "50%" }}
+            className="absolute inset-y-0 rounded-r-full transition-all duration-75"
+            style={{
+              background: "var(--easeL-primary-mid)",
+              width: `${rightPct}%`,
+              left: "50%",
+            }}
           />
         )}
       </div>
@@ -307,7 +315,7 @@ export default function Calibration() {
   if (step === 7) {
     const goToTutorial = !fromSettings && isFirstTime;
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center px-6 pt-24 pb-16">
+      <div className="easeL-page-bg flex min-h-screen items-center justify-center px-6 pb-16 pt-24">
         <div className="max-w-md w-full bg-white/90 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/50 text-center">
           <div className="w-20 h-20 mx-auto rounded-full bg-emerald-100 flex items-center justify-center mb-6">
             <Check className="w-10 h-10 text-emerald-600" />
@@ -331,7 +339,7 @@ export default function Calibration() {
           <button
             onClick={handleCalibrationDone}
             disabled={saving}
-            className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="easeL-btn-solid flex w-full items-center justify-center gap-2 transition-all disabled:cursor-not-allowed disabled:opacity-70"
           >
             {saving ? (
               <>
@@ -350,7 +358,7 @@ export default function Calibration() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 pt-24 pb-16 px-6">
+    <div className="easeL-page-bg min-h-screen px-6 pb-16 pt-24">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <p className="text-slate-600 font-medium">Step {step} of {TOTAL_STEPS}</p>
@@ -368,27 +376,34 @@ export default function Calibration() {
             <span
               key={s}
               className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                s === step ? "bg-indigo-500" : s < step ? "bg-indigo-300" : "bg-slate-200"
+                s === step
+                  ? "bg-[var(--easeL-primary)]"
+                  : s < step
+                    ? "bg-[color:color-mix(in_srgb,var(--easeL-primary)_45%,white)]"
+                    : "bg-slate-200"
               }`}
             />
           ))}
         </div>
 
-        <div className="bg-white/90 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/50">
+        <div className="easeL-auth-card p-8">
           {step === 1 && (
             <>
-              <h2 className="text-2xl font-bold text-slate-800 mb-4">
+              <h2 className="mb-4 text-2xl font-bold" style={{ color: "var(--easeL-text)" }}>
                 Let&apos;s Set Up Your Controls
               </h2>
-              <p className="text-slate-600 mb-8">
+              <p className="mb-8" style={{ color: "var(--easeL-text-muted)" }}>
                 We&apos;ll calibrate tilt (ear toward shoulder), turn (face left/right), look up/down, and mouth open as your gesture. Each step has live feedback.
               </p>
-              <div className="w-24 h-24 mx-auto rounded-2xl bg-indigo-100 flex items-center justify-center mb-8">
-                <Circle className="w-12 h-12 text-indigo-500" />
+              <div
+                className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-2xl"
+                style={{ background: "color-mix(in srgb, var(--easeL-primary) 14%, white)" }}
+              >
+                <Circle className="h-12 w-12 easeL-accent-text-strong" />
               </div>
               <button
                 onClick={() => setStep(2)}
-                className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95 transition-all"
+                className="easeL-btn-solid w-full transition-all"
               >
                 Begin Calibration
               </button>
@@ -451,7 +466,7 @@ export default function Calibration() {
             <button
               onClick={() => setStep(3)}
               disabled={!neutralDetected}
-              className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="easeL-btn-solid w-full transition-all disabled:cursor-not-allowed disabled:opacity-50"
             >
               Next
             </button>
@@ -483,7 +498,10 @@ export default function Calibration() {
                 >
                   <ArrowLeft className="w-7 h-7" />
                 </div>
-                <div className="w-10 h-10 rounded-full border-2 border-indigo-400 bg-white" />
+                <div
+                  className="h-10 w-10 rounded-full border-2 bg-white"
+                  style={{ borderColor: "color-mix(in srgb, var(--easeL-primary) 42%, white)" }}
+                />
                 <div
                   className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
                     tiltDetected.right ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-400"
@@ -495,7 +513,7 @@ export default function Calibration() {
               <button
                 onClick={() => setStep(4)}
                 disabled={!tiltDone}
-                className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="easeL-btn-solid w-full transition-all disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next
               </button>
@@ -528,7 +546,10 @@ export default function Calibration() {
                 >
                   <ArrowLeft className="w-7 h-7" />
                 </div>
-                <div className="w-10 h-10 rounded-full border-2 border-indigo-400 bg-white" />
+                <div
+                  className="h-10 w-10 rounded-full border-2 bg-white"
+                  style={{ borderColor: "color-mix(in srgb, var(--easeL-primary) 42%, white)" }}
+                />
                 <div
                   className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
                     turnDetected.right ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-400"
@@ -540,7 +561,7 @@ export default function Calibration() {
               <button
                 onClick={() => setStep(5)}
                 disabled={!turnDone}
-                className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="easeL-btn-solid w-full transition-all disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next
               </button>
@@ -573,7 +594,10 @@ export default function Calibration() {
                 >
                   <ArrowUp className="w-7 h-7" />
                 </div>
-                <div className="w-10 h-10 rounded-full border-2 border-indigo-400 bg-white" />
+                <div
+                  className="h-10 w-10 rounded-full border-2 bg-white"
+                  style={{ borderColor: "color-mix(in srgb, var(--easeL-primary) 42%, white)" }}
+                />
                 <div
                   className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
                     pitchDetected.down ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-400"
@@ -585,7 +609,7 @@ export default function Calibration() {
               <button
                 onClick={() => setStep(6)}
                 disabled={!pitchDone}
-                className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="easeL-btn-solid w-full transition-all disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next
               </button>
@@ -609,8 +633,11 @@ export default function Calibration() {
                 </div>
                 <div className="h-3 bg-slate-200 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-indigo-400 transition-all duration-75 rounded-full"
-                    style={{ width: `${Math.min(100, (live.mouthHeight / 0.06) * 100)}%` }}
+                    className="h-full rounded-full transition-all duration-75"
+                    style={{
+                      background: "var(--easeL-primary-mid)",
+                      width: `${Math.min(100, (live.mouthHeight / 0.06) * 100)}%`,
+                    }}
                   />
                 </div>
               </div>
@@ -625,7 +652,7 @@ export default function Calibration() {
               <button
                 onClick={handleComplete}
                 disabled={!mouthDone}
-                className="w-full min-h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold shadow-lg hover:opacity-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="easeL-btn-solid w-full transition-all disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Complete Calibration
               </button>

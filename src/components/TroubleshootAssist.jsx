@@ -104,7 +104,7 @@ export default function TroubleshootAssist() {
                         onClick={() => setAnswers((a) => ({ ...a, [q.id]: o.id }))}
                         className={`min-h-9 px-3 rounded-lg text-xs font-semibold ${
                           answers[q.id] === o.id
-                            ? "bg-indigo-600 text-white"
+                            ? "bg-[var(--easeL-primary)] text-white"
                             : "bg-slate-100 text-slate-700"
                         }`}
                       >
@@ -120,7 +120,7 @@ export default function TroubleshootAssist() {
                 type="button"
                 onClick={apply}
                 disabled={!complete}
-                className="flex-1 min-h-10 rounded-lg bg-indigo-600 text-white font-semibold disabled:opacity-50"
+                className="flex-1 min-h-10 rounded-lg bg-[var(--easeL-primary)] font-semibold text-white disabled:opacity-50"
               >
                 Apply
               </button>
@@ -136,7 +136,13 @@ export default function TroubleshootAssist() {
         </div>
       ) : null}
       {changeText ? (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 rounded-xl bg-white border border-indigo-200 px-3 py-2 text-xs font-semibold text-indigo-800">
+        <div
+          className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-xl border bg-white px-3 py-2 text-xs font-semibold"
+          style={{
+            borderColor: "color-mix(in srgb, var(--easeL-primary) 30%, transparent)",
+            color: "var(--easeL-primary)",
+          }}
+        >
           {changeText}
         </div>
       ) : null}

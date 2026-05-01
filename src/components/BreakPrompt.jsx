@@ -36,7 +36,7 @@ export default function BreakPrompt({ kind, onResume, onExit, language = "en" })
             <button
               type="button"
               onClick={onResume}
-              className="min-h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-semibold text-lg shadow-lg hover:opacity-95 transition-all"
+              className="easeL-btn-solid min-h-14 text-lg transition-all"
             >
               {language === "ur" ? "جاری رکھیں" : "Continue"}
             </button>

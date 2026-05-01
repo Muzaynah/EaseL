@@ -16,17 +16,17 @@ export const LESSON_STAGES = [
   {
     stage: 0,
     mode: 1,
-    title: "Cause and effect",
-    titleUr: "سر ہلائیں، لکیر بنائیں",
+    title: "Direction basics",
+    titleUr: "سمت سیکھیں",
     description:
-      "Tilt your head — the line follows. No buttons, no mouth. Fills up as you tilt.",
+      "Learn left, right, up, and down with short guided lines.",
     icon: "eye",
     shape: "straight",
     autocompleteLevel: 100,
     corridorWidth: 220,
     corridorLength: 520,
     requiredAdherence: 50,
-    trialsForMastery: 3,
+    trialsForMastery: 4,
   },
   {
     stage: 1,
@@ -38,7 +38,7 @@ export const LESSON_STAGES = [
     icon: "target",
     shape: "hold",
     holdRadius: 160,
-    holdMs: 1500,
+    holdMs: 3000,
     autocompleteLevel: 100,
     requiredAdherence: 0,
     trialsForMastery: 3,
@@ -46,13 +46,13 @@ export const LESSON_STAGES = [
   {
     stage: 2,
     mode: 1,
-    title: "Start and stop",
-    titleUr: "شروع اور ختم",
+    title: "Guided tracing",
+    titleUr: "رہنمائی کے ساتھ ٹریسنگ",
     description:
-      "Open your mouth (or hold still) once to start, once to finish. We fill the rest.",
+      "Tilt in the correct direction to move the trace, then autocomplete from halfway.",
     icon: "play",
     shape: "straight",
-    autocompleteLevel: 80,
+    autocompleteLevel: 50,
     corridorWidth: 200,
     corridorLength: 520,
     requiredAdherence: 45,
@@ -175,4 +175,62 @@ export function variantsForStage(stage) {
     return stage.construction.map((v) => ({ variant: v, label: v }));
   }
   return [{ variant: null, label: stage.shape }];
+}
+
+/** Localised short name for circle / square / kite / … (tiles + lesson chrome). */
+export const LESSON_VARIANT_LABELS = {
+  en: {
+    circle: "Circle",
+    square: "Square",
+    triangle: "Triangle",
+    sun: "Sun",
+    kite: "Kite",
+    house: "House",
+  },
+  ur: {
+    circle: "دائرہ",
+    square: "مربع",
+    triangle: "مثلث",
+    sun: "سورج",
+    kite: "پتنگ",
+    house: "گھر",
+  },
+};
+
+export function lessonVariantDisplayName(language, variantKey) {
+  if (!variantKey) return "";
+  const lang = language === "ur" ? "ur" : "en";
+  return LESSON_VARIANT_LABELS[lang][variantKey] ?? String(variantKey);
+}
+
+/**
+ * Respects `?variant=` from the lesson URL when it matches this stage's list;
+ * otherwise uses `variantForAttempt` (attempt rotation).
+ */
+export function getEffectiveLessonVariant(stage, attemptIndex, forcedUrlVariant) {
+  if (!stage) return null;
+  const candidates = variantsForStage(stage)
+    .map((v) => v.variant)
+    .filter((k) => k != null && k !== "");
+  if (forcedUrlVariant && candidates.includes(forcedUrlVariant)) {
+    return forcedUrlVariant;
+  }
+  return variantForAttempt(stage, attemptIndex);
+}
+
+/** How many numbered sub-lessons in this stage (1 for stages 0–4; 3 for shapes; 3 for constructions). */
+export function lessonCountInStage(stage) {
+  const list = variantsForStage(stage);
+  if (!list.length) return 1;
+  const withKeys = list.filter((e) => e.variant != null);
+  return withKeys.length > 0 ? withKeys.length : 1;
+}
+
+/** 1-based index of this variant inside the stage (circle → 1 …). Single-shape stages → 1. */
+export function lessonIndexWithinStage(stage, variantKey) {
+  const rows = variantsForStage(stage).map((e) => e.variant);
+  if (!rows.some((x) => x != null)) return 1;
+  if (!variantKey) return 1;
+  const i = rows.findIndex((k) => k === variantKey);
+  return i >= 0 ? i + 1 : 1;
 }
