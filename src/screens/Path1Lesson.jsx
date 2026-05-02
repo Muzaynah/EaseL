@@ -37,6 +37,7 @@ import {
   getMasteryFeedback,
 } from "../utils/stageAdaptation";
 import { UI_TOKENS } from "../theme/uiTokens";
+import { lessonPointInsideCanvas } from "./path2Lesson/traceUtils";
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 700;
@@ -292,13 +293,13 @@ export default function Path1Lesson() {
   const [muted, setMuted] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
   const [masteryToast, setMasteryToast] = useState(null);
-  const [instructionDismiss, setInstructionDismiss] = useState(0);
+  const [, setInstructionDismiss] = useState(0);
   const [countdown, setCountdown] = useState(null);
   const [countdownDeadlineMs, setCountdownDeadlineMs] = useState(null);
   const [countdownNowMs, setCountdownNowMs] = useState(0);
   const [stageUnlock, setStageUnlock] = useState(null);
-  const [masteryHint, setMasteryHint] = useState("");
-  const [attemptFeedback, setAttemptFeedback] = useState("");
+  const [, setMasteryHint] = useState("");
+  const [, setAttemptFeedback] = useState("");
   const [adaptiveFeedback, setAdaptiveFeedback] = useState(null);
   const [lessonPaused, setLessonPaused] = useState(false);
 

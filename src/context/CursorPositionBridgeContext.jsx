@@ -26,6 +26,7 @@ export function CursorPositionBridgeProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- companion hook for provider
 export function useCursorPositionBridgeRef() {
   return useContext(CursorPositionBridgeContext);
 }

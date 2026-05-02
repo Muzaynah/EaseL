@@ -11,7 +11,6 @@ import {
   LESSON_STAGES,
   firstStageForMode,
   lastStageForMode,
-  getStage,
   variantsForStage,
   lessonCountInStage,
   lessonIndexWithinStage,
@@ -118,7 +117,6 @@ export default function LessonSelect() {
     stageFloor,
     Math.min(stageCeiling, currentLevel ?? stageFloor),
   );
-  const currentStageDef = getStage(displayStage);
   const lessonPath = displayMode === 1 ? "/lesson-path1" : "/lesson-path2";
   const trialLog = typeof window !== "undefined" ? getTrialLog() : [];
   const stageProgress = new Map(
