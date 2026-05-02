@@ -1,5 +1,14 @@
 import { Link } from "react-router-dom";
-import { BookOpen, Play, BarChart3 } from "lucide-react";
+import {
+  BarChart3,
+  BookOpen,
+  CalendarDays,
+  CircleCheckBig,
+  Clock,
+  Gauge,
+  Map,
+  Play,
+} from "lucide-react";
 import { useAppState } from "../context/AppStateContext";
 import { getTrialLog, getSessionLog } from "../utils/persistence";
 import {
@@ -7,11 +16,78 @@ import {
   firstStageForMode,
   lastStageForMode,
 } from "../utils/lessonContent";
-import imgSlimeGreen from "../assets/images/—Pngtree—pastel green slime kawaii icon_23260223.png";
-import imgSlimeBlue from "../assets/images/cute blue slime kawaii character_23260227.png";
-import imgCloudCute from "../assets/images/weather-cloud-cute_51867178.png";
+import imgFreeDrawMascot from "../assets/illustrations/vecteezy_a-blue-cartoon-shark-with-arms-and-legs_68086196.png";
+import imgLessonsMascot from "../assets/illustrations/vecteezy_a-sticker-of-a-green-leaf-with-a-face_68086203.png";
+import imgGalleryMascot from "../assets/illustrations/vecteezy_sticker-of-a-sad-red-object-with-eyes-closed_68086150.png";
 
 const MS_PER_HOUR = 1000 * 60 * 60;
+
+/** Same border token as greeting / easeL-card (`--easeL-border-strong`). */
+const HOME_SUMMARY_BORDER = "var(--easeL-border-strong)";
+
+/** Summary tiles: light tint at rest, full card color + icon fill on hover (see easeLPalette.css). */
+const HOME_SUMMARY_ROW_STYLES = [
+  {
+    Icon: Map,
+    cardBg: "var(--easeL-bg-card-butter)",
+    cardBgRest:
+      "color-mix(in srgb, var(--easeL-bg-section) 94%, var(--easeL-bg-card-butter) 6%)",
+    iconBubble:
+      "color-mix(in srgb, white 82%, var(--easeL-bg-card-butter) 18%)",
+    iconBubbleRest:
+      "color-mix(in srgb, var(--easeL-bg-section) 97%, var(--easeL-bg-card-butter) 3%)",
+  },
+  {
+    Icon: BookOpen,
+    cardBg: "var(--easeL-bg-card-mint)",
+    cardBgRest:
+      "color-mix(in srgb, var(--easeL-bg-section) 94%, var(--easeL-bg-card-mint) 6%)",
+    iconBubble:
+      "color-mix(in srgb, white 80%, var(--easeL-bg-card-mint) 20%)",
+    iconBubbleRest:
+      "color-mix(in srgb, var(--easeL-bg-section) 97%, var(--easeL-bg-card-mint) 3%)",
+  },
+  {
+    Icon: CalendarDays,
+    cardBg: "var(--easeL-bg-card-butter)",
+    cardBgRest:
+      "color-mix(in srgb, var(--easeL-bg-section) 94%, var(--easeL-bg-card-butter) 6%)",
+    iconBubble:
+      "color-mix(in srgb, white 82%, var(--easeL-bg-card-butter) 18%)",
+    iconBubbleRest:
+      "color-mix(in srgb, var(--easeL-bg-section) 97%, var(--easeL-bg-card-butter) 3%)",
+  },
+  {
+    Icon: CircleCheckBig,
+    cardBg: "var(--easeL-bg-card-mint)",
+    cardBgRest:
+      "color-mix(in srgb, var(--easeL-bg-section) 94%, var(--easeL-bg-card-mint) 6%)",
+    iconBubble:
+      "color-mix(in srgb, white 80%, var(--easeL-bg-card-mint) 20%)",
+    iconBubbleRest:
+      "color-mix(in srgb, var(--easeL-bg-section) 97%, var(--easeL-bg-card-mint) 3%)",
+  },
+  {
+    Icon: Clock,
+    cardBg: "var(--easeL-bg-card-butter)",
+    cardBgRest:
+      "color-mix(in srgb, var(--easeL-bg-section) 94%, var(--easeL-bg-card-butter) 6%)",
+    iconBubble:
+      "color-mix(in srgb, white 82%, var(--easeL-bg-card-butter) 18%)",
+    iconBubbleRest:
+      "color-mix(in srgb, var(--easeL-bg-section) 97%, var(--easeL-bg-card-butter) 3%)",
+  },
+  {
+    Icon: Gauge,
+    cardBg: "var(--easeL-bg-card-mint)",
+    cardBgRest:
+      "color-mix(in srgb, var(--easeL-bg-section) 94%, var(--easeL-bg-card-mint) 6%)",
+    iconBubble:
+      "color-mix(in srgb, white 80%, var(--easeL-bg-card-mint) 20%)",
+    iconBubbleRest:
+      "color-mix(in srgb, var(--easeL-bg-section) 97%, var(--easeL-bg-card-mint) 3%)",
+  },
+];
 
 /** Drop a PNG in `public/mascots/easel-shortcuts.png` to show a mascot beside Shortcuts; omitted safely if missing. */
 const SHORTCUTS_SECTION_MASCOT_SRC = `${import.meta.env.BASE_URL}mascots/easel-shortcuts.png`;
@@ -139,28 +215,28 @@ function Mode2Home({ welcomeFirstName, profile }) {
 
   const quickActions = [
     {
-      title: "Free Draw",
-      description: "Open canvas for free practice (optional).",
-      buttonText: "Open Canvas",
-      path: "/canvas",
-      tone: "ash",
-      mascot: imgSlimeBlue,
-    },
-    {
       title: "Guided Lessons",
-      description: "Corridor tracing with scaffolded assistance.",
+      description: "Learn how to draw with step-by-step lessons.",
       buttonText: "Open Lessons",
       path: "/lessons",
       tone: "lavender",
-      mascot: imgSlimeGreen,
+      mascot: imgLessonsMascot,
+    },
+    {
+      title: "Free Draw",
+      description: "A big blank canvas for your imagination.",
+      buttonText: "Open Canvas",
+      path: "/canvas",
+      tone: "ash",
+      mascot: imgFreeDrawMascot,
     },
     {
       title: "My Gallery",
-      description: "Saved drawings you created.",
+      description: "Your saved drawings and lessons in one place.",
       buttonText: "View Gallery",
       path: "/gallery",
       tone: "coral",
-      mascot: imgCloudCute,
+      mascot: imgGalleryMascot,
     },
   ];
 
@@ -171,7 +247,7 @@ function Mode2Home({ welcomeFirstName, profile }) {
     },
     {
       label: "Current level",
-      value: `Level ${currentStage} · ${currentStageDef?.title ?? ""}`,
+      value: `Level ${currentStage}`,
     },
     { label: "Sessions logged", value: `${totalSessions}` },
     { label: "Lesson attempts passed", value: `${completedLessons}` },
@@ -204,10 +280,9 @@ function Mode2Home({ welcomeFirstName, profile }) {
               <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:shrink-0">
                 <Link
                   to="/progress"
-                  className="easeL-interactive inline-flex min-h-12 w-full min-w-0 items-center justify-center gap-2 rounded-2xl border-2 bg-white px-5 text-[0.95rem] font-semibold sm:w-auto"
-                  style={{ borderColor: "var(--easeL-border)", color: "var(--easeL-text)" }}
+                  className="easeL-btn-outline inline-flex min-h-12 w-full min-w-0 items-center justify-center gap-2 px-5 text-[0.95rem] font-semibold sm:w-auto"
                 >
-                  <BarChart3 className="h-5 w-5" style={{ color: "var(--easeL-primary)" }} />
+                  <BarChart3 className="h-5 w-5" />
                   Progress
                 </Link>
                 <Link
@@ -224,7 +299,7 @@ function Mode2Home({ welcomeFirstName, profile }) {
 
         <section className="min-w-0">
           <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="easeL-heading-2 shrink-0">Shortcuts</h2>
+            <h2 className="easeL-heading-2 shrink-0">What do you want to do today?</h2>
             <figure
               className="relative mx-auto h-28 w-28 shrink-0 sm:mx-0 sm:h-32 sm:w-32"
               aria-hidden
@@ -239,7 +314,7 @@ function Mode2Home({ welcomeFirstName, profile }) {
               />
             </figure>
           </div>
-          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:items-stretch">
+          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3.5 lg:grid-cols-3 lg:items-stretch lg:gap-4">
             {quickActions.map((action) => {
               const toneStyles =
                 action.tone === "coral"
@@ -270,55 +345,51 @@ function Mode2Home({ welcomeFirstName, profile }) {
                     };
 
               const isLessonsMascot = action.path === "/lessons";
-              const isFreeDrawBlue = action.mascot === imgSlimeBlue;
+              const isFreeDrawMascot = action.path === "/canvas";
               const mascotImgSize = isLessonsMascot
-                ? { w: 108, h: 108 }
-                : isFreeDrawBlue
-                ? { w: 124, h: 124 }
-                : { w: 132, h: 132 };
+                ? { w: 120, h: 120 }
+                : isFreeDrawMascot
+                ? { w: 200, h: 200 }
+                : { w: 120, h: 120 };
               const mascotSizeClass = isLessonsMascot
-                ? "easeL-home-shortcut-mascot--compact h-[5.5rem] max-h-[5.5rem] w-auto sm:h-[6.35rem] sm:max-h-[6.35rem]"
-                : isFreeDrawBlue
-                ? "easeL-home-shortcut-mascot--compact h-[6.35rem] max-h-[6.35rem] w-auto sm:h-[7.25rem] sm:max-h-[7.25rem]"
-                : "easeL-home-shortcut-mascot--hero-cloud h-[7rem] max-h-[7rem] w-auto max-w-[min(100%,10.5rem)] sm:h-[8rem] sm:max-h-[8rem] sm:max-w-[11.5rem]";
+                ? "easeL-home-shortcut-mascot--compact h-[5.35rem] max-h-[5.35rem] w-auto sm:h-[6.25rem] sm:max-h-[6.25rem]"
+                : isFreeDrawMascot
+                ? "easeL-home-shortcut-mascot--compact h-[7.75rem] max-h-[7.75rem] w-auto max-w-[min(100%,10.5rem)] sm:h-[9.25rem] sm:max-h-[9.25rem] sm:max-w-[12rem]"
+                : "easeL-home-shortcut-mascot--compact h-[5.35rem] max-h-[5.35rem] w-auto sm:h-[6.25rem] sm:max-h-[6.25rem]";
 
               return (
                 <div
                   key={action.title}
-                  className="easeL-home-shortcut-card easeL-hoverable-card flex min-h-[13.5rem] min-w-0 flex-col rounded-3xl border-[3px] px-5 py-5 sm:min-h-[14.5rem] sm:px-6 sm:py-6"
+                  className="easeL-home-shortcut-card easeL-hoverable-card flex min-h-[13.25rem] min-w-0 flex-col rounded-3xl border-[3px] px-3 py-3 sm:min-h-[14.25rem] sm:px-4 sm:py-3.5"
                   style={{
                     borderColor: toneStyles.borderColor,
                     background: toneStyles.cardBg,
                     ["--easeL-card-accent-inset"]: toneStyles.accentLine,
                   }}
                 >
-                  <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center pb-3 sm:pb-4">
-                    <div className="flex flex-row items-center gap-2.5 sm:gap-3">
-                      <div className="min-w-0 flex-1 basis-0 pr-0.5 sm:pr-1">
-                        <h3 className="easeL-heading-3 text-pretty" style={{ color: "var(--easeL-ink)" }}>
+                  <div
+                    className={`flex min-h-0 min-w-0 flex-1 flex-col justify-center ${isFreeDrawMascot ? "pb-2 sm:pb-2.5" : ""}`}
+                  >
+                    <div className="flex w-full flex-row items-center gap-2 sm:gap-3">
+                      <div className="min-w-0 flex-1 basis-0 text-left">
+                        <h3 className="easeL-home-shortcut-title text-pretty leading-snug" style={{ color: "var(--easeL-ink)" }}>
                           {action.title}
                         </h3>
                         <p
-                          className="mt-1.5 text-[0.98rem] font-medium leading-relaxed sm:mt-2"
+                          className="mt-1.5 max-w-[32ch] text-[1rem] font-medium leading-snug sm:text-[1.02rem]"
                           style={{ color: "var(--easeL-text)" }}
                         >
                           {action.description}
                         </p>
                       </div>
                       {action.mascot ? (
-                        <div
-                          className={`flex shrink-0 items-center justify-center self-center pl-0.5 ${
-                            isFreeDrawBlue ? "mb-1 sm:mb-1.5" : ""
-                          }`}
-                        >
+                        <div className="flex shrink-0 items-center justify-center self-center">
                           <img
                             src={action.mascot}
                             alt=""
                             width={mascotImgSize.w}
                             height={mascotImgSize.h}
-                            className={`easeL-home-shortcut-mascot pointer-events-none block shrink-0 select-none object-contain object-center ${mascotSizeClass}${
-                              action.path === "/gallery" ? " easeL-home-shortcut-mascot--thin-outline" : ""
-                            }`}
+                            className={`easeL-home-shortcut-mascot pointer-events-none block shrink-0 select-none object-contain object-center ${mascotSizeClass} easeL-home-shortcut-mascot--thin-outline`}
                           />
                         </div>
                       ) : null}
@@ -326,7 +397,7 @@ function Mode2Home({ welcomeFirstName, profile }) {
                   </div>
                   <Link
                     to={action.path}
-                    className="easeL-home-shortcut-cta mt-5 w-full shrink-0"
+                    className="easeL-home-shortcut-cta mt-2.5 w-full shrink-0 sm:mt-3"
                     style={{
                       ["--easeL-home-shortcut-cta-border"]: toneStyles.ctaBorder,
                       ["--easeL-home-shortcut-cta-fg"]: "var(--easeL-ink)",
@@ -340,26 +411,61 @@ function Mode2Home({ welcomeFirstName, profile }) {
           </div>
         </section>
 
-        <section>
-          <h2 className="easeL-heading-2 mb-4">Your summary</h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {summary.map((item) => (
-              <div
-                key={item.label}
-                className="easeL-card rounded-2xl px-5 py-4 min-h-[108px] flex flex-col justify-center border-2"
-                style={{ borderColor: "var(--easeL-border-strong)", background: "var(--easeL-bg-section)" }}
-              >
-                <p
-                  className="text-[0.82rem] font-medium"
-                  style={{ color: "var(--easeL-text-muted)" }}
-                >
-                  {item.label}
-                </p>
-                <p className="mt-1.5 text-[1.22rem] font-semibold leading-tight" style={{ color: "var(--easeL-text)" }}>
-                  {item.value}
-                </p>
-              </div>
-            ))}
+        <section className="min-w-0">
+          <h2 className="easeL-heading-2 mb-4 text-balance sm:mb-5" style={{ color: "var(--easeL-ink)" }}>
+            Your summary
+          </h2>
+          <div
+            className="easeL-home-summary-panel rounded-3xl border-2 p-4 sm:p-5 md:p-6"
+            style={{
+              borderColor: HOME_SUMMARY_BORDER,
+              background: "var(--easeL-bg-section)",
+              boxShadow: "var(--easeL-cartoon-shadow)",
+            }}
+          >
+            <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-2 lg:grid-cols-3 lg:gap-2">
+              {summary.map((item, index) => {
+                const row = HOME_SUMMARY_ROW_STYLES[index] ?? HOME_SUMMARY_ROW_STYLES[0];
+                const { Icon, iconBubble, iconBubbleRest, cardBg, cardBgRest } = row;
+                return (
+                  <div
+                    key={item.label}
+                    className="easeL-home-summary-stat easeL-hoverable-card flex min-w-0 w-full flex-col justify-center rounded-2xl border-2 px-3 py-2.5 sm:px-3 sm:py-3"
+                    style={{
+                      borderColor: HOME_SUMMARY_BORDER,
+                      ["--easeL-summary-bg-rest"]: cardBgRest,
+                      ["--easeL-summary-bg-fill"]: cardBg,
+                      ["--easeL-summary-icon-rest"]: iconBubbleRest,
+                      ["--easeL-summary-icon-fill"]: iconBubble,
+                    }}
+                  >
+                    <div className="flex items-center gap-2 sm:gap-2.5">
+                      <div
+                        className="easeL-home-summary-stat-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2"
+                        style={{ borderColor: HOME_SUMMARY_BORDER }}
+                        aria-hidden
+                      >
+                        <Icon className="h-[1.125rem] w-[1.125rem]" strokeWidth={2.35} style={{ color: "var(--easeL-ink)" }} />
+                      </div>
+                      <div className="min-w-0 flex-1 text-left">
+                        <p
+                          className="text-[0.78rem] font-semibold leading-tight sm:text-[0.8rem]"
+                          style={{ color: "var(--easeL-text-muted)" }}
+                        >
+                          {item.label}
+                        </p>
+                        <p
+                          className="mt-1 text-[1.02rem] font-bold leading-snug text-pretty sm:text-[1.06rem]"
+                          style={{ color: "var(--easeL-ink)" }}
+                        >
+                          {item.value}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
       </div>

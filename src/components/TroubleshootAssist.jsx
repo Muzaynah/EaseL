@@ -81,7 +81,7 @@ export default function TroubleshootAssist() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="min-h-10 px-3 rounded-xl bg-amber-100 border border-amber-300 text-amber-900 font-semibold text-xs"
+        className="easeL-btn-outline inline-flex min-h-11 items-center gap-1.5 px-3.5 text-xs font-semibold sm:text-sm"
       >
         This is not working
       </button>

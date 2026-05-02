@@ -1,6 +1,16 @@
 import { distanceToPath } from "./lessonPath.js";
 
 /**
+ * Inset from the canvas bitmap edges so path strokes, corridor fill, and
+ * endpoint dots keep clear breathing room (CSS padding does not affect this).
+ */
+export function contentPaddingForCanvas(canvasWidth, canvasHeight, corridorWidth) {
+  const halfBand = Math.max(14, (corridorWidth ?? 24) / 2);
+  const minDim = Math.min(canvasWidth, canvasHeight);
+  return Math.min(Math.max(96, halfBand + 52), minDim * 0.22);
+}
+
+/**
  * Build a straight-line segment centerline of `steps` evenly spaced points.
  * Keeps the rest of the file declarative so we can compose multi-side shapes
  * from simple segment descriptors.
@@ -80,12 +90,16 @@ export function generateCorridor(
   canvasWidth,
   canvasHeight
 ) {
+  const pad = contentPaddingForCanvas(canvasWidth, canvasHeight, width);
   const centerX = canvasWidth / 2;
   const centerY = canvasHeight / 2;
+  const innerW = canvasWidth - 2 * pad;
+  const maxHalfLen = Math.max(40, innerW / 2);
+  const halfLen = Math.min(length / 2, maxHalfLen);
 
   if (type === "straight") {
-    const a = { x: centerX - length / 2, y: centerY };
-    const b = { x: centerX + length / 2, y: centerY };
+    const a = { x: centerX - halfLen, y: centerY };
+    const b = { x: centerX + halfLen, y: centerY };
     // IMPORTANT: use a dense centerline, not just [start,end].  Mode 2's
     // rail-projection logic advances by centerline index; with only 2 points
     // Stage 3 behaves like a binary jump (stuck at 0 then instantly 1),
@@ -107,7 +121,7 @@ export function generateCorridor(
     const steps = 30;
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
-      const x = centerX - length / 2 + t * length;
+      const x = centerX - halfLen + t * (halfLen * 2);
       const y = centerY + Math.sin(t * Math.PI) * 80;
       centerline.push({ x, y });
     }
@@ -133,7 +147,7 @@ export function generateCorridor(
     const steps = 40;
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
-      const x = centerX - length / 2 + t * length;
+      const x = centerX - halfLen + t * (halfLen * 2);
       const y = centerY + Math.sin(t * Math.PI * 2) * 60;
       centerline.push({ x, y });
     }
@@ -162,9 +176,15 @@ export function generateCorridor(
  * All return a { type, start, end, width, centerline, closed? } descriptor.
  */
 export function generateClosedShape(kind, width, canvasWidth, canvasHeight) {
+  const pad = contentPaddingForCanvas(canvasWidth, canvasHeight, width);
   const cx = canvasWidth / 2;
   const cy = canvasHeight / 2;
-  const size = Math.min(canvasWidth, canvasHeight) * 0.32;
+  const maxR =
+    Math.min(cx - pad, cy - pad, canvasWidth - pad - cx, canvasHeight - pad - cy) -
+    Math.max(8, width / 2) -
+    10;
+  const legacyCap = Math.min(canvasWidth, canvasHeight) * 0.43;
+  const size = Math.max(48, Math.min(legacyCap, Math.max(40, maxR) * 0.96));
 
   if (kind === "circle") {
     // Split the circle into explicit arcs so the lesson has clear checkpoints

@@ -8,7 +8,6 @@ import {
   VolumeX,
   RefreshCw,
   LogOut,
-  Pause,
   CircleCheck,
   CircleX,
 } from "lucide-react";
@@ -301,7 +300,6 @@ export default function Path1Lesson() {
   const [, setMasteryHint] = useState("");
   const [, setAttemptFeedback] = useState("");
   const [adaptiveFeedback, setAdaptiveFeedback] = useState(null);
-  const [lessonPaused, setLessonPaused] = useState(false);
 
   // Framework §7.4 — the stage definition we hand to path generation and hit
   // tests is the user's raw stage SOFTENED by their recent performance.
@@ -323,8 +321,6 @@ export default function Path1Lesson() {
   pathRef.current = path;
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
-  const lessonPausedRef = useRef(false);
-  lessonPausedRef.current = lessonPaused;
   const stageRef = useRef(adaptedStage);
   stageRef.current = adaptedStage;
 
@@ -535,10 +531,6 @@ export default function Path1Lesson() {
     cursorPosRef.current.y = window.innerHeight / 2;
   }, [cursorPosRef]);
 
-  const resumeLessonPause = useCallback(() => {
-    setLessonPaused(false);
-  }, []);
-
   // Helper: map canvas-internal (CANVAS_WIDTH x CANVAS_HEIGHT) coords to the
   // on-screen pixel position of the same point.  Used to snap the visible
   // cursor onto the lesson path during trials.
@@ -577,13 +569,6 @@ export default function Path1Lesson() {
     if (tiltStateRef.current?.lastJitter != null) {
       jitterSamplesRef.current.push(tiltStateRef.current.lastJitter);
       if (jitterSamplesRef.current.length > 200) jitterSamplesRef.current.shift();
-    }
-
-    if (lessonPausedRef.current) {
-      displayCursorRef.current.x = cursorPosRef.current.x;
-      displayCursorRef.current.y = cursorPosRef.current.y;
-      drawScene();
-      return;
     }
 
     const st = stageRef.current;
@@ -797,7 +782,7 @@ export default function Path1Lesson() {
           const r = canvasRef.current.getBoundingClientRect();
           br.canvasViewport = { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
         }
-        br.lessonPaused = lessonPaused;
+        br.lessonPaused = false;
         br.showUniversalCursor = true;
       }
       if (railDotRef.current) {
@@ -808,8 +793,7 @@ export default function Path1Lesson() {
         const inCv = lessonPointInsideCanvas(raw.x, raw.y, vp);
         const drift = Math.hypot(smoothed.x - raw.x, smoothed.y - raw.y);
         const holdTrial = phaseRef.current === "trial" && stageRef.current?.shape === "hold";
-        const showRailMark =
-          !lessonPaused && inCv && (holdTrial || (phaseRef.current === "trial" && drift > 14));
+        const showRailMark = inCv && (holdTrial || (phaseRef.current === "trial" && drift > 14));
         railDotRef.current.style.visibility = showRailMark ? "visible" : "hidden";
         railDotRef.current.style.width = holdTrial ? "18px" : "12px";
         railDotRef.current.style.height = holdTrial ? "18px" : "12px";
@@ -827,7 +811,7 @@ export default function Path1Lesson() {
     }
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [lessonPaused]);
+  }, []);
 
   function autocompleteFrom(fromIndex, durationMs = AUTOCOMPLETE_MS) {
     const center = pathRef.current?.centerline;
@@ -1222,7 +1206,7 @@ export default function Path1Lesson() {
       <div className="w-full max-w-[1200px] mb-3 z-10">
         <div className="easeL-hud-bar flex items-center justify-between gap-3 rounded-xl px-4 py-2 shadow">
           <p className="text-lg font-bold">{instruction}</p>
-          <span className="rounded-lg bg-black/20 px-2 py-1 text-xs font-medium text-white/95">
+          <span className="easeL-hud-bar-timer shrink-0">
             {Math.floor(sessionTimer.elapsedMs / 60000)}:
             {String(Math.floor((sessionTimer.elapsedMs % 60000) / 1000)).padStart(2, "0")}
           </span>
@@ -1249,37 +1233,6 @@ export default function Path1Lesson() {
               display: "block",
             }}
           />
-          {lessonPaused ? (
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="m1-lesson-paused-title"
-              className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl bg-white/92 px-6 py-10 shadow-inner ring-2 ring-inset ring-slate-200/90 pointer-events-auto z-10"
-            >
-              <Pause className="mb-3 h-12 w-12 text-[var(--easeL-primary)]" aria-hidden />
-              <p
-                id="m1-lesson-paused-title"
-                className="text-2xl sm:text-3xl font-extrabold text-slate-800 mb-2 text-center"
-              >
-                {language === "ur" ? "روک دیا" : "Paused"}
-              </p>
-              <p className="text-slate-600 mb-6 text-center text-sm sm:text-base max-w-xs">
-                {language === "ur"
-                  ? "اوپر والے بٹن استعمال کریں؛ دوبارہ شروع کرنے کے لیے کلک کریں۔"
-                  : "Use the toolbar controls. Resume when you are ready to continue."}
-              </p>
-              <button
-                type="button"
-                ref={(el) => {
-                  buttonRefs.current.resume = el;
-                }}
-                className="easeL-btn-solid px-8 py-3 rounded-2xl text-lg font-bold min-w-[200px]"
-                onClick={resumeLessonPause}
-              >
-                {language === "ur" ? "دوبارہ شروع کریں" : "Resume lesson"}
-              </button>
-            </div>
-          ) : null}
         </div>
       </div>
       <div

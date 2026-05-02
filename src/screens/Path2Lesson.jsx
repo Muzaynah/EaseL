@@ -5,8 +5,6 @@ import {
   VolumeX,
   RefreshCw,
   LogOut,
-  CheckCircle2,
-  Pause,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useCursorPositionBridgeRef } from "../context/CursorPositionBridgeContext";
@@ -52,6 +50,7 @@ import { usePath2ScoringProgression } from "./path2Lesson/usePath2ScoringProgres
 import {
   PREVIEW_COLOR,
   STROKE_QUALITY_HEX,
+  adherenceBarColorFromStrokeScale,
   TRACE_WIDTH,
   VISUAL_CORRIDOR_SCALE,
   buildVertexQualityFills,
@@ -71,8 +70,6 @@ const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 700;
 /** Duration of score % animation, sprinkles, and cheer — kept in sync (ms). */
 const SCORE_REVEAL_MS = 800;
-/** Hold mouth open outside canvas → pause lesson (unlock universal cursor navigation). */
-const LESSON_PAUSE_HOLD_MS = 3000;
 // Max |Δ path index| per frame. Forward: smooth growth; backward: re-sync
 // when the user re-enters the corridor or their true path position is
 // behind the visible stroke tip (nearest-point can only move monotonically
@@ -218,7 +215,6 @@ export default function Path2Lesson() {
   const [masteryToast, setMasteryToast] = useState(null);
   const [instructionDismiss, setInstructionDismiss] = useState(0);
   const [scoreSprinklesOn, setScoreSprinklesOn] = useState(false);
-  const [lessonPaused, setLessonPaused] = useState(false);
   const [caregiverControlsVisible, setCaregiverControlsVisible] = useState(false);
   const [countdown, setCountdown] = useState(null);
   const [countdownDeadlineMs, setCountdownDeadlineMs] = useState(null);
@@ -247,10 +243,6 @@ export default function Path2Lesson() {
 
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
-  const lessonPausedRef = useRef(false);
-  lessonPausedRef.current = lessonPaused;
-  const pauseAccumMsRef = useRef(0);
-  const pauseLastTsRef = useRef(null);
   const corridorRef = useRef(null);
   corridorRef.current = corridor;
   const segmentIndexRef = useRef(0);
@@ -491,9 +483,8 @@ export default function Path2Lesson() {
       const lowerM = landmarks[14];
       const mouthHHold = Math.abs(upperM.y - lowerM.y);
       const mouthOpenHold = mouthHHold > activationConfig.mouthOpenThreshold;
-      const pauseClk = performance.now();
       // Manual in-lesson toggle: mouth-open starts/stops stroke reliably.
-      if (phaseRef.current === "trial" && !lessonPausedRef.current) {
+      if (phaseRef.current === "trial") {
         if (mouthOpenHold && !manualMouthLatchRef.current) {
           const now = performance.now();
           if (now - lastManualMouthToggleRef.current > 550) {
@@ -510,41 +501,6 @@ export default function Path2Lesson() {
         }
       } else {
         manualMouthLatchRef.current = false;
-      }
-      const pauseStep =
-        pauseLastTsRef.current != null
-          ? Math.min(120, Math.max(8, pauseClk - pauseLastTsRef.current))
-          : 33;
-      pauseLastTsRef.current = pauseClk;
-      if (!lessonPausedRef.current && phaseRef.current === "trial") {
-        if (mouthOpenHold) {
-          const rawHold = cursorPosRef.current;
-          const cvHold = canvasRef.current?.getBoundingClientRect();
-          const outsideCv =
-            cvHold &&
-            !lessonPointInsideCanvas(rawHold.x, rawHold.y, {
-              left: cvHold.left,
-              top: cvHold.top,
-              right: cvHold.right,
-              bottom: cvHold.bottom,
-            });
-          if (outsideCv) {
-            pauseAccumMsRef.current += pauseStep;
-            if (pauseAccumMsRef.current >= LESSON_PAUSE_HOLD_MS) {
-              setLessonPaused(true);
-              pauseAccumMsRef.current = 0;
-            }
-          } else pauseAccumMsRef.current = 0;
-        } else pauseAccumMsRef.current = 0;
-      } else {
-        pauseAccumMsRef.current = 0;
-      }
-
-      if (lessonPausedRef.current) {
-        displayCursorRef.current.x = cursorPosRef.current.x;
-        displayCursorRef.current.y = cursorPosRef.current.y;
-        drawScene();
-        return;
       }
 
       // Cursor-on-rail model: during a trial the visible cursor is ALWAYS
@@ -1109,11 +1065,6 @@ export default function Path2Lesson() {
     cursorPosRef.current.y = window.innerHeight / 2;
   }, [cursorPosRef]);
 
-  const resumeLessonPause = useCallback(() => {
-    setLessonPaused(false);
-    pauseAccumMsRef.current = 0;
-  }, []);
-
   // Spoken instruction + 3-2-1 countdown before trial begins.
   useEffect(() => {
     if (phase !== "demo") {
@@ -1156,15 +1107,6 @@ export default function Path2Lesson() {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [countdownDeadlineMs]);
-
-  const finishNow = useCallback(() => {
-    if (phaseRef.current !== "trial") return;
-    if (!isDrawingRef.current) return;
-    isDrawingRef.current = false;
-    if (freezeRecalibrationRef) freezeRecalibrationRef.current = false;
-    setIsDrawing(false);
-    completeSegmentAndAdvance();
-  }, [completeSegmentAndAdvance, freezeRecalibrationRef]);
 
   async function saveToGallery() {
     const canvas = canvasRef.current;
@@ -1245,7 +1187,7 @@ export default function Path2Lesson() {
           const r = canvasRef.current.getBoundingClientRect();
           br.canvasViewport = { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
         }
-        br.lessonPaused = lessonPaused;
+        br.lessonPaused = false;
         br.showUniversalCursor = true;
       }
       if (railDotRef.current) {
@@ -1256,10 +1198,7 @@ export default function Path2Lesson() {
         const inCv = lessonPointInsideCanvas(raw.x, raw.y, vp);
         const drift = Math.hypot(smoothed.x - raw.x, smoothed.y - raw.y);
         const showRailMark =
-          !lessonPaused &&
-          phaseRef.current === "trial" &&
-          inCv &&
-          (drift > 14 || isDrawingRef.current);
+          phaseRef.current === "trial" && inCv && (drift > 14 || isDrawingRef.current);
         railDotRef.current.style.visibility = showRailMark ? "visible" : "hidden";
       }
       raf = requestAnimationFrame(loop);
@@ -1272,7 +1211,7 @@ export default function Path2Lesson() {
     }
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [lessonPaused]);
+  }, []);
 
   if (sessionTimer.capped) {
     return <BreakPrompt kind="cap" language={language} onExit={handleExit} />;
@@ -1298,18 +1237,14 @@ export default function Path2Lesson() {
       : phase === "trial" && adherence > 0 && adherence < 35
       ? "off"
       : "neutral";
-  const moodPillClass =
-    mood === "good"
-      ? "bg-emerald-100 text-emerald-700 border-emerald-300"
-      : mood === "off"
-      ? "bg-rose-100 text-rose-700 border-rose-300"
-      : "easeL-accent-bg easeL-accent-text-strong easeL-accent-border border";
   const canvasMoodClass =
     mood === "good"
       ? "ring-4 ring-emerald-300/60"
       : mood === "off"
       ? "ring-4 ring-rose-300/60"
       : "ring-0";
+
+  const accuracyAccentColor = adherenceBarColorFromStrokeScale(adherence);
 
   // Progress across the whole attempt (all segments).  `maxProjIdxRef` is
   // per-segment, so we weight each finished segment as 1.0 and blend the
@@ -1324,26 +1259,13 @@ export default function Path2Lesson() {
     return Math.min(1, doneFrac + current / totalSegments);
   })();
   const progressPct = Math.round(attemptProgress * 100);
-  const progressBarColor =
-    mood === "good"
-      ? "bg-emerald-500"
-      : mood === "off"
-      ? "bg-rose-400"
-      : "bg-[var(--easeL-primary)]";
   const gaugeRadius = 64;
-  const gaugeCircumference = 2 * Math.PI * gaugeRadius;
-  const scoreGaugeProgress = finishedPayload ? Math.max(0, Math.min(1, finishedPayload.adherence / 100)) : 0;
-  const passGaugeProgress = finishedPayload
-    ? Math.max(0, Math.min(1, (finishedPayload.requiredAdherence ?? 0) / 100))
+  const scoreGaugeProgress = finishedPayload
+    ? Math.max(0, Math.min(1, Number(finishedPayload.adherence ?? 0) / 100))
     : 0;
-  const passAngle = passGaugeProgress * Math.PI * 2 - Math.PI / 2;
-  const passMarkerX = 80 + Math.cos(passAngle) * gaugeRadius;
-  const passMarkerY = 80 + Math.sin(passAngle) * gaugeRadius;
 
   return (
-    <div
-      className="easeL-page-bg relative flex min-h-screen w-screen flex-col items-center overflow-hidden px-4 pb-4 pt-20"
-    >
+    <div className="easeL-page-bg relative min-h-screen w-full overflow-x-hidden overflow-y-auto px-3 pb-6 pt-22 sm:px-4 md:px-5 md:pt-26">
       <MasteryToast message={masteryToast} language={language} />
       <LessonInstructionCard
         stage={stage.stage}
@@ -1353,182 +1275,298 @@ export default function Path2Lesson() {
         dismissSignal={instructionDismiss}
       />
 
-      <div className="z-20 mb-2 flex w-full max-w-[1200px] items-center justify-between gap-3">
+      <div className="relative z-10 mx-auto w-full max-w-6xl">
         <div
-          className="min-w-0 flex items-center gap-2 rounded-2xl border px-4 py-2"
-          style={{ background: "var(--easeL-bg-section)", borderColor: "var(--easeL-border-subtle)" }}
-        >
-          <span className="text-xs font-semibold" style={{ color: "var(--easeL-text-muted)" }}>
-            Level {stage.stage}
-          </span>
-          {lessonTotal > 1 && (
-            <span className="text-xs font-semibold" style={{ color: "var(--easeL-text-muted)" }}>
-              ·{" "}
-              {language === "ur"
-                ? `سبق ${lessonIdx} (${lessonTotal} میں سے)`
-                : `Lesson ${lessonIdx} of ${lessonTotal}`}
-            </span>
-          )}
-          <span className="truncate text-base font-bold" style={{ color: "var(--easeL-text)" }}>{title}</span>
-          {activeVariantKey && (
-            <span className="easeL-accent-bg easeL-accent-text-strong rounded-lg px-2.5 py-1 text-xs font-semibold">
-              {variantPretty || activeVariantKey}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <div
-            className={`flex min-h-[42px] items-center gap-2 px-3 py-1.5 rounded-xl border-2 shadow-sm transition-colors ${
-            phase === "trial" ? moodPillClass : "bg-white/85 text-slate-400 border-slate-200"
-          }`}
-          >
-            {mood === "good" && <CheckCircle2 className="w-4 h-4" />}
-            <span className="text-[10px] font-semibold uppercase tracking-wide opacity-70">
-              {language === "ur" ? "ارادہ" : "Intent"}
-            </span>
-            <span className="text-lg font-extrabold tabular-nums">
-              {phase === "trial" ? `${adherence}%` : "--"}
-            </span>
-          </div>
-
-        <div
-          className={`flex items-center gap-2 overflow-x-auto transition-opacity duration-300 ${
-            caregiverControlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
-          }`}
-          onMouseEnter={revealCaregiverControls}
-        >
-          <TroubleshootAssist />
-          <button
-            type="button"
-            ref={(el) => {
-              buttonRefs.current.recenter = el;
-            }}
-            onClick={recenter}
-            className="easeL-btn-outline inline-flex min-h-10 items-center gap-1.5 px-3 text-sm font-semibold"
-            title="Recenter cursor"
-          >
-            <RefreshCw className="w-4 h-4" />
-            {language === "ur" ? "مرکز" : "Recenter"}
-          </button>
-          <button
-            type="button"
-            ref={(el) => {
-              buttonRefs.current.mute = el;
-            }}
-            onClick={() => setMuted((m) => !m)}
-            className="easeL-btn-outline inline-flex min-h-10 items-center gap-1.5 px-3 text-sm font-semibold"
-            aria-label={muted ? "Unmute" : "Mute"}
-          >
-            {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            {language === "ur" ? (muted ? "آواز بند" : "آواز") : muted ? "Muted" : "Sound"}
-          </button>
-          <button
-            ref={(el) => {
-              buttonRefs.current.exit = el;
-            }}
-            onClick={handleExit}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border-2 px-4 text-sm font-bold transition hover:opacity-95"
-            style={{
-              background: "var(--easeL-bg-section-alt)",
-              borderColor: "var(--easeL-border-strong)",
-              color: "var(--easeL-text)",
-            }}
-          >
-            <LogOut className="w-5 h-5" />
-            {language === "ur" ? "ختم" : "Exit"}
-          </button>
-        </div>
-        </div>
-      </div>
-
-      <div className="w-full max-w-[1200px] mb-2 z-10">
-        <div className="easeL-hud-bar flex items-center justify-between gap-3 rounded-xl px-4 py-2 shadow">
-          <p className="text-sm font-semibold">
-            {phase === "demo"
-              ? language === "ur"
-                ? "تیار ہو جائیں…"
-                : "Get ready…"
-              : phase === "trial"
-              ? showSegmentCounter
-                ? language === "ur"
-                  ? `مرحلہ ${segmentIndex + 1}: سبز نقطے سے شروع کریں۔`
-                  : `Step ${segmentIndex + 1}: start at the green dot.`
-                : stage.stage >= 4
-                ? language === "ur"
-                  ? "سبز چمکتے نقطے کے پیچھے آہستہ چلیں۔"
-                  : "Follow the glowing green guide slowly."
-                : corridor?.closed
-                ? language === "ur"
-                  ? "پہلے نارنجی نقطے تک جائیں، پھر آغاز پر واپس آئیں۔"
-                  : "Reach the orange midpoint first, then return to start."
-                : language === "ur"
-                ? "نقطوں والی لکیر پر چلیں۔"
-                : "Trace the dotted line — start at the green dot."
-              : language === "ur"
-              ? "نتیجہ…"
-              : "Here’s your result…"}
-          </p>
-          <span className="rounded-lg bg-black/20 px-2 py-1 text-xs font-medium text-white/95">
-            {Math.floor(sessionTimer.elapsedMs / 60000)}:
-            {String(Math.floor((sessionTimer.elapsedMs % 60000) / 1000)).padStart(2, "0")}
-          </span>
-        </div>
-      </div>
-
-      <div className="relative z-10 w-full flex justify-center">
-        <div
-          className="relative w-full"
+          className="rounded-3xl border-2 p-3 sm:p-4 md:p-5"
           style={{
-            maxWidth: `min(1100px, calc((100vh - 300px) * ${CANVAS_WIDTH} / ${CANVAS_HEIGHT}))`,
+            borderColor: "var(--easeL-border-strong)",
+            background: "var(--easeL-bg-section)",
+            boxShadow: "var(--easeL-cartoon-shadow)",
           }}
         >
-          <canvas
-            ref={canvasRef}
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
-            className={`rounded-3xl shadow-2xl border-2 border-slate-200/90 bg-white transition-[box-shadow] ${canvasMoodClass}`}
-            style={{
-              width: "100%",
-              height: "auto",
-              aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`,
-              verticalAlign: "top",
-              display: "block",
-            }}
-          />
-          {lessonPaused ? (
+          <div className="mb-2 flex w-full flex-col gap-2 sm:mb-3 sm:flex-row sm:items-center sm:justify-between">
             <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="lesson-paused-title"
-              className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl bg-white/92 px-6 py-10 shadow-inner ring-2 ring-inset ring-slate-200/90 pointer-events-auto z-10"
+              className="easeL-hover-parent min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl border-2 px-3 py-2 sm:px-3.5 sm:py-2.5"
+              style={{ background: "color-mix(in srgb, var(--easeL-bg-section) 92%, white)", borderColor: "var(--easeL-border-strong)" }}
             >
-              <Pause className="mb-3 h-12 w-12 text-[var(--easeL-primary)]" aria-hidden />
-              <p
-                id="lesson-paused-title"
-                className="text-2xl sm:text-3xl font-extrabold text-slate-800 mb-2 text-center"
-              >
-                {language === "ur" ? "روک دیا" : "Paused"}
-              </p>
-              <p className="text-slate-600 mb-6 text-center text-sm sm:text-base max-w-xs">
-                {language === "ur"
-                  ? "اوپر بٹن تک رسائی؛ جاری رکھنے کے لیے کلک کریں۔"
-                  : "Use the toolbar above when you're ready; tap Resume to continue tracing."}
-              </p>
-              <button
-                type="button"
-                ref={(el) => {
-                  buttonRefs.current.resume = el;
-                }}
-                className="easeL-btn-solid px-8 py-3 rounded-2xl text-lg font-bold min-w-[200px]"
-                onClick={resumeLessonPause}
-              >
-                {language === "ur" ? "دوبارہ شروع کریں" : "Resume lesson"}
-              </button>
+              <span className="text-xs font-semibold" style={{ color: "var(--easeL-text-muted)" }}>
+                Level {stage.stage}
+              </span>
+              {lessonTotal > 1 && (
+                <span className="text-xs font-semibold" style={{ color: "var(--easeL-text-muted)" }}>
+                  ·{" "}
+                  {language === "ur"
+                    ? `سبق ${lessonIdx} (${lessonTotal} میں سے)`
+                    : `Lesson ${lessonIdx} of ${lessonTotal}`}
+                </span>
+              )}
+              <span className="w-full basis-full truncate text-base font-bold sm:w-auto sm:basis-auto" style={{ color: "var(--easeL-text)" }}>
+                {title}
+              </span>
+              {activeVariantKey && (
+                <span className="easeL-accent-bg easeL-accent-text-strong rounded-lg px-2.5 py-1 text-xs font-semibold">
+                  {variantPretty || activeVariantKey}
+                </span>
+              )}
             </div>
-          ) : null}
+
+            <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
+              <div
+                className={`flex flex-wrap items-center gap-2 transition-opacity duration-300 ${
+                  caregiverControlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
+                }`}
+                onMouseEnter={revealCaregiverControls}
+              >
+                <TroubleshootAssist />
+                <button
+                  type="button"
+                  ref={(el) => {
+                    buttonRefs.current.recenter = el;
+                  }}
+                  onClick={recenter}
+                  className="easeL-btn-outline inline-flex min-h-11 items-center gap-1.5 px-3.5 text-sm font-semibold"
+                  title="Recenter cursor"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  {language === "ur" ? "مرکز" : "Recenter"}
+                </button>
+                <button
+                  type="button"
+                  ref={(el) => {
+                    buttonRefs.current.mute = el;
+                  }}
+                  onClick={() => setMuted((m) => !m)}
+                  className="easeL-btn-outline inline-flex min-h-11 items-center gap-1.5 px-3.5 text-sm font-semibold"
+                  aria-label={muted ? "Unmute" : "Mute"}
+                >
+                  {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                  {language === "ur" ? (muted ? "آواز بند" : "آواز") : muted ? "Muted" : "Sound"}
+                </button>
+                <button
+                  type="button"
+                  ref={(el) => {
+                    buttonRefs.current.exit = el;
+                  }}
+                  onClick={handleExit}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border-2 px-4 text-sm font-bold transition hover:opacity-95"
+                  style={{
+                    background: "var(--easeL-bg-section-alt)",
+                    borderColor: "var(--easeL-border-strong)",
+                    color: "var(--easeL-text)",
+                  }}
+                >
+                  <LogOut className="h-5 w-5" />
+                  {language === "ur" ? "ختم" : "Exit"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-2 sm:mb-3">
+            <div className="easeL-hud-bar flex min-h-[2.75rem] flex-col justify-center gap-1.5 px-3 py-2.5 sm:min-h-[3rem] sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4 sm:py-3">
+              <p className="min-w-0 text-sm font-semibold leading-snug sm:text-base">
+                {phase === "demo"
+                  ? language === "ur"
+                    ? "تیار ہو جائیں…"
+                    : "Get ready…"
+                  : phase === "trial"
+                  ? showSegmentCounter
+                    ? language === "ur"
+                      ? `مرحلہ ${segmentIndex + 1}: سبز نقطے سے شروع کریں۔`
+                      : `Step ${segmentIndex + 1}: start at the green dot.`
+                    : stage.stage >= 4
+                    ? language === "ur"
+                      ? "سبز چمکتے نقطے کے پیچھے آہستہ چلیں۔"
+                      : "Follow the glowing green guide slowly."
+                    : corridor?.closed
+                    ? language === "ur"
+                      ? "پہلے نارنجی نقطے تک جائیں، پھر آغاز پر واپس آئیں۔"
+                      : "Reach the orange midpoint first, then return to start."
+                    : language === "ur"
+                    ? "نقطوں والی لکیر پر چلیں۔"
+                    : "Trace the dotted line — start at the purple dot."
+                  : language === "ur"
+                  ? "نتیجہ…"
+                  : "Here’s your result…"}
+              </p>
+              <span className="easeL-hud-bar-timer shrink-0 self-start sm:self-center">
+                {Math.floor(sessionTimer.elapsedMs / 60000)}:
+                {String(Math.floor((sessionTimer.elapsedMs % 60000) / 1000)).padStart(2, "0")}
+              </span>
+            </div>
+          </div>
+
+          <div className="relative z-10 flex w-full flex-col gap-3 lg:flex-row lg:items-start lg:gap-4">
+            <aside className="order-first mx-auto flex w-full max-w-[280px] shrink-0 flex-col gap-3 sm:max-w-[min(100%,320px)] lg:order-none lg:mx-0 lg:w-[200px] xl:w-[228px]">
+              <div
+                className="overflow-hidden rounded-2xl border-2 bg-slate-900 shadow-md"
+                style={{
+                  borderColor: "var(--easeL-border-strong)",
+                  boxShadow: "var(--easeL-cartoon-shadow-sm)",
+                }}
+              >
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="h-full w-full scale-x-[-1] object-cover"
+                  style={{ aspectRatio: "4/3" }}
+                />
+              </div>
+              {phase === "trial" ? (
+                <div
+                  className="w-full shrink-0 rounded-2xl border-2 p-3 shadow-md transition-[background-color,border-color] duration-300 sm:p-3.5"
+                  role="status"
+                  aria-live="polite"
+                  aria-label={
+                    language === "ur"
+                      ? `درستگی ${adherence} فیصد`
+                      : `Accuracy ${adherence} percent`
+                  }
+                  style={{
+                    boxShadow: "var(--easeL-cartoon-shadow-sm)",
+                    background: `color-mix(in srgb, ${accuracyAccentColor} 26%, white)`,
+                    borderColor: `color-mix(in srgb, ${accuracyAccentColor} 52%, var(--easeL-border-strong))`,
+                    color: "var(--easeL-text)",
+                  }}
+                >
+                  <p
+                    className="text-[0.65rem] font-bold uppercase tracking-[0.08em]"
+                    style={{
+                      color: `color-mix(in srgb, ${accuracyAccentColor} 35%, var(--easeL-text-muted))`,
+                    }}
+                  >
+                    {language === "ur" ? "لائیو درستگی" : "Live accuracy"}
+                  </p>
+                  <p
+                    className="mt-1 text-[0.72rem] leading-snug"
+                    style={{
+                      color: `color-mix(in srgb, ${accuracyAccentColor} 22%, var(--easeL-text))`,
+                      opacity: 0.92,
+                    }}
+                  >
+                    {language === "ur"
+                      ? "لکیر کے قریب رہیں"
+                      : "Stay close to the path"}
+                  </p>
+                  <div
+                    className="mt-3 border-t pt-3"
+                    style={{
+                      borderColor: `color-mix(in srgb, ${accuracyAccentColor} 28%, rgba(0,0,0,0.12))`,
+                    }}
+                  >
+                    <span
+                      className="text-[1.65rem] font-extrabold tabular-nums leading-none tracking-tight sm:text-[1.75rem]"
+                      style={{
+                        color: `color-mix(in srgb, ${accuracyAccentColor} 40%, var(--easeL-text))`,
+                      }}
+                    >
+                      {adherence}
+                      <span className="text-lg font-bold opacity-75">%</span>
+                    </span>
+                  </div>
+                  <div
+                    className="mt-3 h-2.5 w-full overflow-hidden rounded-full border"
+                    style={{
+                      borderColor: `color-mix(in srgb, ${accuracyAccentColor} 22%, rgba(0,0,0,0.1))`,
+                      background: `color-mix(in srgb, ${accuracyAccentColor} 14%, rgb(245 245 245))`,
+                    }}
+                    aria-hidden
+                  >
+                    <div
+                      className="h-full rounded-full transition-[width,background-color] duration-300"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, adherence))}%`,
+                        backgroundColor: adherenceBarColorFromStrokeScale(adherence),
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </aside>
+            <div className="flex min-w-0 flex-1 flex-col">
+            <div
+              className="relative w-full lg:mx-0"
+              style={{
+                maxWidth: `min(1240px, 100%, calc((100vh - 18rem) * ${CANVAS_WIDTH} / ${CANVAS_HEIGHT}))`,
+              }}
+            >
+              <canvas
+                ref={canvasRef}
+                width={CANVAS_WIDTH}
+                height={CANVAS_HEIGHT}
+                className={`rounded-2xl border-2 bg-white transition-[box-shadow,ring] ${canvasMoodClass}`}
+                style={{
+                  width: "100%",
+                  height: "auto",
+                  aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`,
+                  verticalAlign: "top",
+                  display: "block",
+                  borderColor: "var(--easeL-border-strong)",
+                  boxShadow: "var(--easeL-cartoon-shadow-sm)",
+                }}
+              />
+              {phase === "trial" && !isDrawing && (
+                <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 w-[calc(100%-1.5rem)] max-w-lg -translate-x-1/2 px-2">
+                  <div
+                    className="rounded-2xl border-2 px-4 py-2.5 text-center text-sm font-semibold shadow-md sm:text-base"
+                    style={{
+                      background: "color-mix(in srgb, var(--easeL-bg-section) 94%, white)",
+                      borderColor: "var(--easeL-border-strong)",
+                      color: "var(--easeL-primary)",
+                    }}
+                  >
+                    {language === "ur"
+                      ? "شروع/ختم کرنے کیلئے منہ کھولیں"
+                      : "Open your mouth to start or stop drawing"}
+                  </div>
+                </div>
+              )}
+            </div>
+
+          <div className="mt-2 w-full sm:mt-3">
+            <div className={`${phase === "trial" ? "opacity-100" : "opacity-0"} transition-opacity`}>
+              <div
+                className="mb-1.5 flex items-center justify-between text-xs font-semibold sm:text-sm"
+                style={{ color: "var(--easeL-text-muted)" }}
+              >
+                <span>
+                  {language === "ur" ? "ترقی" : "Progress"}
+                  {showSegmentCounter && (
+                    <span className="ml-2 font-normal opacity-80">
+                      {language === "ur"
+                        ? `مرحلہ ${segmentIndex + 1} / ${totalSegments}`
+                        : `Step ${segmentIndex + 1} of ${totalSegments}`}
+                    </span>
+                  )}
+                </span>
+                <span className="tabular-nums font-semibold" style={{ color: "var(--easeL-text)" }}>
+                  {progressPct}%
+                </span>
+              </div>
+              <div
+                className="h-3 w-full overflow-hidden rounded-full border-2 shadow-inner"
+                style={{
+                  borderColor: "var(--easeL-border-subtle)",
+                  background: "color-mix(in srgb, var(--easeL-bg-section) 85%, var(--easeL-border-subtle) 15%)",
+                }}
+              >
+                <div
+                  className="h-full rounded-full transition-[width] duration-200"
+                  style={{
+                    width: `${progressPct}%`,
+                    backgroundColor: "var(--easeL-primary)",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+            </div>
+          </div>
         </div>
       </div>
+
       <div
         ref={railDotRef}
         aria-hidden
@@ -1542,45 +1580,6 @@ export default function Path2Lesson() {
           visibility: "hidden",
         }}
       />
-
-      <div className="w-full max-w-[1200px] mt-2 px-2 z-20 min-h-[42px]">
-        <div className={`${phase === "trial" ? "opacity-100" : "opacity-0"} transition-opacity`}>
-          <div className="flex items-center justify-between mb-1 text-xs font-semibold text-slate-600">
-            <span>
-              {language === "ur" ? "ترقی" : "Progress"}
-              {showSegmentCounter && (
-                <span className="ml-2 text-slate-400 font-normal">
-                  {language === "ur"
-                    ? `مرحلہ ${segmentIndex + 1} / ${totalSegments}`
-                    : `Step ${segmentIndex + 1} of ${totalSegments}`}
-                </span>
-              )}
-            </span>
-            <div className="flex items-center gap-2">
-              {phase === "trial" && isDrawing && (
-                <button
-                  type="button"
-                  ref={(el) => {
-                    buttonRefs.current.finish = el;
-                  }}
-                  onClick={finishNow}
-                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100"
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  {language === "ur" ? "مکمل" : "Finish"}
-                </button>
-              )}
-              <span className="tabular-nums text-slate-500">{progressPct}%</span>
-            </div>
-          </div>
-          <div className="h-3 w-full rounded-full bg-slate-200 overflow-hidden shadow-inner">
-            <div
-              className={`h-full ${progressBarColor} transition-[width,background-color] duration-200 rounded-full`}
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
-        </div>
-      </div>
 
       <GhostStrokePreview
         canvasRef={canvasRef}
@@ -1662,22 +1661,6 @@ export default function Path2Lesson() {
         </div>
       )}
 
-      {phase === "trial" && !isDrawing && (
-        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-          <div
-            className="rounded-2xl bg-white/95 px-6 py-3 font-semibold shadow-lg"
-            style={{
-              border: "2px solid color-mix(in srgb, var(--easeL-primary) 32%, transparent)",
-              color: "var(--easeL-primary)",
-            }}
-          >
-            {language === "ur"
-              ? "شروع/ختم کرنے کیلئے منہ کھولیں"
-              : "Open your mouth to start or stop drawing"}
-          </div>
-        </div>
-      )}
-
       {phase === "reward" && finishedPayload && (
         <Path2RewardModal
           language={language}
@@ -1691,10 +1674,7 @@ export default function Path2Lesson() {
           lowStim={lowStim}
           scoreRevealMs={SCORE_REVEAL_MS}
           gaugeRadius={gaugeRadius}
-          gaugeCircumference={gaugeCircumference}
           scoreGaugeProgress={scoreGaugeProgress}
-          passMarkerX={passMarkerX}
-          passMarkerY={passMarkerY}
           stageUnlockAdherence={STAGE_UNLOCK_ADHERENCE}
           masteryProgressVisual={masteryProgressVisual}
           stage={stage}
@@ -1727,17 +1707,6 @@ export default function Path2Lesson() {
           onBackToLessons={handleExit}
         />
       )}
-
-      <div className="fixed bottom-4 right-4 z-20 w-32 overflow-hidden rounded-xl border-2 border-slate-200 bg-slate-900 shadow-lg">
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
-          playsInline
-          className="h-full w-full scale-x-[-1] object-cover"
-          style={{ aspectRatio: "4/3" }}
-        />
-      </div>
 
       {sessionTimer.onBreak && (
         <BreakPrompt

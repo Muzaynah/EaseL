@@ -1,13 +1,26 @@
-import {
-  ArrowRight,
-  BookOpen,
-  CheckCircle2,
-  Home,
-  RotateCcw,
-  Save,
-} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowRight, BookOpen, Home, RotateCcw, Save, Star } from "lucide-react";
 import ScoreSprinkles from "../../components/ScoreSprinkles";
 import { UI_TOKENS } from "../../theme/uiTokens";
+
+const SCORE_STROKE_W = 12;
+
+/** Lucide `star` icon, scaled in gauge viewBox units (bigger than ring stroke). */
+const PASS_STAR_SIZE = 32;
+const PASS_STAR_FILL_PENDING = "#dbe3ea";
+const PASS_STAR_FILL_ACTIVE = "#facc15";
+/** Read on light purple track + grey/yellow fills */
+const PASS_STAR_SHADOW =
+  "drop-shadow(0 1.5px 2px rgb(0 0 0 / 0.28)) drop-shadow(0 0 1px rgb(0 0 0 / 0.12))";
+
+/** Final score dot — darker mix so it matches the arc but stays visible on the stroke. */
+const END_CAP_R = 6.25;
+
+/** 0→1 easing for gauge fill (smooth deceleration at the end). */
+function easeOutCubic(t) {
+  const u = Math.min(1, Math.max(0, t));
+  return 1 - (1 - u) ** 3;
+}
 
 export default function Path2RewardModal({
   language,
@@ -21,10 +34,7 @@ export default function Path2RewardModal({
   lowStim,
   scoreRevealMs,
   gaugeRadius,
-  gaugeCircumference,
   scoreGaugeProgress,
-  passMarkerX,
-  passMarkerY,
   stageUnlockAdherence,
   masteryProgressVisual,
   stage,
@@ -36,6 +46,97 @@ export default function Path2RewardModal({
   onNavigateHome,
   onBackToLessons,
 }) {
+  const passFrac = Math.max(
+    0,
+    Math.min(1, (finishedPayload.requiredAdherence ?? 0) / 100),
+  );
+  const gaugeR = Math.max(1, Number(gaugeRadius) || 64);
+  const gaugeLen = 2 * Math.PI * gaugeR;
+  const passAngle = passFrac * Math.PI * 2 - Math.PI / 2;
+  const passMarkerX = 80 + Math.cos(passAngle) * gaugeR;
+  const passMarkerY = 80 + Math.sin(passAngle) * gaugeR;
+  const arcProgress = Math.max(0, Math.min(1, Number(scoreGaugeProgress) || 0));
+
+  const FILL_MS = 1750;
+  const [fillT, setFillT] = useState(0);
+  const [passHitPulse, setPassHitPulse] = useState(false);
+  const [showClearedUnderScore, setShowClearedUnderScore] = useState(false);
+  const [showNotQuiteUnderScore, setShowNotQuiteUnderScore] = useState(false);
+  const passCrossedRef = useRef(false);
+
+  const rafRef = useRef(0);
+  const passHitTimeoutRef = useRef(0);
+
+  useEffect(() => {
+    passCrossedRef.current = false;
+    setFillT(0);
+    setPassHitPulse(false);
+    setShowClearedUnderScore(false);
+    setShowNotQuiteUnderScore(false);
+    cancelAnimationFrame(rafRef.current);
+    window.clearTimeout(passHitTimeoutRef.current);
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      setFillT(1);
+      queueMicrotask(() => {
+        if (finishedPayload.passed && passFrac > 0.001 && arcProgress + 1e-6 >= passFrac) {
+          setPassHitPulse(true);
+          setShowClearedUnderScore(true);
+          passHitTimeoutRef.current = window.setTimeout(() => setPassHitPulse(false), 520);
+        } else if (!finishedPayload.passed) {
+          setShowNotQuiteUnderScore(true);
+        }
+      });
+      return undefined;
+    }
+
+    const t0 = performance.now();
+    const step = (now) => {
+      const elapsed = now - t0;
+      const t = Math.min(1, elapsed / FILL_MS);
+      setFillT(t);
+
+      const arcFrac = easeOutCubic(t) * arcProgress;
+      if (!passCrossedRef.current && passFrac > 0.001 && arcFrac >= passFrac - 0.003) {
+        passCrossedRef.current = true;
+        setPassHitPulse(true);
+        setShowClearedUnderScore(true);
+        passHitTimeoutRef.current = window.setTimeout(() => setPassHitPulse(false), 520);
+      }
+
+      if (t >= 1) {
+        if (!finishedPayload.passed) {
+          setShowNotQuiteUnderScore(true);
+        }
+        return;
+      }
+      rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      window.clearTimeout(passHitTimeoutRef.current);
+    };
+  }, [arcProgress, passFrac, finishedPayload.passed]);
+
+  const displayArcFrac = easeOutCubic(fillT) * arcProgress;
+  const displayPercent = Math.round(displayArcFrac * 100);
+  const scoreColor = finishedPayload.passed ? UI_TOKENS.lesson.gaugePass : UI_TOKENS.lesson.warning;
+  const endCapFill = finishedPayload.passed
+    ? `color-mix(in srgb, ${UI_TOKENS.lesson.gaugePass} 66%, #100818)`
+    : `color-mix(in srgb, ${UI_TOKENS.lesson.warning} 66%, #1c0a06)`;
+  /** Slightly deeper salmon–red so the “left” ring feels unfinished vs the soft track token. */
+  const gaugeTrackIncomplete = `color-mix(in srgb, ${UI_TOKENS.lesson.gaugeTrack} 58%, ${UI_TOKENS.lesson.warning})`;
+  const knobAngle = displayArcFrac * Math.PI * 2 - Math.PI / 2;
+  const knobX = 80 + Math.cos(knobAngle) * gaugeR;
+  const knobY = 80 + Math.sin(knobAngle) * gaugeR;
+  const showScoreKnob = displayArcFrac > 0.001;
+  const passStarReached =
+    passFrac <= 0.001 || displayArcFrac + 1e-5 >= passFrac;
+  const passStarFill = passStarReached ? PASS_STAR_FILL_ACTIVE : PASS_STAR_FILL_PENDING;
+  const hasGaugeStatusLabel = showClearedUnderScore || showNotQuiteUnderScore;
+
   return (
     <div className="easeL-result-overlay fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-4">
       <div
@@ -82,108 +183,130 @@ export default function Path2RewardModal({
               />
             </div>
             <div className="relative z-10">
-              <p className="mb-0.5 text-[10px] font-bold sm:text-xs" style={{ color: "var(--easeL-text-muted)" }}>
-                {language === "ur" ? "آپ کا نمبر" : "Your score"}
-              </p>
-              <div className="mx-auto mt-1 h-40 w-40">
-                <svg viewBox="0 0 160 160" className="h-full w-full">
+              <div className="mx-auto h-40 w-40">
+                <svg viewBox="0 0 160 160" className="h-full w-full" aria-hidden>
                   <circle
                     cx="80"
                     cy="80"
-                    r={gaugeRadius}
+                    r={gaugeR}
                     fill="none"
-                    stroke={UI_TOKENS.lesson.gaugeTrack}
-                    strokeWidth="12"
+                    stroke={gaugeTrackIncomplete}
+                    strokeWidth={SCORE_STROKE_W}
                   />
                   <circle
                     cx="80"
                     cy="80"
-                    r={gaugeRadius}
+                    r={gaugeR}
                     fill="none"
-                    stroke={finishedPayload.passed ? UI_TOKENS.lesson.gaugePass : UI_TOKENS.lesson.warning}
-                    strokeWidth="12"
+                    stroke={scoreColor}
+                    strokeWidth={SCORE_STROKE_W}
                     strokeLinecap="round"
                     transform="rotate(-90 80 80)"
-                    strokeDasharray={gaugeCircumference}
-                    strokeDashoffset={gaugeCircumference * (1 - scoreGaugeProgress)}
-                    className="transition-[stroke-dashoffset] duration-700 ease-out"
+                    strokeDasharray={gaugeLen}
+                    strokeDashoffset={gaugeLen * (1 - displayArcFrac)}
                   />
-                  <circle cx={passMarkerX} cy={passMarkerY} r="4.5" fill={UI_TOKENS.lesson.gaugeMarker} />
-                  <text x="80" y="86" textAnchor="middle" className="text-[28px] font-black tabular-nums" fill="var(--easeL-text)">
-                    {finishedPayload.adherence}%
-                  </text>
+                  {showScoreKnob ? (
+                    <circle cx={knobX} cy={knobY} r={END_CAP_R} fill={endCapFill} />
+                  ) : null}
+                  <g
+                    transform={`translate(${passMarkerX} ${passMarkerY})`}
+                    style={{ filter: PASS_STAR_SHADOW }}
+                  >
+                    <g className={passHitPulse ? "easeL-gauge-pass-star-pulse" : ""}>
+                      <Star
+                        aria-hidden
+                        size={PASS_STAR_SIZE}
+                        x={-PASS_STAR_SIZE / 2}
+                        y={-PASS_STAR_SIZE / 2}
+                        fill={passStarFill}
+                        stroke="none"
+                        color={passStarFill}
+                      />
+                    </g>
+                  </g>
+                  <g transform="translate(80 80)">
+                    <text
+                      x="0"
+                      y={hasGaugeStatusLabel ? -9 : 0}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      className="text-[28px] font-black tabular-nums"
+                      fill="var(--easeL-text)"
+                    >
+                      {displayPercent}%
+                    </text>
+                    {showClearedUnderScore ? (
+                      <g transform="translate(0 13)">
+                        <g className="easeL-cleared-under-score-pop">
+                          <text
+                            x="0"
+                            y="0"
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            className="text-[11px] font-bold uppercase tracking-wide sm:text-xs"
+                            fill="var(--easeL-accent-mint)"
+                          >
+                            {language === "ur" ? "کلیئر" : "Cleared"}
+                          </text>
+                        </g>
+                      </g>
+                    ) : null}
+                    {showNotQuiteUnderScore ? (
+                      <g transform="translate(0 13)">
+                        <g className="easeL-cleared-under-score-pop">
+                          <text
+                            x="0"
+                            y="0"
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            className="text-[11px] font-bold uppercase tracking-wide sm:text-xs"
+                            fill="var(--easeL-accent-coral)"
+                          >
+                            {language === "ur" ? "ابھی نہیں" : "Not quite"}
+                          </text>
+                        </g>
+                      </g>
+                    ) : null}
+                  </g>
                 </svg>
               </div>
-              <p
-                className="-mt-1 text-sm font-bold"
-                style={{
-                  color: finishedPayload.passed ? "var(--easeL-accent-mint)" : "var(--easeL-accent-coral)",
-                }}
-              >
-                {finishedPayload.passed
-                  ? language === "ur"
-                    ? "کلیئر ہو گیا"
-                    : "Cleared"
-                  : language === "ur"
-                  ? "ابھی نہیں"
-                  : "Not quite yet"}
-              </p>
             </div>
           </div>
           <div
-            className="mt-3 rounded-lg border px-3 py-2 text-[11px] font-semibold"
+            className="mt-4 rounded-xl border-2 px-3 py-2.5 text-center text-xs font-semibold sm:text-sm"
             style={
               finishedPayload.unlockQualified
                 ? {
-                    background: "color-mix(in srgb, var(--easeL-accent-mint) 14%, white)",
-                    borderColor: "color-mix(in srgb, var(--easeL-accent-mint) 48%, white)",
-                    color: "color-mix(in srgb, var(--easeL-accent-mint) 78%, black)",
+                    background: "color-mix(in srgb, var(--easeL-accent-mint) 12%, white)",
+                    borderColor: "color-mix(in srgb, var(--easeL-accent-mint) 40%, var(--easeL-border-strong))",
+                    color: "var(--easeL-text)",
                   }
                 : {
-                    background: "color-mix(in srgb, var(--easeL-accent-coral) 12%, white)",
-                    borderColor: "color-mix(in srgb, var(--easeL-accent-coral) 42%, white)",
-                    color: "color-mix(in srgb, var(--easeL-accent-coral) 82%, black)",
+                    background: "color-mix(in srgb, var(--easeL-accent-coral) 10%, white)",
+                    borderColor: "color-mix(in srgb, var(--easeL-accent-coral) 35%, var(--easeL-border-strong))",
+                    color: "var(--easeL-text)",
                   }
             }
           >
-            {language === "ur" ? "پیش رفت" : "Progression"}:{" "}
             {finishedPayload.unlockQualified
               ? language === "ur"
                 ? "اگلا مرحلہ کھل گیا"
-                : "next stage unlocked"
+                : "Next stage unlocked"
               : language === "ur"
-              ? `مزید ${stageUnlockAdherence}% درکار`
-              : `need ${stageUnlockAdherence}% to unlock next stage`}
-            {" · "}
-            {language === "ur" ? "پاس حد" : "pass mark"} {finishedPayload.requiredAdherence}%
+              ? `اگلا مرحلہ: مزید ${stageUnlockAdherence}%`
+              : `Next stage: need ${stageUnlockAdherence}% overall`}
           </div>
           {finishedPayload.masteryProgress ? (
-            <div className="easeL-result-subtle mt-4 px-3 py-3 text-left">
-              <div className="mb-1 flex items-center justify-between text-[11px] font-semibold" style={{ color: "var(--easeL-text-muted)" }}>
-                <span>{language === "ur" ? "مہارت کی پیش رفت" : "Mastery progress"}</span>
+            <div className="mt-3 rounded-xl border-2 px-3 py-2.5" style={{ borderColor: "var(--easeL-border-subtle)" }}>
+              <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold sm:text-xs" style={{ color: "var(--easeL-text-muted)" }}>
+                <span>{language === "ur" ? "مہارت" : "Mastery"}</span>
                 <span className="tabular-nums">
-                  {finishedPayload.masteryProgress.after >
-                  finishedPayload.masteryProgress.before ? (
-                    <>
-                      {finishedPayload.masteryProgress.before}/
-                      {finishedPayload.masteryProgress.target}
-                      {" -> "}
-                      {finishedPayload.masteryProgress.after}/
-                      {finishedPayload.masteryProgress.target}
-                    </>
-                  ) : (
-                    <>
-                      {finishedPayload.masteryProgress.after}/
-                      {finishedPayload.masteryProgress.target}
-                      {" · "}
-                      {language === "ur" ? "کوئی اضافہ نہیں" : "no gain this attempt"}
-                    </>
-                  )}
+                  {finishedPayload.masteryProgress.after}/{finishedPayload.masteryProgress.target}
                 </span>
               </div>
-              <div className="h-2.5 w-full overflow-hidden rounded-full" style={{ background: "var(--easeL-border-subtle)" }}>
+              <div className="h-2 w-full overflow-hidden rounded-full" style={{ background: "var(--easeL-border-subtle)" }}>
                 <div
-                  className="h-full rounded-full transition-[width] duration-700 ease-out"
+                  className="h-full rounded-full transition-[width] duration-500 ease-out"
                   style={{
                     width: `${Math.round(masteryProgressVisual * 100)}%`,
                     background: "var(--easeL-accent-mint)",

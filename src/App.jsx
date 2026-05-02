@@ -120,6 +120,7 @@ export default function App() {
       <GlobalEaseLCursor />
       <DevMenu />
         <main id="main-content" tabIndex={-1}>
+          <div key={location.pathname} className="easeL-route-transition">
           <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
@@ -229,6 +230,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </div>
         </main>
       </>
     </CursorPositionBridgeProvider>

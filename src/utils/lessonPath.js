@@ -1,5 +1,9 @@
 import { getCurrentTierConfig } from "./modeConfig";
-import { generateCorridor, generateClosedShape } from "./corridorGeometry";
+import {
+  contentPaddingForCanvas,
+  generateCorridor,
+  generateClosedShape,
+} from "./corridorGeometry";
 import { getStage, variantForAttempt } from "./lessonContent";
 
 /**
@@ -35,13 +39,21 @@ export function getStageLessonPath(stage, attemptIndex, canvasWidth, canvasHeigh
   if (stage.shape === "hold") {
     const centerX = canvasWidth / 2;
     const centerY = canvasHeight / 2;
+    const pad = contentPaddingForCanvas(canvasWidth, canvasHeight, stage.holdRadius * 2);
+    const maxR = Math.min(
+      centerX - pad,
+      centerY - pad,
+      canvasWidth - pad - centerX,
+      canvasHeight - pad - centerY,
+    );
+    const holdRadius = Math.max(40, Math.min(stage.holdRadius, maxR - 12));
     return {
       type: "hold",
       start: { x: centerX, y: centerY },
       end: { x: centerX, y: centerY },
-      width: stage.holdRadius * 2,
+      width: holdRadius * 2,
       centerline: [{ x: centerX, y: centerY }],
-      holdRadius: stage.holdRadius,
+      holdRadius,
       holdMs: stage.holdMs,
     };
   }

@@ -1,6 +1,6 @@
-import { NavLink, Link } from "react-router-dom";
-import { useState, useRef, useEffect } from "react";
-import { Menu, X, User, Settings, LogOut, BookOpen, Image as ImageIcon, BarChart3 } from "lucide-react";
+import { NavLink, Link, useLocation } from "react-router-dom";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { Menu, X, User, Settings, LogOut, House, BookOpen, Image as ImageIcon, BarChart3 } from "lucide-react";
 
 /**
  * Path-aware navbar per framework §8.2:
@@ -11,7 +11,10 @@ import { Menu, X, User, Settings, LogOut, BookOpen, Image as ImageIcon, BarChart
 export default function Navbar({ isAuthenticated, user, profile, inSetup, onSignOut }) {
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [activeRailStyle, setActiveRailStyle] = useState(null);
   const profileRef = useRef(null);
+  const linksWrapRef = useRef(null);
+  const location = useLocation();
 
   const pathId = profile?.pathId ?? profile?.lipMode ?? null;
   const isMode1 = pathId === 1;
@@ -19,7 +22,7 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
 
   const navLinks = isMode2
     ? [
-        { name: "Home", path: "/home", icon: null },
+        { name: "Home", path: "/home", icon: House },
         { name: "Lessons", path: "/lessons", icon: BookOpen },
         { name: "Gallery", path: "/gallery", icon: ImageIcon },
       ]
@@ -35,21 +38,57 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
 
   const showNavLinks = isAuthenticated && !inSetup && isMode2;
   const showCaregiverMenu = isAuthenticated && !inSetup;
+  const preferredName =
+    profile?.fullName ||
+    profile?.displayName ||
+    profile?.name ||
+    [profile?.firstName, profile?.lastName].filter(Boolean).join(" ") ||
+    user?.name ||
+    "";
+  const profileLabel = (preferredName.includes("@") ? "Profile" : preferredName || "Profile").trim();
+
+  useLayoutEffect(() => {
+    if (!showNavLinks) return undefined;
+    const updateRail = () => {
+      const wrap = linksWrapRef.current;
+      const active = wrap?.querySelector(".easeL-nav-pill.is-active");
+      if (!wrap || !active) {
+        setActiveRailStyle(null);
+        return;
+      }
+      setActiveRailStyle({
+        left: active.offsetLeft,
+        width: active.offsetWidth,
+      });
+    };
+    updateRail();
+    window.addEventListener("resize", updateRail);
+    return () => window.removeEventListener("resize", updateRail);
+  }, [showNavLinks, location.pathname]);
 
   return (
-    <nav className="easeL-nav fixed top-0 left-0 z-50 w-full">
-      <div className="mx-auto flex h-17 max-w-7xl items-center justify-between px-6">
+    <nav className="easeL-nav fixed inset-x-0 z-50 px-3 sm:px-5">
+      <div className="mx-auto flex h-17 max-w-6xl items-center justify-between gap-2 sm:gap-3">
         <Link
-          to={isAuthenticated ? "/home" : "/"}
-          className="easeL-brand flex min-h-12 items-center"
+          to="/"
+          className="easeL-brand easeL-brand--mark flex min-h-12 items-center px-1"
         >
-          <span className="easeL-logo text-[1.78rem] leading-none">
+          <span className="easeL-logo text-[2.9rem] leading-none">
             Ease<span className="easeL-brand-accent">L</span>
           </span>
         </Link>
 
         {showNavLinks && (
-          <div className="hidden items-center gap-1.5 md:flex">
+          <div ref={linksWrapRef} className="easeL-nav-links-wrap hidden items-center gap-1 md:flex">
+            <span
+              className="easeL-nav-active-glide"
+              style={{
+                opacity: activeRailStyle ? 1 : 0,
+                width: activeRailStyle ? `${activeRailStyle.width}px` : 0,
+                transform: activeRailStyle ? `translateX(${activeRailStyle.left}px)` : "translateX(0)",
+              }}
+              aria-hidden
+            />
             {navLinks.map((link) => {
               const Icon = link.icon;
               return (
@@ -70,22 +109,25 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
           </div>
         )}
 
-        <div className="flex min-h-12 items-center gap-2.5">
+        <div className="flex min-h-12 shrink-0 items-center gap-2">
           {isAuthenticated ? (
             showCaregiverMenu ? (
               <div className="relative" ref={profileRef}>
                 <button
                   type="button"
                   onClick={() => setProfileOpen(!profileOpen)}
-                  className="easeL-avatar-btn easeL-interactive flex items-center justify-center min-h-12 min-w-12 rounded-2xl font-semibold text-lg"
+                  className="easeL-avatar-btn easeL-profile-chip flex min-h-11 items-center gap-2 rounded-full px-2.5 pr-3"
                   aria-label={isMode1 ? "Caregiver menu" : "Profile menu"}
                   title={isMode1 ? "Caregiver menu" : "Profile menu"}
                 >
                   {user?.name || user?.email ? (
-                    <span>{(user.name || user.email || "U").charAt(0).toUpperCase()}</span>
+                    <span className="easeL-profile-avatar">{(user.name || user.email || "U").charAt(0).toUpperCase()}</span>
                   ) : (
-                    <User className="w-6 h-6" />
+                    <span className="easeL-profile-avatar">
+                      <User className="w-4 h-4" />
+                    </span>
                   )}
+                  <span className="easeL-profile-label hidden sm:inline">{profileLabel}</span>
                 </button>
                 {profileOpen && (
                   <div className="easeL-dropdown absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border-2 bg-white py-2 shadow-2xl">
@@ -157,7 +199,7 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
             <>
               <Link
                 to="/signup"
-                className="easeL-interactive min-h-12 px-4 flex items-center justify-center rounded-2xl border-2 font-semibold hover:opacity-95"
+                className="easeL-interactive min-h-11 px-4 flex items-center justify-center rounded-xl border-2 font-semibold hover:opacity-95"
                 style={{
                   borderColor: "var(--easeL-primary)",
                   color: "var(--easeL-link)",
@@ -167,7 +209,7 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
               </Link>
               <Link
                 to="/login"
-                className="easeL-interactive min-h-12 px-5 flex items-center justify-center rounded-2xl text-white font-semibold shadow-lg hover:opacity-95"
+                className="easeL-interactive min-h-11 px-5 flex items-center justify-center rounded-xl text-white font-semibold shadow-lg hover:opacity-95"
                 style={{ background: "var(--easeL-primary)" }}
               >
                 Sign in
@@ -179,7 +221,7 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
             <button
               type="button"
               onClick={() => setOpen(!open)}
-              className="md:ml-2 flex min-h-12 min-w-12 items-center justify-center rounded-2xl md:hidden"
+              className="md:ml-1 flex min-h-11 min-w-11 items-center justify-center rounded-xl md:hidden"
               style={{ color: "var(--easeL-text-muted)" }}
               aria-label="Toggle menu"
             >
@@ -190,15 +232,13 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
       </div>
 
       {showNavLinks && (
-        <div
-          className={`md:hidden overflow-hidden easeL-transition-standard ${
-            open ? "max-h-80 opacity-100" : "max-h-0 opacity-0"
-          }`}
-        >
+        <div className="mx-auto max-w-6xl">
           <div
-            className="space-y-1 border-t bg-white/95 px-6 py-4 backdrop-blur-md"
-            style={{ borderColor: "var(--easeL-nav-border)" }}
+            className={`easeL-nav-mobile-panel md:hidden overflow-hidden rounded-2xl bg-white/95 easeL-transition-standard ${
+              open ? "max-h-80 opacity-100" : "max-h-0 opacity-0"
+            }`}
           >
+            <div className="space-y-1 px-4 py-3">
             {navLinks.map((link) => {
               const Icon = link.icon;
               return (
@@ -207,7 +247,7 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
                   to={link.path}
                   onClick={() => setOpen(false)}
                   className={({ isActive }) =>
-                    `easeL-nav-pill flex min-h-12 items-center gap-3 rounded-2xl px-4 text-base font-semibold ${
+                    `easeL-nav-pill flex min-h-11 items-center gap-3 rounded-2xl px-4 text-base font-semibold ${
                       isActive ? "is-active" : ""
                     }`
                   }
@@ -217,6 +257,7 @@ export default function Navbar({ isAuthenticated, user, profile, inSetup, onSign
                 </NavLink>
               );
             })}
+            </div>
           </div>
         </div>
       )}

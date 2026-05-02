@@ -117,14 +117,54 @@
   --easeL-landing-path-tag-bg: color-mix(in srgb, #fffefb 94%, var(--easeL-text) 6%);
   --easeL-landing-path-tag-border: color-mix(in srgb, var(--easeL-cartoon-outline) 78%, var(--easeL-bg-section) 22%);
   --easeL-landing-path-footer-border: color-mix(in srgb, var(--easeL-ink) 18%, transparent);
+  --easeL-nav-top-offset: 1.1rem;
 }
 
 /* Nav bar (modular: apply class on <nav>) */
 .easeL-nav {
-  background: var(--easeL-nav-bg);
-  border-top: 4px solid var(--easeL-accent-coral);
-  border-bottom: 2px solid var(--easeL-cartoon-outline);
-  box-shadow: var(--easeL-cartoon-shadow-sm);
+  pointer-events: auto;
+  top: var(--easeL-nav-top-offset);
+}
+
+.easeL-nav-shell {
+  pointer-events: auto;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.easeL-nav-links-wrap {
+  position: relative;
+  background: color-mix(in srgb, var(--easeL-bg-section) 84%, white);
+  border: 1.5px solid color-mix(in srgb, var(--easeL-border-strong) 46%, transparent);
+  border-radius: 999px;
+  padding: 0.2rem;
+}
+
+.easeL-nav-active-glide {
+  position: absolute;
+  top: 0.2rem;
+  bottom: 0.2rem;
+  left: 0;
+  border-radius: 999px;
+  border: 1.5px solid color-mix(in srgb, var(--easeL-cartoon-outline) 88%, white);
+  background: color-mix(in srgb, var(--easeL-bg-card-coral) 70%, white);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--easeL-primary) 18%, transparent);
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform, width;
+  transition: transform 520ms ease-in-out, width 520ms ease-in-out, opacity 220ms ease-in-out;
+}
+
+.easeL-nav-mobile-panel {
+  pointer-events: auto;
+  margin-top: 0.45rem;
+  border: 2px solid color-mix(in srgb, var(--easeL-cartoon-outline) 72%, white);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--easeL-primary) 14%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 /* Brand wordmark (clean + professional) */
@@ -133,26 +173,32 @@
   transition: opacity var(--easeL-duration-standard) var(--easeL-ease-standard);
 }
 
+.easeL-brand--mark {
+  filter: none;
+}
+
 .easeL-logo {
-  color: var(--easeL-primary);
+  color: #de5f79;
   font-family: var(--easeL-font-heading);
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -0.01em;
   transition-property: color, opacity, transform;
   transition-duration: var(--easeL-duration-standard);
   transition-timing-function: var(--easeL-ease-standard);
   display: inline-block;
+  -webkit-text-stroke: 1.1px #5a2f47;
+  text-shadow: 3px 3px 0 #5a2f47;
 }
 
 .easeL-brand-accent {
-  color: color-mix(in srgb, var(--easeL-primary-mid) 75%, var(--easeL-primary));
+  color: #de5f79;
 }
 
 /* Head pointer: browsers ignore synthetic events for :hover — mirror via data-easel-head-hover + :has() */
 .easeL-brand:hover .easeL-logo,
 .easeL-brand[data-easel-head-hover="true"] .easeL-logo,
 .easeL-brand:has([data-easel-head-hover="true"]) .easeL-logo {
-  color: color-mix(in srgb, var(--easeL-primary-mid) 74%, var(--easeL-primary));
+  color: #d75270;
   transform: translateY(-0.5px);
 }
 
@@ -423,6 +469,30 @@
   box-shadow: var(--easeL-cartoon-shadow-hover);
 }
 
+/* Home summary stats: mostly empty at rest, full pastel fill on hover */
+.easeL-home-summary-stat.easeL-hoverable-card {
+  background: var(--easeL-summary-bg-rest, var(--easeL-bg-section)) !important;
+  box-shadow: var(--easeL-cartoon-shadow-sm);
+}
+
+.easeL-home-summary-stat.easeL-hoverable-card:hover,
+.easeL-home-summary-stat.easeL-hoverable-card[data-easel-head-hover="true"],
+.easeL-home-summary-stat.easeL-hoverable-card:has([data-easel-head-hover="true"]) {
+  background: var(--easeL-summary-bg-fill, var(--easeL-summary-bg-rest)) !important;
+  box-shadow: var(--easeL-cartoon-shadow-hover);
+}
+
+.easeL-home-summary-stat .easeL-home-summary-stat-icon {
+  transition: background-color var(--easeL-duration-standard) var(--easeL-ease-standard);
+  background: var(--easeL-summary-icon-rest, var(--easeL-bg-section)) !important;
+}
+
+.easeL-home-summary-stat.easeL-hoverable-card:hover .easeL-home-summary-stat-icon,
+.easeL-home-summary-stat.easeL-hoverable-card[data-easel-head-hover="true"] .easeL-home-summary-stat-icon,
+.easeL-home-summary-stat.easeL-hoverable-card:has([data-easel-head-hover="true"]) .easeL-home-summary-stat-icon {
+  background: var(--easeL-summary-icon-fill, var(--easeL-summary-icon-rest)) !important;
+}
+
 /* Home dashboard shortcuts: cartoon shadow + colored top inset (set --easeL-card-accent-inset on the element) */
 .easeL-home-shortcut-card.easeL-hoverable-card {
   box-shadow: var(--easeL-cartoon-shadow), inset 0 3px 0 var(--easeL-card-accent-inset, transparent);
@@ -436,7 +506,7 @@
 
 /* Home shortcuts: one CTA treatment for every panel (accent border + ink label) */
 .easeL-home-shortcut-cta {
-  margin-top: auto;
+  margin-top: 0;
   align-self: stretch;
   display: inline-flex;
   align-items: center;
@@ -470,47 +540,81 @@
   outline-offset: 3px;
 }
 
-@keyframes easeL-mascot-dance {
-  0%,
-  100% {
-    transform: rotate(-4deg);
-  }
-  25% {
-    transform: rotate(5deg);
-  }
-  50% {
-    transform: rotate(-5.5deg);
-  }
-  75% {
-    transform: rotate(3.5deg);
-  }
-}
-
 .easeL-home-shortcut-mascot {
   transform-origin: 50% 55%;
-  animation: easeL-mascot-dance 3s ease-in-out infinite;
   will-change: transform;
 }
 
-/* Cloud: SVG stroke only (no drop shadow) */
+/*
+ * Scrapbook snap: only 2 angles, long holds + instant jumps (plateaus — no smooth spin).
+ * Cycle = pose A → pose B → pose A (~2.1s total).
+ */
+@keyframes easeL-mascot-snap-1 {
+  0%,
+  44% {
+    transform: rotate(18deg);
+  }
+  46%,
+  94% {
+    transform: rotate(24deg);
+  }
+  96%,
+  100% {
+    transform: rotate(18deg);
+  }
+}
+
+@keyframes easeL-mascot-snap-2 {
+  0%,
+  44% {
+    transform: rotate(7deg);
+  }
+  46%,
+  94% {
+    transform: rotate(10.5deg);
+  }
+  96%,
+  100% {
+    transform: rotate(7deg);
+  }
+}
+
+@keyframes easeL-mascot-snap-3 {
+  0%,
+  44% {
+    transform: rotate(-6.5deg);
+  }
+  46%,
+  94% {
+    transform: rotate(-10deg);
+  }
+  96%,
+  100% {
+    transform: rotate(-6.5deg);
+  }
+}
+
+/* Order matches quickActions: 1 = Lessons (leaf), 2 = Free Draw (shark), 3 = Gallery */
+.easeL-home-shortcut-card:nth-child(1) .easeL-home-shortcut-mascot {
+  animation: easeL-mascot-snap-2 2.1s linear infinite;
+}
+
+.easeL-home-shortcut-card:nth-child(2) .easeL-home-shortcut-mascot {
+  animation: easeL-mascot-snap-1 2.1s linear 0.25s infinite;
+}
+
+.easeL-home-shortcut-card:nth-child(3) .easeL-home-shortcut-mascot {
+  animation: easeL-mascot-snap-3 2.1s linear 0.5s infinite;
+}
+
+/* PNG silhouette stroke (follows alpha) — sticker mascots on home shortcuts */
 .easeL-home-shortcut-mascot--thin-outline {
   filter: url(#easeL-mascot-outline);
 }
 
+/* Optional: cloud hero used elsewhere; keep origin if class is reused */
 .easeL-home-shortcut-mascot--hero-cloud {
   transform-origin: 58% 52%;
-}
-
-.easeL-home-shortcut-card:nth-child(1) .easeL-home-shortcut-mascot {
-  animation-delay: 0s;
-}
-
-.easeL-home-shortcut-card:nth-child(2) .easeL-home-shortcut-mascot {
-  animation-delay: 0.35s;
-}
-
-.easeL-home-shortcut-card:nth-child(3) .easeL-home-shortcut-mascot {
-  animation-delay: 0.7s;
 }
 
 .easeL-landing-interaction-card {
@@ -569,10 +673,24 @@
 .easeL-accent-text-strong {
   color: var(--easeL-primary);
 }
+/* Lesson instruction strip — paper tone + ink (matches Home cards; easier on kids’ eyes than solid primary) */
 .easeL-hud-bar {
-  background: var(--easeL-primary);
-  color: #fff;
-  border: 1px solid color-mix(in srgb, var(--easeL-primary) 55%, #1a1526);
+  background: color-mix(in srgb, var(--easeL-bg-section) 88%, var(--easeL-bg-card-mint) 12%);
+  color: var(--easeL-ink);
+  border: 2px solid var(--easeL-border-strong);
+  border-radius: 1rem;
+  box-shadow: var(--easeL-cartoon-shadow-sm);
+}
+
+.easeL-hud-bar-timer {
+  border-radius: 0.625rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--easeL-primary) 14%, white);
+  color: var(--easeL-ink);
+  border: 1px solid color-mix(in srgb, var(--easeL-primary) 28%, var(--easeL-border-strong));
 }
 
 .easeL-input {
@@ -613,17 +731,30 @@
 
 /* Desktop nav pills (NavLink adds .is-active via class) */
 .easeL-nav-pill {
-  border-radius: var(--easeL-radius-lg);
-  border: 2px solid transparent;
-  transition-property: color, background-color, transform;
+  position: relative;
+  z-index: 1;
+  border-radius: 999px;
+  border: 1.5px solid transparent;
+  outline: none;
+  transition-property: color, background-color, transform, box-shadow, border-color;
   transition-duration: var(--easeL-duration-standard);
   transition-timing-function: var(--easeL-ease-standard);
 }
 
-.easeL-nav-pill.is-active {
-  background: var(--easeL-bg-card-coral);
+.easeL-nav-links-wrap .easeL-nav-pill.is-active {
+  background: transparent;
   color: var(--easeL-ink);
-  border: 2px solid var(--easeL-cartoon-outline);
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.easeL-nav-mobile-panel .easeL-nav-pill.is-active {
+  background: color-mix(in srgb, var(--easeL-bg-card-coral) 70%, white);
+  color: var(--easeL-ink);
+  border-color: color-mix(in srgb, var(--easeL-cartoon-outline) 88%, white);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--easeL-primary) 18%, transparent);
+  transform: translateY(-1px);
 }
 
 .easeL-nav-pill:not(.is-active) {
@@ -635,30 +766,82 @@
   background: color-mix(in srgb, white 82%, var(--easeL-bg-section-alt));
   color: var(--easeL-text);
   border-color: color-mix(in srgb, var(--easeL-border-strong) 35%, transparent);
+  transform: translateY(-1px);
+}
+
+/* Desktop: avoid border stacking with active glide indicator */
+.easeL-nav-links-wrap .easeL-nav-pill:not(.is-active):hover,
+.easeL-nav-links-wrap .easeL-nav-pill:not(.is-active)[data-easel-head-hover="true"] {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.easeL-nav-links-wrap .easeL-nav-pill:focus-visible {
+  outline: none;
+  border-color: transparent;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--easeL-focus-ring) 34%, transparent);
 }
 
 .easeL-avatar-btn {
-  min-width: 3rem;
-  min-height: 3rem;
-  border-radius: var(--easeL-radius-lg);
-  border: 2px solid var(--easeL-cartoon-outline);
-  background: var(--easeL-bg-section);
+  min-width: 2.9rem;
+  min-height: 2.9rem;
+  border-radius: 999px;
+  border: 1.5px solid color-mix(in srgb, var(--easeL-border-strong) 42%, transparent);
+  background: transparent;
   color: var(--easeL-primary);
   font-family: var(--easeL-font-heading);
   font-weight: 800;
   box-shadow: var(--easeL-cartoon-shadow-sm);
   transition: background-color var(--easeL-duration-standard) var(--easeL-ease-standard),
     color var(--easeL-duration-standard) var(--easeL-ease-standard),
+    border-color var(--easeL-duration-standard) var(--easeL-ease-standard),
     transform var(--easeL-duration-standard) var(--easeL-ease-standard),
     box-shadow var(--easeL-duration-standard) var(--easeL-ease-standard);
 }
 
+.easeL-profile-chip {
+  background: color-mix(in srgb, var(--easeL-bg-section) 90%, white);
+  border: 2px solid var(--easeL-cartoon-outline);
+}
+
+.easeL-profile-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid color-mix(in srgb, var(--easeL-primary) 75%, white);
+  background: var(--easeL-primary);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.easeL-profile-label {
+  max-width: 8.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--easeL-text);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
 .easeL-avatar-btn:hover,
 .easeL-avatar-btn[data-easel-head-hover="true"] {
-  background: color-mix(in srgb, var(--easeL-bg-section-alt) 42%, white);
-  color: var(--easeL-text);
-  transform: translate(-3px, -3px);
+  background: color-mix(in srgb, var(--easeL-bg-section-alt) 45%, white);
+  color: var(--easeL-primary);
+  border-color: var(--easeL-cartoon-outline);
+  transform: translate(-2px, -2px);
   box-shadow: var(--easeL-cartoon-shadow-hover-tight);
+}
+
+.easeL-avatar-btn:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--easeL-primary) 65%, white);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--easeL-focus-ring) 26%, transparent);
 }
 
 .easeL-dropdown {
@@ -786,6 +969,54 @@
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+/* Pass threshold star — one-shot pulse when the score fill crosses it */
+@keyframes easeL-gauge-pass-star-pulse {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.48);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.easeL-gauge-pass-star-pulse {
+  transform-origin: 0 0;
+  animation: easeL-gauge-pass-star-pulse 0.52s ease-out 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .easeL-gauge-pass-star-pulse {
+    animation: none;
+  }
+}
+
+@keyframes easeL-cleared-under-score-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.88) translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.easeL-cleared-under-score-pop {
+  transform-origin: 0 0;
+  animation: easeL-cleared-under-score-pop 0.38s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .easeL-cleared-under-score-pop {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes easeL-marquee-shift {

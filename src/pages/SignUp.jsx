@@ -11,7 +11,7 @@ import {
 function passwordStrength(pwd) {
   if (!pwd) return 0;
   let s = 0;
-  if (pwd.length >= 8) s++;
+  if (pwd.length >= 6) s++;
   if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) s++;
   if (/\d/.test(pwd) && /[^A-Za-z0-9]/.test(pwd)) s++;
   return Math.min(3, s);
@@ -143,7 +143,7 @@ export default function SignUp() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={8}
+                  minLength={6}
                   className="easeL-input pr-14"
                   placeholder="••••••••"
                   autoComplete="new-password"
@@ -188,6 +188,7 @@ export default function SignUp() {
                   type={showConfirm ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  minLength={6}
                   className="easeL-input pr-14"
                   style={
                     confirmPassword && !match

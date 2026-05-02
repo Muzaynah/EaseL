@@ -1,5 +1,3 @@
-import { Coffee } from "lucide-react";
-
 /**
  * Framework §6.2 and §9.3: mandatory, user-pauseable break overlay.
  * Shown when `useSessionTimer` fires its break interval, and when the cap is reached.
@@ -24,27 +22,39 @@ export default function BreakPrompt({ kind, onResume, onExit, language = "en" })
       : "Take a breath. When you're ready, carry on.";
 
   return (
-    <div className="fixed inset-0 z-[70] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-6">
-      <div className="easeL-card max-w-md w-full p-8 text-center animate-fade-scale-in">
-        <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white mb-4">
-          <Coffee className="w-10 h-10" />
-        </div>
-        <h2 className="easeL-heading-2 mb-2">{title}</h2>
-        <p className="easeL-text-muted mb-6">{body}</p>
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4 backdrop-blur-sm sm:p-6"
+      style={{
+        background: "color-mix(in srgb, var(--easeL-ink) 38%, transparent)",
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="break-prompt-title"
+    >
+      <div
+        className="animate-fade-scale-in w-full max-w-md rounded-3xl border-2 p-6 text-center sm:p-8"
+        style={{
+          borderColor: "var(--easeL-border-strong)",
+          background: "var(--easeL-bg-section)",
+          boxShadow: "var(--easeL-cartoon-shadow)",
+        }}
+      >
+        <h2 id="break-prompt-title" className="easeL-heading-2 mb-2 text-balance" style={{ color: "var(--easeL-ink)" }}>
+          {title}
+        </h2>
+        <p className="mb-6 text-base leading-relaxed sm:text-[1.05rem]" style={{ color: "var(--easeL-text-muted)" }}>
+          {body}
+        </p>
         <div className="flex flex-col gap-3">
           {!isCap && (
-            <button
-              type="button"
-              onClick={onResume}
-              className="easeL-btn-solid min-h-14 text-lg transition-all"
-            >
+            <button type="button" onClick={onResume} className="easeL-btn-solid min-h-12 w-full justify-center text-base font-semibold sm:min-h-14 sm:text-lg">
               {language === "ur" ? "جاری رکھیں" : "Continue"}
             </button>
           )}
           <button
             type="button"
             onClick={onExit}
-            className="easeL-interactive min-h-14 rounded-2xl border-2 border-slate-300 text-slate-700 font-semibold text-lg hover:bg-slate-50"
+            className="easeL-btn-outline min-h-12 w-full justify-center text-base font-semibold sm:min-h-14 sm:text-lg"
           >
             {language === "ur" ? "سیشن ختم" : "Finish session"}
           </button>

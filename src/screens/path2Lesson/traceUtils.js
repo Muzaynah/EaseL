@@ -14,6 +14,46 @@ export const STROKE_QUALITY_HEX = [
   UI_TOKENS.lesson.danger,
 ];
 
+function parseStrokeHex(hex) {
+  const h = String(hex).trim().replace("#", "");
+  const full =
+    h.length === 3 ? h.split("").map((c) => c + c).join("") : h.slice(0, 6);
+  const n = parseInt(full, 16);
+  if (Number.isNaN(n)) return { r: 34, g: 184, b: 146 };
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function mixRgb(a, b, f) {
+  const t = Math.min(1, Math.max(0, f));
+  return {
+    r: Math.round(a.r + (b.r - a.r) * t),
+    g: Math.round(a.g + (b.g - a.g) * t),
+    b: Math.round(a.b + (b.b - a.b) * t),
+  };
+}
+
+function rgbToHexStr({ r, g, b }) {
+  return `#${[r, g, b]
+    .map((x) => {
+      const v = Math.min(255, Math.max(0, x));
+      return v.toString(16).padStart(2, "0");
+    })
+    .join("")}`;
+}
+
+/**
+ * Continuous fill color along the same palette as live stroke quality tiers
+ * (green / teal → yellow / orange → red). 100% adherence = best stop, 0% = worst.
+ */
+export function adherenceBarColorFromStrokeScale(adherencePct) {
+  const stops = STROKE_QUALITY_HEX.map(parseStrokeHex);
+  const t = Math.min(1, Math.max(0, Number(adherencePct) / 100));
+  const pos = (1 - t) * (stops.length - 1);
+  const i = Math.min(Math.floor(pos), stops.length - 2);
+  const frac = pos - i;
+  return rgbToHexStr(mixRgb(stops[i], stops[i + 1], frac));
+}
+
 export function lessonPointInsideCanvas(px, py, vp) {
   if (!vp) return false;
   return px >= vp.left && px <= vp.right && py >= vp.top && py <= vp.bottom;

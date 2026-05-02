@@ -113,8 +113,8 @@ export default function Gallery() {
         {loadState === "loading" ? (
           <div className="easeL-card p-12 text-center">
             <div
-              className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-4 border-t-[var(--easeL-primary)]"
-              style={{ borderColor: "color-mix(in srgb, var(--easeL-border-subtle) 55%, white)" }}
+              className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-4 border-[var(--easeL-border-subtle)] border-t-[var(--easeL-primary)]"
+              aria-hidden
             />
             <h2 className="easeL-heading-2 mb-2">Loading gallery...</h2>
             <p className="easeL-text-muted">Fetching your saved free-draw projects and lesson results.</p>
