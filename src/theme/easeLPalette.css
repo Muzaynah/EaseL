@@ -7,16 +7,16 @@
   --easeL-bg-page: #f7f7f2;
   --easeL-bg-cream: #f8c0b8;
   --easeL-bg-section: #ffffff;
-  --easeL-bg-section-alt: #d7d9f8;
-  --easeL-bg-card-mint: #baf0de;
-  --easeL-bg-card-coral: #f8c0b8;
-  --easeL-bg-card-butter: #c8c9ff;
+  --easeL-bg-section-alt: #e6e8f4;
+  --easeL-bg-card-mint: #a8e8d4;
+  --easeL-bg-card-coral: #f5b4aa;
+  --easeL-bg-card-butter: #babdf5;
   --easeL-bg-footer: #35627a;
   /* Text */
   --easeL-text: #0b1220;
-  --easeL-text-muted: #1e2a3b;
+  --easeL-text-muted: #334155;
   --easeL-text-on-dark: #ffffff;
-  --easeL-text-on-dark-muted: #e8e8e8;
+  --easeL-text-on-dark-muted: #f1f5f9;
   /* Brand & accents */
   --easeL-primary: #2f6f95;
   --easeL-primary-mid: #3f82ad;
@@ -25,15 +25,12 @@
   --easeL-accent-coral: #e45b43;
   --easeL-accent-butter: #f8c0b8;
   --easeL-accent-rose: #8f74ff;
-  --easeL-heading-highlight-mint: #8cefd9;
-  --easeL-heading-highlight-coral: #ffb3a8;
-  --easeL-heading-highlight-lavender: #bfc2ff;
   /* UI */
-  --easeL-border: #6c8ea2;
-  --easeL-border-subtle: #b9c2ea;
+  --easeL-border: #5a7d92;
+  --easeL-border-subtle: #9aa8c4;
   --easeL-border-strong: #3f6b83;
   --easeL-nav-bg: color-mix(in srgb, #ffffff 74%, var(--easeL-bg-section-alt));
-  --easeL-nav-border: #9ba8ef;
+  --easeL-nav-border: #8b96c9;
   --easeL-focus-ring: #2f6f95;
   --easeL-link: #2f6f95;
   --easeL-link-hover: #e45b43;
@@ -53,6 +50,11 @@
   --easeL-hero-glow-2: color-mix(in srgb, var(--easeL-accent-rose) 18%, transparent);
   --easeL-hero-glow-3: color-mix(in srgb, var(--easeL-accent-mint) 16%, transparent);
   --easeL-shadow-soft: 0 14px 48px color-mix(in srgb, var(--easeL-primary) 10%, transparent);
+  /* Inline tutorial / screener demos (avoid raw rgba black in components) */
+  --easeL-tutorial-cursor-glow: 0 3px 14px color-mix(in srgb, var(--easeL-primary) 24%, transparent);
+  --easeL-tutorial-btn-shadow: 0 12px 26px -6px color-mix(in srgb, var(--easeL-primary) 18%, transparent),
+    0 4px 10px -4px color-mix(in srgb, var(--easeL-text) 8%, transparent);
+  --easeL-tutorial-btn-shadow-pressed: 0 4px 14px -2px color-mix(in srgb, var(--easeL-primary) 16%, transparent);
   --easeL-radius-sm: 0.5rem;
   --easeL-radius-md: 0.8rem;
   --easeL-radius-lg: 1rem;
@@ -70,14 +72,59 @@
   --easeL-duration-standard: 220ms;
   --easeL-duration-slow: 320ms;
   --easeL-ink: #111111;
+  /* Cartoon depth — same hue family as borders (no harsh black); outline matches shadow tier */
+  --easeL-cartoon-shadow-color: color-mix(in srgb, var(--easeL-border-strong) 42%, var(--easeL-text) 58%);
+  /* Resting cards/controls: smaller offset + blends into page; hover uses full ink */
+  --easeL-cartoon-shadow-color-rest: color-mix(in srgb, var(--easeL-cartoon-shadow-color) 52%, var(--easeL-bg-page) 48%);
+  --easeL-cartoon-outline: color-mix(in srgb, var(--easeL-border-strong) 52%, var(--easeL-text) 48%);
+  --easeL-cartoon-shadow: 4px 4px 0 0 var(--easeL-cartoon-shadow-color-rest);
+  --easeL-cartoon-shadow-hover: 10px 10px 0 0 var(--easeL-cartoon-shadow-color);
+  --easeL-cartoon-shadow-sm: 2px 2px 0 0 var(--easeL-cartoon-shadow-color-rest);
+  --easeL-cartoon-shadow-pressed: 2px 2px 0 0 var(--easeL-cartoon-shadow-color-rest);
+  /* Buttons: slightly tighter hover block than cards */
+  --easeL-cartoon-shadow-hover-tight: 7px 7px 0 0 var(--easeL-cartoon-shadow-color);
+  --easeL-cartoon-shadow-xs: 1px 1px 0 0 var(--easeL-cartoon-shadow-color-rest);
+  /* Landing — hero: stronger lavender / mint color (still readable behind type) */
+  --easeL-landing-hero-bg: #d4d9e0;
+  --easeL-landing-hero-radial:
+    radial-gradient(ellipse 120% 80% at 0% 12%, color-mix(in srgb, var(--easeL-bg-card-butter) 55%, transparent) 0%, transparent 50%),
+    radial-gradient(ellipse 110% 85% at 8% 22%, color-mix(in srgb, var(--easeL-accent-rose) 38%, transparent) 0%, transparent 58%),
+    radial-gradient(ellipse 105% 80% at 100% 65%, color-mix(in srgb, var(--easeL-bg-card-mint) 45%, transparent) 0%, transparent 50%),
+    radial-gradient(ellipse 70% 55% at 50% 48%, color-mix(in srgb, white 32%, transparent) 0%, transparent 60%),
+    linear-gradient(
+      122deg,
+      color-mix(in srgb, var(--easeL-bg-section-alt) 68%, var(--easeL-landing-hero-bg)) 0%,
+      var(--easeL-landing-hero-bg) 38%,
+      color-mix(in srgb, var(--easeL-bg-card-mint) 48%, var(--easeL-landing-hero-bg)) 100%
+    );
+  --easeL-landing-hero-bottom-rule: color-mix(in srgb, var(--easeL-cartoon-outline) 35%, transparent);
+  --easeL-landing-hero-photo-border: color-mix(in srgb, var(--easeL-cartoon-outline) 55%, var(--easeL-bg-section) 45%);
+  --easeL-landing-hero-display-fg: #6b3fa3;
+  --easeL-landing-hero-trust-fg: color-mix(in srgb, var(--easeL-primary) 22%, var(--easeL-ink) 78%);
+  --easeL-marquee-bg: var(--easeL-primary);
+  --easeL-marquee-fg: var(--easeL-text-on-dark);
+  --easeL-marquee-border: color-mix(in srgb, var(--easeL-primary) 40%, var(--easeL-ink));
+  --easeL-landing-chip-bg: color-mix(in srgb, var(--easeL-bg-section) 78%, var(--easeL-bg-section-alt) 22%);
+  --easeL-landing-media-shadow: var(--easeL-cartoon-shadow);
+  /* Landing — paths & lessons (dusty analogous tones; avoids mint vs lavender vs peach clash) */
+  --easeL-landing-paths-band-bg: #f1ece4;
+  --easeL-landing-path-card-a: #d8e8ec;
+  --easeL-landing-path-card-b: #ead5cb;
+  /* Landing outlines = same family as cartoon borders (not lighter than shadow block) */
+  --easeL-landing-card-outline: var(--easeL-cartoon-outline);
+  --easeL-landing-path-card-border: var(--easeL-cartoon-outline);
+  --easeL-landing-path-hook: #1a3340;
+  --easeL-landing-path-tag-bg: color-mix(in srgb, #fffefb 94%, var(--easeL-text) 6%);
+  --easeL-landing-path-tag-border: color-mix(in srgb, var(--easeL-cartoon-outline) 78%, var(--easeL-bg-section) 22%);
+  --easeL-landing-path-footer-border: color-mix(in srgb, var(--easeL-ink) 18%, transparent);
 }
 
 /* Nav bar (modular: apply class on <nav>) */
 .easeL-nav {
   background: var(--easeL-nav-bg);
   border-top: 4px solid var(--easeL-accent-coral);
-  border-bottom: 2px solid var(--easeL-border-strong);
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--easeL-primary) 10%, transparent);
+  border-bottom: 2px solid var(--easeL-cartoon-outline);
+  box-shadow: var(--easeL-cartoon-shadow-sm);
 }
 
 /* Brand wordmark (clean + professional) */
@@ -101,14 +148,17 @@
   color: color-mix(in srgb, var(--easeL-primary-mid) 75%, var(--easeL-primary));
 }
 
+/* Head pointer: browsers ignore synthetic events for :hover — mirror via data-easel-head-hover + :has() */
 .easeL-brand:hover .easeL-logo,
-.easeL-brand[data-easel-head-hover="true"] .easeL-logo {
+.easeL-brand[data-easel-head-hover="true"] .easeL-logo,
+.easeL-brand:has([data-easel-head-hover="true"]) .easeL-logo {
   color: color-mix(in srgb, var(--easeL-primary-mid) 74%, var(--easeL-primary));
   transform: translateY(-0.5px);
 }
 
 .easeL-brand:hover,
-.easeL-brand[data-easel-head-hover="true"] {
+.easeL-brand[data-easel-head-hover="true"],
+.easeL-brand:has([data-easel-head-hover="true"]) {
   opacity: 0.98;
 }
 
@@ -134,16 +184,25 @@
   background: color-mix(in srgb, var(--easeL-bg-section) 94%, transparent);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  border: 2px solid var(--easeL-border-strong);
+  border: 2px solid var(--easeL-cartoon-outline);
   border-radius: var(--easeL-radius-xl);
-  box-shadow: 0 8px 0 color-mix(in srgb, var(--easeL-border-strong) 26%, transparent);
+  box-shadow: var(--easeL-cartoon-shadow);
 }
 
 .easeL-card {
   border-radius: var(--easeL-radius-xl);
-  border: 2px solid var(--easeL-border-strong);
+  border: 2px solid var(--easeL-cartoon-outline);
   background: var(--easeL-bg-section);
-  box-shadow: 0 6px 0 color-mix(in srgb, var(--easeL-border-strong) 20%, transparent);
+  box-shadow: var(--easeL-cartoon-shadow);
+}
+
+/* Apply cartoon depth anywhere — stack with existing classes */
+.easeL-shadow-cartoon {
+  box-shadow: var(--easeL-cartoon-shadow);
+}
+
+.easeL-shadow-cartoon-sm {
+  box-shadow: var(--easeL-cartoon-shadow-sm);
 }
 
 .easeL-surface-lavender {
@@ -162,8 +221,8 @@
   width: 100%;
   margin-left: 0;
   margin-right: 0;
-  padding-left: clamp(1rem, 3.5vw, 3rem);
-  padding-right: clamp(1rem, 3.5vw, 3rem);
+  padding-left: clamp(0.75rem, 3.5vw, 3rem);
+  padding-right: clamp(0.75rem, 3.5vw, 3rem);
 }
 
 .easeL-panel-divider {
@@ -175,6 +234,7 @@
   margin-right: auto;
   width: 100%;
   max-width: 1240px;
+  min-width: 0;
 }
 
 .easeL-result-overlay {
@@ -184,9 +244,9 @@
 
 .easeL-result-modal {
   background: var(--easeL-bg-section);
-  border: 2px solid var(--easeL-border-strong);
+  border: 2px solid var(--easeL-cartoon-outline);
   border-radius: var(--easeL-radius-xl);
-  box-shadow: 0 18px 36px color-mix(in srgb, var(--easeL-primary) 14%, transparent);
+  box-shadow: var(--easeL-cartoon-shadow-hover);
 }
 
 .easeL-result-header {
@@ -200,57 +260,13 @@
   border-radius: var(--easeL-radius-lg);
 }
 
-.easeL-heading-highlight {
-  display: inline;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
-  padding: 0 0.22em;
-  --easeL-current-highlight: var(--easeL-heading-highlight-mint);
-  background-image: linear-gradient(
-    to bottom,
-    transparent 18%,
-    var(--easeL-current-highlight) 18%,
-    var(--easeL-current-highlight) 100%
-  );
-  background-repeat: no-repeat;
-  background-position: 0 100%;
-  background-size: 100% 82%;
-  border-radius: 0.08em;
-}
-
-.easeL-full-bleed-panel:nth-of-type(3n + 1) .easeL-heading-highlight,
-.easeL-panel-inner > :is(h1, h2, h3, h4, h5, h6):nth-of-type(3n + 1) .easeL-heading-highlight {
-  --easeL-current-highlight: var(--easeL-heading-highlight-mint);
-}
-
-.easeL-full-bleed-panel:nth-of-type(3n + 2) .easeL-heading-highlight,
-.easeL-panel-inner > :is(h1, h2, h3, h4, h5, h6):nth-of-type(3n + 2) .easeL-heading-highlight {
-  --easeL-current-highlight: var(--easeL-heading-highlight-coral);
-}
-
-.easeL-full-bleed-panel:nth-of-type(3n) .easeL-heading-highlight,
-.easeL-panel-inner > :is(h1, h2, h3, h4, h5, h6):nth-of-type(3n) .easeL-heading-highlight {
-  --easeL-current-highlight: var(--easeL-heading-highlight-lavender);
-}
-
-.easeL-heading-highlight.easeL-highlight-mint {
-  --easeL-current-highlight: var(--easeL-heading-highlight-mint) !important;
-}
-
-.easeL-heading-highlight.easeL-highlight-coral {
-  --easeL-current-highlight: var(--easeL-heading-highlight-coral) !important;
-}
-
-.easeL-heading-highlight.easeL-highlight-lavender {
-  --easeL-current-highlight: var(--easeL-heading-highlight-lavender) !important;
-}
-
 .easeL-heading-section {
   font-family: var(--easeL-font-heading);
   font-weight: 700;
   line-height: var(--easeL-line-height-heading);
   letter-spacing: var(--easeL-letter-spacing-heading);
   color: var(--easeL-text);
+  overflow-wrap: anywhere;
 }
 
 .easeL-text-muted {
@@ -275,16 +291,13 @@
   transition-timing-function: var(--easeL-ease-standard);
 }
 
-.easeL-interactive:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-
+.easeL-interactive:hover:not(:disabled),
 .easeL-interactive[data-easel-head-hover="true"]:not(:disabled) {
-  transform: translateY(-1px);
+  transform: translate(-1px, -2px);
 }
 
 .easeL-interactive:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translate(0, 0);
 }
 
 .easeL-btn-primary {
@@ -298,21 +311,23 @@
   color: #fff;
   font-weight: 700;
   font-size: 1.08rem;
-  border: 2px solid color-mix(in srgb, var(--easeL-ink) 28%, var(--easeL-primary));
-  box-shadow: 0 4px 0 color-mix(in srgb, var(--easeL-ink) 20%, transparent);
+  border: 2px solid color-mix(in srgb, var(--easeL-cartoon-outline) 52%, var(--easeL-primary));
+  box-shadow: var(--easeL-cartoon-shadow-sm);
   transition-property: opacity, transform, box-shadow;
   transition-duration: var(--easeL-duration-standard);
   transition-timing-function: var(--easeL-ease-standard);
 }
 
-.easeL-btn-primary:hover:not(:disabled) {
-  opacity: 0.95;
-  transform: translateY(-1px);
-}
-
+.easeL-btn-primary:hover:not(:disabled),
 .easeL-btn-primary[data-easel-head-hover="true"]:not(:disabled) {
   opacity: 0.95;
-  transform: translateY(-1px);
+  transform: translate(-3px, -3px);
+  box-shadow: var(--easeL-cartoon-shadow-hover-tight);
+}
+
+.easeL-btn-primary:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: var(--easeL-cartoon-shadow-pressed);
 }
 
 .easeL-btn-primary:disabled {
@@ -334,8 +349,8 @@
   font-weight: 700;
   font-size: 1.08rem;
   line-height: 1.25;
-  border: 2px solid color-mix(in srgb, var(--easeL-ink) 28%, var(--easeL-primary));
-  box-shadow: 0 4px 0 color-mix(in srgb, var(--easeL-ink) 20%, transparent);
+  border: 2px solid color-mix(in srgb, var(--easeL-cartoon-outline) 52%, var(--easeL-primary));
+  box-shadow: var(--easeL-cartoon-shadow-sm);
   transition-property: opacity, transform, box-shadow;
   transition-duration: var(--easeL-duration-standard);
   transition-timing-function: var(--easeL-ease-standard);
@@ -343,14 +358,16 @@
   text-decoration: none;
 }
 
-.easeL-btn-solid:hover:not(:disabled) {
-  opacity: 0.95;
-  transform: translateY(-1px);
-}
-
+.easeL-btn-solid:hover:not(:disabled),
 .easeL-btn-solid[data-easel-head-hover="true"]:not(:disabled) {
   opacity: 0.95;
-  transform: translateY(-1px);
+  transform: translate(-3px, -3px);
+  box-shadow: var(--easeL-cartoon-shadow-hover-tight);
+}
+
+.easeL-btn-solid:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: var(--easeL-cartoon-shadow-pressed);
 }
 
 .easeL-btn-solid:disabled {
@@ -370,8 +387,8 @@
   color: var(--easeL-text);
   font-weight: 700;
   font-size: 1.04rem;
-  border: 2px solid var(--easeL-border-strong);
-  box-shadow: 0 4px 0 color-mix(in srgb, var(--easeL-ink) 14%, transparent);
+  border: 2px solid var(--easeL-cartoon-outline);
+  box-shadow: var(--easeL-cartoon-shadow-sm);
   transition-property: color, background-color, border-color, transform, box-shadow;
   transition-duration: var(--easeL-duration-standard);
   transition-timing-function: var(--easeL-ease-standard);
@@ -379,41 +396,160 @@
   text-decoration: none;
 }
 
-.easeL-btn-outline:hover:not(:disabled) {
-  border-color: var(--easeL-border-strong);
-  background: color-mix(in srgb, var(--easeL-bg-page) 65%, white);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 0 color-mix(in srgb, var(--easeL-ink) 18%, transparent);
-}
-
+.easeL-btn-outline:hover:not(:disabled),
 .easeL-btn-outline[data-easel-head-hover="true"]:not(:disabled) {
-  border-color: var(--easeL-border-strong);
+  border-color: var(--easeL-cartoon-outline);
   background: color-mix(in srgb, var(--easeL-bg-page) 65%, white);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 0 color-mix(in srgb, var(--easeL-ink) 18%, transparent);
+  transform: translate(-3px, -3px);
+  box-shadow: var(--easeL-cartoon-shadow-hover-tight);
 }
 
-:is(button, a, [role="button"], [role="tab"], [role="menuitem"], [tabindex]:not([tabindex="-1"]))[data-easel-head-hover="true"]:not(:disabled) {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--easeL-primary) 30%, transparent);
-  filter: brightness(1.01);
+.easeL-btn-outline:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: var(--easeL-cartoon-shadow-pressed);
 }
 
 .easeL-hoverable-card {
   transition-property: transform, box-shadow, background-color;
   transition-duration: var(--easeL-duration-standard);
   transition-timing-function: var(--easeL-ease-standard);
+  box-shadow: var(--easeL-cartoon-shadow);
 }
 
 .easeL-hoverable-card:hover,
-.easeL-hoverable-card[data-easel-head-hover="true"] {
-  transform: translateY(-2px);
-  box-shadow:
-    0 12px 0 color-mix(in srgb, var(--easeL-primary) 18%, transparent),
-    0 18px 26px color-mix(in srgb, var(--easeL-primary) 16%, transparent);
+.easeL-hoverable-card[data-easel-head-hover="true"],
+.easeL-hoverable-card:has([data-easel-head-hover="true"]) {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--easeL-cartoon-shadow-hover);
+}
+
+/* Home dashboard shortcuts: cartoon shadow + colored top inset (set --easeL-card-accent-inset on the element) */
+.easeL-home-shortcut-card.easeL-hoverable-card {
+  box-shadow: var(--easeL-cartoon-shadow), inset 0 3px 0 var(--easeL-card-accent-inset, transparent);
+}
+
+.easeL-home-shortcut-card.easeL-hoverable-card:hover,
+.easeL-home-shortcut-card.easeL-hoverable-card[data-easel-head-hover="true"],
+.easeL-home-shortcut-card.easeL-hoverable-card:has([data-easel-head-hover="true"]) {
+  box-shadow: var(--easeL-cartoon-shadow-hover), inset 0 3px 0 var(--easeL-card-accent-inset, transparent);
+}
+
+/* Home shortcuts: one CTA treatment for every panel (accent border + ink label) */
+.easeL-home-shortcut-cta {
+  margin-top: auto;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0 1.25rem;
+  border-radius: 999px;
+  border: 2px solid var(--easeL-home-shortcut-cta-border, var(--easeL-cartoon-outline));
+  background: color-mix(in srgb, var(--easeL-bg-section) 86%, white);
+  color: var(--easeL-home-shortcut-cta-fg, var(--easeL-ink));
+  font-family: var(--easeL-font-heading);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  letter-spacing: 0.01em;
+  transition: transform var(--easeL-duration-standard) var(--easeL-ease-standard),
+    box-shadow var(--easeL-duration-standard) var(--easeL-ease-standard),
+    background-color var(--easeL-duration-standard) var(--easeL-ease-standard);
+  box-shadow: 2px 2px 0 0
+    color-mix(in srgb, var(--easeL-home-shortcut-cta-border, var(--easeL-cartoon-outline)) 55%, transparent);
+}
+
+.easeL-home-shortcut-cta:hover,
+.easeL-home-shortcut-cta[data-easel-head-hover="true"] {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 0 var(--easeL-home-shortcut-cta-border, var(--easeL-cartoon-outline));
+  background: var(--easeL-bg-section);
+}
+
+.easeL-home-shortcut-cta:focus-visible {
+  outline: 2px solid var(--easeL-focus-ring);
+  outline-offset: 3px;
+}
+
+@keyframes easeL-mascot-dance {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  25% {
+    transform: rotate(5deg);
+  }
+  50% {
+    transform: rotate(-5.5deg);
+  }
+  75% {
+    transform: rotate(3.5deg);
+  }
+}
+
+.easeL-home-shortcut-mascot {
+  transform-origin: 50% 55%;
+  animation: easeL-mascot-dance 3s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Cloud: SVG stroke only (no drop shadow) */
+.easeL-home-shortcut-mascot--thin-outline {
+  filter: url(#easeL-mascot-outline);
+}
+
+.easeL-home-shortcut-mascot--hero-cloud {
+  transform-origin: 58% 52%;
+}
+
+.easeL-home-shortcut-card:nth-child(1) .easeL-home-shortcut-mascot {
+  animation-delay: 0s;
+}
+
+.easeL-home-shortcut-card:nth-child(2) .easeL-home-shortcut-mascot {
+  animation-delay: 0.35s;
+}
+
+.easeL-home-shortcut-card:nth-child(3) .easeL-home-shortcut-mascot {
+  animation-delay: 0.7s;
+}
+
+.easeL-landing-interaction-card {
+  border-radius: 1.35rem;
+  border: 2px solid var(--easeL-landing-card-outline);
+}
+
+.easeL-landing-interaction-card--butter {
+  background: var(--easeL-bg-card-butter);
+}
+
+.easeL-landing-interaction-card--coral {
+  background: var(--easeL-bg-card-coral);
+}
+
+.easeL-landing-interaction-card--mint {
+  background: var(--easeL-bg-card-mint);
+}
+
+.easeL-landing-interaction-visual {
+  margin-bottom: 1rem;
+  border-radius: 1rem;
+  padding: 0.75rem 0.5rem;
+  background: var(--easeL-bg-section);
+  border: 2px solid var(--easeL-landing-card-outline);
+  box-shadow: var(--easeL-cartoon-shadow-sm);
+}
+
+.easeL-landing-interaction-svg {
+  display: block;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 10rem;
+  height: auto;
 }
 
 .easeL-hover-parent:hover .easeL-hover-reveal,
-.easeL-hover-parent[data-easel-head-hover="true"] .easeL-hover-reveal {
+.easeL-hover-parent[data-easel-head-hover="true"] .easeL-hover-reveal,
+.easeL-hover-parent:has([data-easel-head-hover="true"]) .easeL-hover-reveal {
   opacity: 1;
 }
 
@@ -461,12 +597,9 @@
   font-weight: 600;
 }
 
-.easeL-link:hover {
-  text-decoration: underline;
-  color: var(--easeL-link-hover);
-}
-
-.easeL-link[data-easel-head-hover="true"] {
+.easeL-link:hover,
+.easeL-link[data-easel-head-hover="true"],
+.easeL-link:has([data-easel-head-hover="true"]) {
   text-decoration: underline;
   color: var(--easeL-link-hover);
 }
@@ -490,19 +623,14 @@
 .easeL-nav-pill.is-active {
   background: var(--easeL-bg-card-coral);
   color: var(--easeL-ink);
-  border: 2px solid var(--easeL-border-strong);
+  border: 2px solid var(--easeL-cartoon-outline);
 }
 
 .easeL-nav-pill:not(.is-active) {
   color: var(--easeL-text-muted);
 }
 
-.easeL-nav-pill:not(.is-active):hover {
-  background: color-mix(in srgb, white 82%, var(--easeL-bg-section-alt));
-  color: var(--easeL-text);
-  border-color: color-mix(in srgb, var(--easeL-border-strong) 35%, transparent);
-}
-
+.easeL-nav-pill:not(.is-active):hover,
 .easeL-nav-pill:not(.is-active)[data-easel-head-hover="true"] {
   background: color-mix(in srgb, white 82%, var(--easeL-bg-section-alt));
   color: var(--easeL-text);
@@ -513,39 +641,240 @@
   min-width: 3rem;
   min-height: 3rem;
   border-radius: var(--easeL-radius-lg);
-  border: 2px solid var(--easeL-border-strong);
+  border: 2px solid var(--easeL-cartoon-outline);
   background: var(--easeL-bg-section);
   color: var(--easeL-primary);
   font-family: var(--easeL-font-heading);
   font-weight: 800;
-  box-shadow: 0 4px 0 color-mix(in srgb, var(--easeL-ink) 12%, transparent);
+  box-shadow: var(--easeL-cartoon-shadow-sm);
   transition: background-color var(--easeL-duration-standard) var(--easeL-ease-standard),
     color var(--easeL-duration-standard) var(--easeL-ease-standard),
-    transform var(--easeL-duration-standard) var(--easeL-ease-standard);
+    transform var(--easeL-duration-standard) var(--easeL-ease-standard),
+    box-shadow var(--easeL-duration-standard) var(--easeL-ease-standard);
 }
 
-.easeL-avatar-btn:hover {
-  background: color-mix(in srgb, var(--easeL-bg-section-alt) 42%, white);
-  color: var(--easeL-text);
-  transform: translateY(-1px);
-}
-
+.easeL-avatar-btn:hover,
 .easeL-avatar-btn[data-easel-head-hover="true"] {
   background: color-mix(in srgb, var(--easeL-bg-section-alt) 42%, white);
   color: var(--easeL-text);
-  transform: translateY(-1px);
+  transform: translate(-3px, -3px);
+  box-shadow: var(--easeL-cartoon-shadow-hover-tight);
 }
 
 .easeL-dropdown {
   border-color: var(--easeL-border-strong);
-  box-shadow: 0 16px 32px color-mix(in srgb, var(--easeL-primary) 16%, transparent);
+  box-shadow: var(--easeL-cartoon-shadow-hover);
 }
 
 /* Links only — sign out keeps its own hover */
-.easeL-dropdown a[href]:hover {
+.easeL-dropdown a[href]:hover,
+.easeL-dropdown a[href][data-easel-head-hover="true"] {
   background: color-mix(in srgb, var(--easeL-bg-page) 70%, white);
 }
 
-.easeL-dropdown a[href][data-easel-head-hover="true"] {
-  background: color-mix(in srgb, var(--easeL-bg-page) 70%, white);
+/* --- Landing page (marketing) --- */
+.easeL-landing-hero {
+  position: relative;
+  border-bottom: 2px solid var(--easeL-landing-hero-bottom-rule);
+  background-color: var(--easeL-landing-hero-bg);
+  background-image: var(--easeL-landing-hero-radial);
+}
+
+.easeL-landing-eyebrow {
+  font-family: var(--easeL-font-heading);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--easeL-ink);
+  margin: 0;
+}
+
+.easeL-landing-hero-display {
+  font-family: var(--easeL-font-heading);
+  font-weight: 700;
+  letter-spacing: var(--easeL-letter-spacing-heading);
+  line-height: 1.05;
+  color: var(--easeL-landing-hero-display-fg, var(--easeL-primary));
+  font-size: clamp(1.92rem, 4.35vw, 3.5rem);
+  overflow-wrap: anywhere;
+}
+
+.easeL-landing-hero-trust {
+  font-family: var(--easeL-font-heading);
+  font-weight: 800;
+  font-size: clamp(1.06rem, 1.55vw, 1.3rem);
+  letter-spacing: 0.015em;
+  color: var(--easeL-landing-hero-trust-fg);
+  margin: 0 0 0.35rem;
+}
+
+.easeL-landing-media-frame {
+  border-radius: var(--easeL-radius-xl);
+  border: 2px solid var(--easeL-landing-card-outline);
+  background: var(--easeL-bg-section);
+  box-shadow: var(--easeL-landing-media-shadow);
+}
+
+/* Marketing panels that should match app depth without hover lift (large blocks) */
+.easeL-landing-static-raise {
+  box-shadow: var(--easeL-cartoon-shadow);
+}
+
+.easeL-landing-skill-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.28rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  background: var(--easeL-landing-chip-bg);
+  border: 1px solid var(--easeL-border-subtle);
+  color: var(--easeL-text);
+}
+
+/* Paths & lessons block — friendly color-blocking, readable accents */
+.easeL-landing-paths-section {
+  background: var(--easeL-landing-paths-band-bg);
+}
+
+.easeL-landing-path-card {
+  border-radius: 1.5rem;
+  border: 2px solid var(--easeL-landing-path-card-border);
+}
+
+.easeL-landing-path-card--a {
+  background: var(--easeL-landing-path-card-a);
+}
+
+.easeL-landing-path-card--b {
+  background: var(--easeL-landing-path-card-b);
+}
+
+/* Path promos: calmer at rest than generic hoverables; full cartoon block on hover / dwell */
+.easeL-landing-path-card.easeL-hoverable-card {
+  box-shadow: 3px 3px 0 0 var(--easeL-cartoon-shadow-color-rest);
+}
+
+.easeL-landing-path-card.easeL-hoverable-card:hover,
+.easeL-landing-path-card.easeL-hoverable-card[data-easel-head-hover="true"],
+.easeL-landing-path-card.easeL-hoverable-card:has([data-easel-head-hover="true"]) {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--easeL-cartoon-shadow-hover);
+}
+
+.easeL-landing-path-hook {
+  color: var(--easeL-landing-path-hook);
+}
+
+.easeL-landing-path-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.32rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  background: var(--easeL-landing-path-tag-bg);
+  border: 1px solid var(--easeL-landing-path-tag-border);
+  color: var(--easeL-text);
+  box-shadow: none;
+}
+
+.easeL-landing-path-footer ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+@keyframes easeL-marquee-shift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.easeL-marquee {
+  overflow: hidden;
+  background: var(--easeL-marquee-bg);
+  color: var(--easeL-marquee-fg);
+  border-block: 1px solid var(--easeL-marquee-border);
+}
+
+.easeL-marquee__track {
+  display: flex;
+  width: max-content;
+  animation: easeL-marquee-shift 240s linear infinite;
+}
+
+.easeL-marquee__group {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0;
+  padding: 0.55rem 0;
+  font-family: var(--easeL-font-heading);
+  font-weight: 600;
+  font-size: clamp(0.95rem, 1.6vw, 1.12rem);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.easeL-marquee__chunk {
+  gap: 0;
+}
+
+.easeL-marquee__phrase {
+  flex-shrink: 0;
+}
+
+/* Breathing room so middots read as dividers, not glued to copy */
+.easeL-marquee__sep {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2.25rem;
+  min-width: 2.25rem;
+  padding-inline: 0;
+  font-weight: 600;
+  font-size: 1.2em;
+  line-height: 1;
+  opacity: 0.72;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .easeL-marquee__track {
+    animation: none;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .easeL-marquee__group:nth-child(2) {
+    display: none;
+  }
+}
+
+/* Narrow viewports — keep copy and flex children from forcing horizontal scroll */
+@media (max-width: 480px) {
+  :root {
+    --easeL-font-size-base: 1rem;
+  }
+
+  .easeL-marquee__group {
+    gap: 0;
+    padding: 0.5rem 0;
+    font-size: clamp(0.88rem, 3.2vw, 1rem);
+  }
+
+  .easeL-marquee__sep {
+    inline-size: 1.8rem;
+    min-width: 1.8rem;
+    padding-inline: 0;
+  }
 }

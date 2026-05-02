@@ -13,7 +13,7 @@ function DemoCursor({ style = {} }) {
         borderRadius: "50%",
         backgroundColor: CURSOR_COLOR,
         border: "2px solid " + CURSOR_BORDER,
-        boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+        boxShadow: "var(--easeL-tutorial-cursor-glow)",
         transform: "translate(-50%, -50%)",
         ...style,
       }}
@@ -57,9 +57,9 @@ export default function TutorialDemo() {
           56%, 100% { left: 75%; }
         }
         @keyframes tutorial-demo-btn {
-          0%, 46% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
-          50% { transform: translate(-50%, -50%) scale(0.92); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
-          54%, 100% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+          0%, 46% { transform: translate(-50%, -50%) scale(1); box-shadow: var(--easeL-tutorial-btn-shadow); }
+          50% { transform: translate(-50%, -50%) scale(0.92); box-shadow: var(--easeL-tutorial-btn-shadow-pressed); }
+          54%, 100% { transform: translate(-50%, -50%) scale(1); box-shadow: var(--easeL-tutorial-btn-shadow); }
         }
       `}</style>
     </div>

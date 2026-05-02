@@ -2,11 +2,39 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EaseL</title>
   </head>
   <body>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="0"
+      height="0"
+      style="position: absolute; overflow: hidden"
+      aria-hidden="true"
+    >
+      <defs>
+        <!-- Crisp uniform stroke for PNGs without ink (drop-shadow looks soft / lopsided on clouds) -->
+        <filter
+          id="easeL-mascot-outline"
+          x="-50%"
+          y="-50%"
+          width="200%"
+          height="200%"
+          color-interpolation-filters="sRGB"
+        >
+          <feMorphology in="SourceAlpha" result="dilated" operator="dilate" radius="2" />
+          <feComposite in="dilated" in2="SourceAlpha" operator="out" result="outlineMask" />
+          <feFlood flood-color="#0b1220" flood-opacity="1" result="strokeFill" />
+          <feComposite in="strokeFill" in2="outlineMask" operator="in" result="outline" />
+          <feMerge>
+            <feMergeNode in="outline" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+    </svg>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

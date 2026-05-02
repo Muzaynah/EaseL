@@ -18,7 +18,7 @@ function DemoCursor({ className = "", style = {} }) {
         borderRadius: "50%",
         backgroundColor: "rgba(100, 116, 139, 0.2)",
         border: "2px solid rgba(100, 116, 139, 0.5)",
-        boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+        boxShadow: "var(--easeL-tutorial-cursor-glow)",
         transform: "translate(-50%, -50%)",
         ...style,
       }}
@@ -66,9 +66,9 @@ function Step1Animation() {
           64%, 100% { left: 72%; }
         }
         @keyframes lip-s1-btn {
-          0%, 54% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
-          58% { transform: translate(-50%, -50%) scale(0.94); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
-          62%, 100% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
+          0%, 54% { transform: translate(-50%, -50%) scale(1); box-shadow: var(--easeL-tutorial-btn-shadow); }
+          58% { transform: translate(-50%, -50%) scale(0.94); box-shadow: var(--easeL-tutorial-btn-shadow-pressed); }
+          62%, 100% { transform: translate(-50%, -50%) scale(1); box-shadow: var(--easeL-tutorial-btn-shadow); }
         }
       `}</style>
     </div>

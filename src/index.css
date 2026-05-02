@@ -2,6 +2,10 @@
 @import "./theme/easeLPalette.css";
 @import "tailwindcss";
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   font-family: var(--easeL-font-body);
   font-size: var(--easeL-font-size-base);
@@ -309,15 +313,46 @@ label {
   .easeL-btn-primary[data-easel-head-hover="true"]:not(:disabled),
   .easeL-btn-solid:hover:not(:disabled),
   .easeL-btn-solid[data-easel-head-hover="true"]:not(:disabled),
-  .easeL-btn-outline:hover:not(:disabled) {
-    transform: none !important;
-  }
+  .easeL-btn-outline:hover:not(:disabled),
   .easeL-btn-outline[data-easel-head-hover="true"]:not(:disabled) {
     transform: none !important;
   }
-  .easeL-hoverable-card:hover,
-  .easeL-hoverable-card[data-easel-head-hover="true"] {
+  .easeL-avatar-btn:hover,
+  .easeL-avatar-btn[data-easel-head-hover="true"] {
     transform: none !important;
+    filter: none !important;
+    box-shadow: var(--easeL-cartoon-shadow-sm) !important;
+  }
+  .easeL-hoverable-card:hover,
+  .easeL-hoverable-card[data-easel-head-hover="true"],
+  .easeL-hoverable-card:has([data-easel-head-hover="true"]) {
+    transform: none !important;
+    box-shadow: var(--easeL-cartoon-shadow) !important;
+  }
+
+  .easeL-home-shortcut-card.easeL-hoverable-card:hover,
+  .easeL-home-shortcut-card.easeL-hoverable-card[data-easel-head-hover="true"],
+  .easeL-home-shortcut-card.easeL-hoverable-card:has([data-easel-head-hover="true"]) {
+    box-shadow: var(--easeL-cartoon-shadow), inset 0 3px 0 var(--easeL-card-accent-inset, transparent) !important;
+  }
+
+  .easeL-landing-path-card.easeL-hoverable-card:hover,
+  .easeL-landing-path-card.easeL-hoverable-card[data-easel-head-hover="true"],
+  .easeL-landing-path-card.easeL-hoverable-card:has([data-easel-head-hover="true"]) {
+    transform: none !important;
+    box-shadow: 3px 3px 0 0 var(--easeL-cartoon-shadow-color-rest) !important;
+  }
+
+  .easeL-home-shortcut-cta:hover,
+  .easeL-home-shortcut-cta[data-easel-head-hover="true"] {
+    transform: none !important;
+    box-shadow: 2px 2px 0 0
+      color-mix(in srgb, var(--easeL-home-shortcut-cta-border, var(--easeL-cartoon-outline)) 55%, transparent) !important;
+  }
+
+  .easeL-home-shortcut-mascot {
+    animation: none !important;
+    will-change: auto;
   }
 }
 

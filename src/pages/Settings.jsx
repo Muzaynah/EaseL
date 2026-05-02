@@ -128,7 +128,7 @@ export default function Settings() {
     <div className="easeL-page-bg min-h-screen px-6 pb-16 pt-24">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="easeL-heading-1"><span className="easeL-heading-highlight">Settings</span></h1>
+          <h1 className="easeL-heading-1">Settings</h1>
           <p className="easeL-text-muted mt-1">
             Caregiver controls for accessibility, sessions, and drawing.
           </p>

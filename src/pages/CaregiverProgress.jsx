@@ -196,9 +196,7 @@ export default function CaregiverProgress() {
             <p className="easeL-accent-text-strong text-sm font-semibold tracking-wider">
               Caregiver dashboard
             </p>
-            <h1 className="easeL-heading-1 mt-1">
-              <span className="easeL-heading-highlight">Progress overview</span>
-            </h1>
+            <h1 className="easeL-heading-1 mt-1">Progress overview</h1>
             <p className="easeL-text-muted mt-1 max-w-2xl">
               A summary of recent practice — attempts, accuracy, and fatigue.
               Used by caregivers and clinicians. This is not a medical report.
@@ -326,7 +324,7 @@ export default function CaregiverProgress() {
         <section className="easeL-card p-6">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
-              <h2 className="easeL-heading-2"><span className="easeL-heading-highlight">Recent sessions</span></h2>
+              <h2 className="easeL-heading-2">Recent sessions</h2>
               <p className="text-sm" style={{ color: "var(--easeL-text-muted)" }}>
                 Adherence and fatigue index per session.
               </p>

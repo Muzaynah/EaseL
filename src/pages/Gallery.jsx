@@ -98,7 +98,7 @@ export default function Gallery() {
     <div className="easeL-page-bg min-h-screen px-6 pb-16 pt-24">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <h1 className="easeL-heading-1"><span className="easeL-heading-highlight easeL-highlight-coral">My Gallery</span></h1>
+          <h1 className="easeL-heading-1">My Gallery</h1>
           <div className="flex flex-wrap items-center gap-3">
             <Link
               to="/canvas"
@@ -164,7 +164,7 @@ export default function Gallery() {
         ) : (
           <>
             <section className="mb-10">
-              <h2 className="easeL-heading-2 mb-4"><span className="easeL-heading-highlight easeL-highlight-lavender">Free Draw Projects</span></h2>
+              <h2 className="easeL-heading-2 mb-4">Free Draw Projects</h2>
               {freeDrawItems.length === 0 ? (
                 <div className="rounded-2xl border-2 p-5" style={{ background: "var(--easeL-bg-section)", borderColor: "var(--easeL-border-strong)", color: "var(--easeL-text-muted)" }}>
                   No free-draw projects saved yet.
@@ -235,7 +235,7 @@ export default function Gallery() {
             </section>
 
             <section>
-              <h2 className="easeL-heading-2 mb-4"><span className="easeL-heading-highlight easeL-highlight-mint">Lesson Results</span></h2>
+              <h2 className="easeL-heading-2 mb-4">Lesson Results</h2>
               {lessonItems.length === 0 ? (
                 <div className="rounded-2xl border-2 p-5" style={{ background: "var(--easeL-bg-section)", borderColor: "var(--easeL-border-strong)", color: "var(--easeL-text-muted)" }}>
                   No lesson results saved yet.

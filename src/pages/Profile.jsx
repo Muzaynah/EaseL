@@ -160,7 +160,7 @@ export default function Profile({ user, onSignOut }) {
               {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="easeL-heading-1 text-2xl"><span className="easeL-heading-highlight">{displayName}</span></h1>
+              <h1 className="easeL-heading-1 text-2xl">{displayName}</h1>
               {email && <p className="mt-1 truncate" style={{ color: "var(--easeL-text-muted)" }}>{email}</p>}
               <p className="text-sm mt-2" style={{ color: "var(--easeL-text-muted)" }}>
                 This page is for caregiver reference. The child interacts with Home and Lessons.
@@ -170,7 +170,7 @@ export default function Profile({ user, onSignOut }) {
         </div>
 
         <section>
-          <h2 className="easeL-heading-2 text-xl mb-4"><span className="easeL-heading-highlight">Setup status</span></h2>
+          <h2 className="easeL-heading-2 text-xl mb-4">Setup status</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {setup.map((item) => (
               <div
@@ -186,7 +186,7 @@ export default function Profile({ user, onSignOut }) {
         </section>
 
         <section>
-          <h2 className="easeL-heading-2 text-xl mb-4"><span className="easeL-heading-highlight">Usage</span></h2>
+          <h2 className="easeL-heading-2 text-xl mb-4">Usage</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {usage.map((item) => (
               <div
@@ -203,7 +203,7 @@ export default function Profile({ user, onSignOut }) {
 
         {metricRows && (
           <section>
-            <h2 className="easeL-heading-2 text-xl mb-4"><span className="easeL-heading-highlight">Screener metrics</span></h2>
+            <h2 className="easeL-heading-2 text-xl mb-4">Screener metrics</h2>
             <div className="easeL-card divide-y divide-slate-100 overflow-hidden">
               {metricRows.map((row) => (
                 <div key={row.label} className="flex items-center justify-between px-5 py-3">

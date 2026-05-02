@@ -48,15 +48,41 @@ export function useGestureControl({
   const dispatchPointerEvent = useCallback((type, target) => {
     if (!target) return;
 
+    const { x, y } = cursorPos.current;
     target.dispatchEvent(
       new PointerEvent(type, {
         bubbles: true,
         cancelable: true,
-        clientX: cursorPos.current.x,
-        clientY: cursorPos.current.y,
+        clientX: x,
+        clientY: y,
         pointerType: "mouse",
+        pointerId: 1,
+        isPrimary: true,
+        width: 1,
+        height: 1,
+        pressure: 0,
+        tiltX: 0,
+        tiltY: 0,
       })
     );
+    /* CSS :hover follows mouse events in some engines; keep parity with real cursor */
+    const mouseMap = {
+      pointerover: "mouseover",
+      pointerenter: "mouseenter",
+      pointerout: "mouseout",
+      pointerleave: "mouseleave",
+    };
+    const mouseType = mouseMap[type];
+    if (mouseType) {
+      target.dispatchEvent(
+        new MouseEvent(mouseType, {
+          bubbles: mouseType !== "mouseenter" && mouseType !== "mouseleave",
+          cancelable: true,
+          clientX: x,
+          clientY: y,
+        })
+      );
+    }
   }, []);
 
   const updateHeadHoverTarget = useCallback(
@@ -70,9 +96,10 @@ export function useGestureControl({
       const prev = lastHoverTargetRef.current;
       const prevParent = lastHoverParentRef.current;
       const nextParent = nextTarget?.closest?.(".easeL-hover-parent") ?? null;
+
       if (prev === nextTarget) {
         if (nextTarget) dispatchPointerEvent("pointermove", nextTarget);
-        if (nextParent && nextParent !== nextTarget) nextParent.setAttribute("data-easel-head-hover", "true");
+        if (nextParent?.isConnected) nextParent.setAttribute("data-easel-head-hover", "true");
         onHoverTargetChange?.(nextTarget ?? null);
         return;
       }
@@ -82,7 +109,7 @@ export function useGestureControl({
         dispatchPointerEvent("pointerout", prev);
         dispatchPointerEvent("pointerleave", prev);
       }
-      if (prevParent?.isConnected && prevParent !== prev) {
+      if (prevParent?.isConnected && prevParent !== nextParent) {
         prevParent.removeAttribute("data-easel-head-hover");
       }
 
@@ -108,9 +135,7 @@ export function useGestureControl({
       const prev = lastHoverTargetRef.current;
       if (prev?.isConnected) prev.removeAttribute("data-easel-head-hover");
       const prevParent = lastHoverParentRef.current;
-      if (prevParent?.isConnected && prevParent !== prev) {
-        prevParent.removeAttribute("data-easel-head-hover");
-      }
+      if (prevParent?.isConnected) prevParent.removeAttribute("data-easel-head-hover");
       lastHoverTargetRef.current = null;
       lastHoverParentRef.current = null;
     };
