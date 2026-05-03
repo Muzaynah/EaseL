@@ -8,8 +8,11 @@ import { speakInstruction, stopSpeech } from "../utils/screenerAudio";
 import Cursor from "../components/Cursor";
 import { Volume2, VolumeX } from "lucide-react";
 
-const INSTRUCTION = "Your movement moves your brush. Move your head to see the cursor follow.";
-const INSTRUCTION_SPOKEN = "Your movement moves your brush. Move your head to see the cursor follow.";
+const INSTRUCTION =
+  "Your movement moves your brush. Move your head to see the cursor follow.";
+const INSTRUCTION_SPOKEN = INSTRUCTION;
+const CAMERA_INTRO =
+  "EaseL shows a dot on the screen that follows your head. When you turn on the preview below, your browser may ask to use the camera so we can track gentle head movement—not to record you. (If you already allowed the camera during calibration, it may simply start.)";
 
 function getInitialCursorPosition() {
   if (typeof window === "undefined") return { x: 400, y: 300 };
@@ -31,6 +34,8 @@ export default function Tutorial() {
   const [cursorPos, setCursorPos] = useState(() => getInitialCursorPosition());
   const [muted, setMuted] = useState(false);
   const spokenRef = useRef(false);
+  /** Camera + FaceMesh start only after the user opts in (permission + proper intro). */
+  const [cameraSessionStarted, setCameraSessionStarted] = useState(false);
 
   calibrationRef.current = profile?.calibration ?? null;
 
@@ -56,6 +61,7 @@ export default function Tutorial() {
   const { startFaceMesh } = useFaceMesh({ videoRef, onResults: handleResults });
 
   useEffect(() => {
+    if (!cameraSessionStarted) return undefined;
     let cleanup;
     const t = setTimeout(() => {
       cleanup = startFaceMesh();
@@ -64,18 +70,19 @@ export default function Tutorial() {
       clearTimeout(t);
       if (typeof cleanup === "function") cleanup();
     };
-  }, [startFaceMesh]);
+  }, [cameraSessionStarted, startFaceMesh]);
 
   useEffect(() => {
+    if (!cameraSessionStarted) return undefined;
     if (muted) {
       stopSpeech();
-      return;
+      return undefined;
     }
-    if (spokenRef.current) return;
+    if (spokenRef.current) return undefined;
     spokenRef.current = true;
     speakInstruction(INSTRUCTION_SPOKEN);
     return () => stopSpeech();
-  }, [muted]);
+  }, [muted, cameraSessionStarted]);
 
   useEffect(() => {
     let raf;
@@ -124,36 +131,63 @@ export default function Tutorial() {
         <h1 className="easeL-heading-2 mb-2" style={{ color: "var(--easeL-text)" }}>
           Your movement moves your brush
         </h1>
-        <p className="mb-6 text-lg" style={{ color: "var(--easeL-text-muted)" }}>
+        <p className="mb-4 text-lg" style={{ color: "var(--easeL-text-muted)" }}>
+          {CAMERA_INTRO}
+        </p>
+        <p className="mb-6 text-base" style={{ color: "var(--easeL-text-muted)" }}>
           {INSTRUCTION}
         </p>
 
-        <div className="relative w-full max-w-md aspect-video rounded-2xl overflow-hidden bg-slate-900 border-4 border-white/80 shadow-2xl mx-auto mb-8">
-          <video
-            ref={videoRef}
-            className="w-full h-full object-cover scale-x-[-1]"
-            autoPlay
-            muted
-            playsInline
-          />
-        </div>
+        {!cameraSessionStarted ? (
+          <button
+            type="button"
+            onClick={() => setCameraSessionStarted(true)}
+            className="easeL-btn-solid w-full text-lg transition-all mb-4"
+          >
+            Allow camera &amp; show cursor
+          </button>
+        ) : (
+          <div className="relative w-full max-w-md aspect-video rounded-2xl overflow-hidden bg-slate-900 border-4 border-white/80 shadow-2xl mx-auto mb-6">
+            <video
+              ref={videoRef}
+              className="w-full h-full object-cover scale-x-[-1]"
+              autoPlay
+              muted
+              playsInline
+            />
+          </div>
+        )}
 
         <button
           type="button"
           onClick={handleComplete}
-          className="easeL-btn-solid w-full text-lg transition-all"
+          disabled={!cameraSessionStarted}
+          className="easeL-btn-solid w-full text-lg transition-all disabled:cursor-not-allowed disabled:opacity-45"
+          title={
+            cameraSessionStarted
+              ? undefined
+              : "Turn on the camera preview first so you can try the head cursor."
+          }
         >
           Continue
         </button>
+        {!cameraSessionStarted ? (
+          <p className="mt-3 text-sm" style={{ color: "var(--easeL-text-muted)" }}>
+            Use the button above when you are ready. Your caregiver can help if the browser asks for
+            camera access.
+          </p>
+        ) : null}
       </div>
 
-      <Cursor
-        size={24}
-        isPenDown={false}
-        tool="brush"
-        left={cursorPos.x}
-        top={cursorPos.y}
-      />
+      {cameraSessionStarted ? (
+        <Cursor
+          size={24}
+          isPenDown={false}
+          tool="brush"
+          left={cursorPos.x}
+          top={cursorPos.y}
+        />
+      ) : null}
     </div>
   );
 }

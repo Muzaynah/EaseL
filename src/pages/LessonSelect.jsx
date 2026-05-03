@@ -49,7 +49,7 @@ export default function LessonSelect() {
       }
       try {
         if (!profile) {
-          setLoadError("Profile not available. Please retry from dashboard.");
+          setLoadError("Profile not available. Please retry from Home.");
           setPathId(null);
           setCurrentLevel(0);
         } else {

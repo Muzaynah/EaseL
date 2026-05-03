@@ -25,18 +25,20 @@ const UNIVERSAL_CURSOR_BORDER_IDLE = `rgba(${UNIVERSAL_CURSOR_RGB}, 0.92)`;
 const UNIVERSAL_CURSOR_SHADOW_ACTIVE = `0 0 0 3px rgba(255, 255, 255, 0.92), 0 0 32px rgba(${UNIVERSAL_CURSOR_RGB}, 0.9), 0 0 18px rgba(${UNIVERSAL_CURSOR_RGB}, 0.55), 0 6px 20px rgba(${UNIVERSAL_CURSOR_RGB}, 0.22)`;
 const UNIVERSAL_CURSOR_SHADOW_IDLE = `0 0 0 2px rgba(255, 255, 255, 0.98), 0 0 26px rgba(${UNIVERSAL_CURSOR_RGB}, 0.78), 0 0 16px rgba(${UNIVERSAL_CURSOR_RGB}, 0.52)`;
 
-const TRAIL_MAX_POINTS = 16;
-const TRAIL_MIN_STEP_PX = 1.6;
+/** Shorter trail + coarser sampling = fewer canvas strokes per frame (less jank). */
+const TRAIL_MAX_POINTS = 8;
+const TRAIL_MIN_STEP_PX = 3.2;
 const TRAIL_RESET_JUMP_PX = 140;
+/** Cap backing-store scale so HiDPI does not multiply clear+stroke cost unnecessarily. */
+const TRAIL_CANVAS_MAX_DPR = 2;
 
 /** Basis for taper math (`wMax` = thickest stroke; head matches this width exactly) */
 const CONE_REF_SCALE = 0.86;
 
-/** From reference diameter: trail thinnest → thickest (head dot diameter === wMax). */
+/** From reference diameter: head dot and trail stroke width match `wMax`. */
 function coneStrokeExtents(refDiameterPx) {
-  const wMin = Math.max(1.2, refDiameterPx * 0.07);
   const wMax = Math.min(16, Math.max(6, refDiameterPx * 0.52));
-  return { wMin, wMax };
+  return { wMax };
 }
 
 function mergeRefs(node, forwarded) {
@@ -45,25 +47,25 @@ function mergeRefs(node, forwarded) {
 }
 
 /**
- * Thick stroke near the newest sample → thin tail. Cone taper from `coneRefDiameter` only
- * so head size (=`wMax`) stays consistent.
+ * Constant-width stroke; opacity rises from oldest sample → newest (fading line).
+ * `lineWidthPx` comes from the head dot sizing so stroke and head stay aligned.
  */
-function drawTrailSegments(ctx, points, coneRefDiameter) {
+function drawTrailSegments(ctx, points, lineWidthPx) {
   if (points.length < 2) return;
   const n = points.length;
-  const { wMin, wMax } = coneStrokeExtents(coneRefDiameter);
-  const widthAt = (idx) =>
-    wMin + (wMax - wMin) * (idx / Math.max(n - 1, 1));
-  const alphaAt = (idx) => 0.1 + 0.34 * (idx / Math.max(n - 1, 1));
+  const denom = Math.max(n - 1, 1);
+  /** 0 = oldest (faintest), 1 = at head (strongest) */
+  const alphaAt = (idx) => {
+    const t = idx / denom;
+    return 0.04 + t * 0.62;
+  };
 
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
+  ctx.lineWidth = lineWidthPx;
   for (let i = 0; i < n - 1; i++) {
-    const w = (widthAt(i) + widthAt(i + 1)) / 2;
     const a = (alphaAt(i) + alphaAt(i + 1)) / 2;
-    // Single-pass tapered stroke for a cleaner, smoother trail.
-    ctx.strokeStyle = `rgba(${UNIVERSAL_CURSOR_RGB}, ${Math.min(0.72, a + 0.16)})`;
-    ctx.lineWidth = w;
+    ctx.strokeStyle = `rgba(${UNIVERSAL_CURSOR_RGB}, ${Math.min(0.78, a)})`;
     ctx.beginPath();
     ctx.moveTo(points[i].x, points[i].y);
     ctx.lineTo(points[i + 1].x, points[i + 1].y);
@@ -89,6 +91,7 @@ const Cursor = forwardRef(
     const trailCanvasRef = useRef(null);
     const trailPointsRef = useRef([]);
     const coneDiameterRef = useRef(0);
+    const trailLineWidthRef = useRef(8);
 
     const isLesson = variant === "lesson";
     // Keep cursor geometry uniform across lesson/global and canvas contexts.
@@ -99,6 +102,7 @@ const Cursor = forwardRef(
     const headTipDiameterPx = wMax;
     const headDiameterCss = isPenDown ? headTipDiameterPx : headTipDiameterPx * 0.92;
     coneDiameterRef.current = coneRefDiameterPx;
+    trailLineWidthRef.current = wMax;
 
     const setRefs = useCallback(
       (node) => {
@@ -119,31 +123,39 @@ const Cursor = forwardRef(
       const canvas = trailCanvasRef.current;
       if (!canvas) return undefined;
 
+      let trailDpr = 1;
       const syncSize = () => {
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = Math.round(window.innerWidth * dpr);
-        canvas.height = Math.round(window.innerHeight * dpr);
+        trailDpr = Math.min(TRAIL_CANVAS_MAX_DPR, window.devicePixelRatio || 1);
+        canvas.width = Math.round(window.innerWidth * trailDpr);
+        canvas.height = Math.round(window.innerHeight * trailDpr);
         canvas.style.width = `${window.innerWidth}px`;
         canvas.style.height = `${window.innerHeight}px`;
       };
 
       syncSize();
+      const ctx = canvas.getContext("2d", {
+        alpha: true,
+        desynchronized: true,
+      });
+      if (!ctx) return undefined;
 
+      /** @returns {boolean} whether polyline data changed (needs redraw) */
       const pushPoint = (nx, ny) => {
         const pts = trailPointsRef.current;
         const last = pts[pts.length - 1];
         if (!last) {
           pts.push({ x: nx, y: ny });
-          return;
+          return true;
         }
         const d = Math.hypot(nx - last.x, ny - last.y);
         if (d > TRAIL_RESET_JUMP_PX) {
           trailPointsRef.current = [{ x: nx, y: ny }];
-          return;
+          return true;
         }
-        if (d < TRAIL_MIN_STEP_PX) return;
+        if (d < TRAIL_MIN_STEP_PX) return false;
         pts.push({ x: nx, y: ny });
         while (pts.length > TRAIL_MAX_POINTS) pts.shift();
+        return true;
       };
 
       const onResize = () => {
@@ -155,23 +167,18 @@ const Cursor = forwardRef(
       let rafId = 0;
       const tick = () => {
         const el = innerRef.current;
-        const ctx = canvas.getContext("2d");
-        const dpr = window.devicePixelRatio || 1;
-
-        if (el && ctx) {
+        if (el) {
           const rect = el.getBoundingClientRect();
           const cx = rect.left + rect.width / 2;
           const cy = rect.top + rect.height / 2;
-          pushPoint(cx, cy);
+          const trailChanged = pushPoint(cx, cy);
 
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-          drawTrailSegments(
-            ctx,
-            trailPointsRef.current,
-            coneDiameterRef.current
-          );
+          if (trailChanged) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.setTransform(trailDpr, 0, 0, trailDpr, 0, 0);
+            drawTrailSegments(ctx, trailPointsRef.current, trailLineWidthRef.current);
+          }
         }
 
         rafId = window.requestAnimationFrame(tick);

@@ -34,7 +34,7 @@ export function AppStateProvider({ children }) {
       if (!user || !authUpdateProfile) {
         throw new Error("Authenticated cloud profile is required.");
       }
-      authUpdateProfile(updated);
+      return authUpdateProfile(updated);
     },
     [user, profile, authUpdateProfile]
   );

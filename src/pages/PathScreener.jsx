@@ -531,24 +531,36 @@ export default function PathScreener() {
     }
   }, [step, s5Phase, s5Round1Start, s5Round2Start, metrics]);
 
-  const saveProfileAndNavigate = useCallback(async (path) => {
-    const payload = pendingProfileSaveRef.current;
-    if (payload) {
-      setProfile((p) => ({
-        ...p,
-        pathId: payload.pathId,
-        pathLevel: payload.pathLevel,
-        lipMode: payload.lipMode,
-        lipTier: payload.lipTier,
-        independentUse: payload.independentUse,
-        currentLevel: payload.currentLevel,
-        currentStage: payload.currentStage,
-        screenerMetrics: payload.screenerMetrics,
-      }));
-      pendingProfileSaveRef.current = null;
-    }
-    navigate(path, { replace: true });
-  }, [navigate, setProfile]);
+  const saveProfileAndNavigate = useCallback(
+    async (path) => {
+      setFeedbackMessage("");
+      const payload = pendingProfileSaveRef.current;
+      if (payload) {
+        try {
+          await setProfile((p) => ({
+            ...p,
+            pathId: payload.pathId,
+            pathLevel: payload.pathLevel,
+            lipMode: payload.lipMode,
+            lipTier: payload.lipTier,
+            independentUse: payload.independentUse,
+            currentLevel: payload.currentLevel,
+            currentStage: payload.currentStage,
+            screenerMetrics: payload.screenerMetrics,
+          }));
+        } catch (e) {
+          if (typeof console !== "undefined" && console.warn) {
+            console.warn("[EaseL] Failed to save screener results:", e);
+          }
+          setFeedbackMessage("Could not save your screening results. Please try again.");
+          return;
+        }
+        pendingProfileSaveRef.current = null;
+      }
+      navigate(path, { replace: true });
+    },
+    [navigate, setProfile]
+  );
 
   const retryScreener = useCallback(() => {
     setStep(1);
@@ -710,6 +722,12 @@ export default function PathScreener() {
               .
             </p>
           </div>
+
+          {feedbackMessage ? (
+            <p className="mt-6 text-center text-sm text-rose-600 font-medium" role="alert">
+              {feedbackMessage}
+            </p>
+          ) : null}
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
             <button

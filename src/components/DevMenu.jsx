@@ -15,7 +15,7 @@ const PAGE_LINKS = [
   { name: "Calibration", path: "/calibration" },
   { name: "Tutorial", path: "/tutorial" },
   { name: "Screener", path: "/screener" },
-  { name: "Landing", path: "/" },
+  { name: "Intro page", path: "/" },
   { name: "Login", path: "/login" },
   { name: "Sign up", path: "/signup" },
 ];

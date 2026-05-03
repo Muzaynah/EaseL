@@ -148,8 +148,8 @@ export default function Login() {
           </div>
 
           <div className="mt-6 text-center">
-            <Link to="/" className="easeL-link text-base">
-              Back to home
+            <Link to="/" className="easeL-link text-base" aria-label="Back to EaseL intro">
+              Back
             </Link>
           </div>
 

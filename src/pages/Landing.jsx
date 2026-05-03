@@ -14,6 +14,7 @@ import { Link } from "react-router-dom";
 import InteractionSpotArt from "../components/landing/InteractionSpotArt";
 import imgWheelchair from "../assets/images/lifestyle-child-wheelchair.jpg";
 import imgFamily from "../assets/images/family-mother-child-outdoors.jpg";
+import imgCareConversation from "../assets/images/Cerebral-Palsy-1-768x505.jpg.jpg";
 
 /** Drop a short hero loop here later (WebM/MP4); until then the poster carousel is the visual. */
 const HERO_VIDEO_SRC = null;
@@ -37,6 +38,11 @@ const CAROUSEL_IMAGES = [
     src: imgFamily,
     alt: "Parent and child spending time together; EaseL is built for families and caregivers.",
     detail: "Learning together, at your pace",
+  },
+  {
+    src: imgCareConversation,
+    alt: "Caregiver and young person in a wheelchair facing each other outdoors, both smiling; supportive connection at home.",
+    detail: "Support that meets you where you are",
   },
 ];
 
@@ -201,8 +207,6 @@ export default function Landing() {
     return () => clearInterval(t);
   }, [paused, go]);
 
-  const s = CAROUSEL_IMAGES[slide];
-
   return (
     <div
       className="min-h-screen pb-0"
@@ -284,25 +288,61 @@ export default function Landing() {
                     </video>
                   ) : null}
                   <div
-                    key={s.src}
-                    className={`easeL-carousel-panel h-full w-full ${HERO_VIDEO_SRC ? "hidden" : ""}`}
+                    className={`relative h-full w-full ${HERO_VIDEO_SRC ? "hidden" : ""}`}
                   >
-                    <img
-                      src={s.src}
-                      alt={s.alt}
-                      className="h-full w-full object-cover"
-                      loading="eager"
-                      decoding="async"
-                      fetchPriority="high"
-                    />
-                  </div>
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-5">
-                    <p
-                      className="text-base font-semibold sm:text-lg"
-                      style={{ color: "var(--easeL-text-on-dark)" }}
+                    <div
+                      role="group"
+                      aria-label="Photo highlights"
+                      className="easeL-carousel-hero-hover-zone relative h-full w-full overflow-hidden"
                     >
-                      {s.detail}
-                    </p>
+                      <div
+                        className={`flex h-full ${reduceMotion ? "" : "easeL-carousel-slide-track"}`}
+                        style={{
+                          width: `${CAROUSEL_IMAGES.length * 100}%`,
+                          transform: `translateX(-${(slide * 100) / CAROUSEL_IMAGES.length}%)`,
+                        }}
+                      >
+                        {CAROUSEL_IMAGES.map((item, i) => (
+                          <div
+                            key={item.src}
+                            className={`easeL-carousel-slide-panel relative h-full shrink-0 overflow-hidden ${
+                              i === slide ? "easeL-carousel-slide-panel--active" : ""
+                            }`}
+                            style={{ width: `${100 / CAROUSEL_IMAGES.length}%` }}
+                          >
+                            <div className="absolute inset-0 z-0 overflow-hidden">
+                              <div
+                                className={`easeL-carousel-image-zoom-inner h-full w-full origin-center ${
+                                  reduceMotion ? "" : "easeL-carousel-image-zoom-inner--animated"
+                                }`}
+                              >
+                                <img
+                                  src={item.src}
+                                  alt={i === slide ? item.alt : ""}
+                                  aria-hidden={i !== slide}
+                                  className="h-full w-full select-none object-cover"
+                                  draggable={false}
+                                  loading={i === 0 ? "eager" : "lazy"}
+                                  decoding="async"
+                                  fetchPriority={i === 0 ? "high" : "auto"}
+                                />
+                              </div>
+                            </div>
+                            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/75 via-black/28 to-transparent px-5 pb-5 pt-14 sm:pt-16">
+                              <p className="easeL-carousel-caption-glow text-base font-semibold sm:text-lg">
+                                {item.detail}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        className="easeL-carousel-hit absolute inset-0 z-[3] cursor-pointer border-0 bg-transparent p-0 touch-manipulation"
+                        aria-label="Show next photo"
+                        onClick={() => go(1)}
+                      />
+                    </div>
                   </div>
                 </div>
                 <figcaption className="mt-4 mb-1 flex flex-wrap items-center justify-center gap-3">

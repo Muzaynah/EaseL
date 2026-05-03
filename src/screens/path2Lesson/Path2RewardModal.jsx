@@ -401,7 +401,7 @@ export default function Path2RewardModal({
               className="easeL-btn-outline inline-flex min-h-11 items-center justify-center gap-2 px-4 font-semibold"
             >
               <Home className="w-4 h-4" />
-              {language === "ur" ? "ہوم" : "App home"}
+              {language === "ur" ? "ہوم" : "Home"}
             </button>
             <button
               type="button"

@@ -40,7 +40,9 @@ export default function GlobalEaseLCursor() {
   const hide = shouldHideHeadNav(pathname);
   const isLessonRoute = isLessonPathRoute(pathname);
   const lessonBridge = useCursorPositionBridgeRef();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
+  /** Head cursor + global camera only after onboarding tutorial (signed-in returning users included). */
+  const setupAllowsGlobalCursor = Boolean(user && profile?.tutorialPassed);
   const videoRef = useRef(null);
   const cursorElRef = useRef(null);
 
@@ -75,7 +77,7 @@ export default function GlobalEaseLCursor() {
     onResults: handleFaceMeshResults,
   });
 
-  const runGlobalFaceMesh = !hide && !isLessonRoute;
+  const runGlobalFaceMesh = !hide && !isLessonRoute && setupAllowsGlobalCursor;
 
   useEffect(() => {
     if (!runGlobalFaceMesh) return undefined;
@@ -90,7 +92,7 @@ export default function GlobalEaseLCursor() {
   }, [runGlobalFaceMesh, startFaceMesh]);
 
   useEffect(() => {
-    if (hide) return undefined;
+    if (hide || !setupAllowsGlobalCursor) return undefined;
 
     let raf;
     const tick = () => {
@@ -108,9 +110,10 @@ export default function GlobalEaseLCursor() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [hide, cursorPosRef, isLessonRoute, lessonBridge]);
+  }, [hide, setupAllowsGlobalCursor, cursorPosRef, isLessonRoute, lessonBridge]);
 
   if (hide) return null;
+  if (!setupAllowsGlobalCursor) return null;
 
   const portalTarget =
     typeof document !== "undefined" ? document.body : null;
