@@ -31,6 +31,7 @@ import {
   downloadCaregiverReportPng,
 } from "../utils/dataExport";
 import { UI_TOKENS } from "../theme/uiTokens";
+import { pathLessonDisplayLevel } from "../utils/lessonContent";
 
 const MS_PER_HOUR = 1000 * 60 * 60;
 
@@ -282,7 +283,7 @@ export default function CaregiverProgress() {
                     )}
                     <div>
                       <p className="font-bold text-slate-800">
-                        Level {row.stage} · {row.title}
+                        Level {pathLessonDisplayLevel(row.mode, row.stage)} · {row.title}
                       </p>
                       <p className="text-xs text-slate-500">
                         Path {row.mode} · {row.attempts} attempts
@@ -362,7 +363,11 @@ export default function CaregiverProgress() {
                       </td>
                       <td className="py-3 text-slate-700">
                         {s.mode ? `Path ${s.mode}` : "—"}
-                        {s.stage != null ? ` · Level ${s.stage}` : ""}
+                        {s.stage != null && s.mode
+                          ? ` · Level ${pathLessonDisplayLevel(s.mode, s.stage)}`
+                          : s.stage != null
+                          ? ` · stage ${s.stage}`
+                          : ""}
                       </td>
                       <td className="py-3 text-slate-700">
                         {formatDuration(s.durationMs)}

@@ -74,7 +74,7 @@ npm run preview
 
 - `src/pages` - route-level pages (Landing, Home, Calibration, Screener, etc.)
 - `src/assets` - static images and media (imported; bundled by Vite)
-- `src/screens` - lesson runtime screens (`Path1Lesson`, `Path2Lesson`)
+- `src/pages/lessons` - lesson routes (`LessonPath1`, `LessonPath2`) and `path2/` path-mode helpers
 - `src/components` - reusable UI blocks
 - `src/hooks` - behavior hooks (face mesh, gesture control, timers, reinforcement)
 - `src/utils` - pure logic and data helpers (paths, levels, lesson flow, persistence, adaptation)

@@ -18,6 +18,8 @@ export function CursorPositionBridgeProvider({ children }) {
     canvasViewport: null,
     showUniversalCursor: true,
     lessonPaused: false,
+    /** Mode 2: `"r, g, b"` for Cursor ghost trail; null = default app accent. */
+    trailAccentRgb: null,
   });
   return (
     <CursorPositionBridgeContext.Provider value={bridgeRef}>

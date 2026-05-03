@@ -50,7 +50,7 @@ function mergeRefs(node, forwarded) {
  * Constant-width stroke; opacity rises from oldest sample → newest (fading line).
  * `lineWidthPx` comes from the head dot sizing so stroke and head stay aligned.
  */
-function drawTrailSegments(ctx, points, lineWidthPx) {
+function drawTrailSegments(ctx, points, lineWidthPx, rgbCsv = UNIVERSAL_CURSOR_RGB) {
   if (points.length < 2) return;
   const n = points.length;
   const denom = Math.max(n - 1, 1);
@@ -65,7 +65,7 @@ function drawTrailSegments(ctx, points, lineWidthPx) {
   ctx.lineWidth = lineWidthPx;
   for (let i = 0; i < n - 1; i++) {
     const a = (alphaAt(i) + alphaAt(i + 1)) / 2;
-    ctx.strokeStyle = `rgba(${UNIVERSAL_CURSOR_RGB}, ${Math.min(0.78, a)})`;
+    ctx.strokeStyle = `rgba(${rgbCsv}, ${Math.min(0.78, a)})`;
     ctx.beginPath();
     ctx.moveTo(points[i].x, points[i].y);
     ctx.lineTo(points[i + 1].x, points[i + 1].y);
@@ -84,6 +84,8 @@ const Cursor = forwardRef(
       variant = "default",
       /** Optional outer wrapper ref (trail + circle) — e.g. for visibility on lesson pages */
       bundleRef = null,
+      /** Lesson bridge ref: `current.trailAccentRgb` overrides ghost-trail colour (Mode 2 accuracy). */
+      accentBridgeRef = null,
     },
     ref
   ) => {
@@ -92,8 +94,8 @@ const Cursor = forwardRef(
     const trailPointsRef = useRef([]);
     const coneDiameterRef = useRef(0);
     const trailLineWidthRef = useRef(8);
+    const trailLastAccentRef = useRef("");
 
-    const isLesson = variant === "lesson";
     // Keep cursor geometry uniform across lesson/global and canvas contexts.
     const pad = 6;
     const coneRefDiameterPx = (size + pad) * CONE_REF_SCALE;
@@ -172,12 +174,26 @@ const Cursor = forwardRef(
           const cx = rect.left + rect.width / 2;
           const cy = rect.top + rect.height / 2;
           const trailChanged = pushPoint(cx, cy);
+          const accentCsv =
+            variant === "lesson" && accentBridgeRef?.current?.trailAccentRgb
+              ? accentBridgeRef.current.trailAccentRgb
+              : UNIVERSAL_CURSOR_RGB;
+          const accentChanged =
+            variant === "lesson" &&
+            accentBridgeRef &&
+            accentCsv !== trailLastAccentRef.current;
+          trailLastAccentRef.current = accentCsv;
 
-          if (trailChanged) {
+          if (trailChanged || accentChanged) {
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.setTransform(trailDpr, 0, 0, trailDpr, 0, 0);
-            drawTrailSegments(ctx, trailPointsRef.current, trailLineWidthRef.current);
+            drawTrailSegments(
+              ctx,
+              trailPointsRef.current,
+              trailLineWidthRef.current,
+              accentCsv,
+            );
           }
         }
 
@@ -190,7 +206,7 @@ const Cursor = forwardRef(
         window.cancelAnimationFrame(rafId);
         window.removeEventListener("resize", onResize);
       };
-    }, []);
+    }, [variant, accentBridgeRef]);
 
     const positionStyle =
       left != null && top != null
@@ -212,9 +228,7 @@ const Cursor = forwardRef(
     } else if (isPenDown) {
       circleStyle = {
         backgroundColor: UNIVERSAL_CURSOR_FILL_ACTIVE,
-        boxShadow: isLesson
-          ? UNIVERSAL_CURSOR_SHADOW_ACTIVE
-          : UNIVERSAL_CURSOR_SHADOW_ACTIVE,
+        boxShadow: UNIVERSAL_CURSOR_SHADOW_ACTIVE,
         borderColor: UNIVERSAL_CURSOR_BORDER_ACTIVE,
       };
     } else {

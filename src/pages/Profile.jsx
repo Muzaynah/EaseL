@@ -15,6 +15,7 @@ import {
   downloadCaregiverReportPdf,
   downloadCaregiverReportPng,
 } from "../utils/dataExport";
+import { firstStageForMode, pathLessonDisplayLevel } from "../utils/lessonContent";
 
 const MS_PER_HOUR = 1000 * 60 * 60;
 
@@ -73,6 +74,10 @@ export default function Profile({ user, onSignOut }) {
   const totalSessions = sessionLog.length;
   const totalPracticeMs = sessionLog.reduce((a, s) => a + (s.durationMs || 0), 0);
   const practiceHours = (totalPracticeMs / MS_PER_HOUR).toFixed(1);
+  const pathIdForLessons = profile?.pathId ?? profile?.lipMode ?? 1;
+  const canonLessonStage =
+    profile?.currentLevel ?? profile?.currentStage ?? firstStageForMode(pathIdForLessons);
+  const profileDisplayLessonLevel = pathLessonDisplayLevel(pathIdForLessons, canonLessonStage);
 
   const setup = [
     {
@@ -107,8 +112,8 @@ export default function Profile({ user, onSignOut }) {
           : "Assisted-use",
     },
     {
-      label: "Current level",
-      value: `Level ${(profile?.currentLevel ?? profile?.currentStage ?? 0) + 1}`,
+      label: "Current lesson level",
+      value: `Level ${profileDisplayLessonLevel}`,
     },
   ];
 

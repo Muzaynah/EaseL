@@ -11,8 +11,8 @@ import Home from "./pages/Home";
 import CanvasPage from "./pages/CanvasPage";
 import Gallery from "./pages/Gallery";
 import LessonSelect from "./pages/LessonSelect";
-import Path1Lesson from "./screens/Path1Lesson";
-import Path2Lesson from "./screens/Path2Lesson";
+import LessonPath1 from "./pages/lessons/LessonPath1";
+import LessonPath2 from "./pages/lessons/LessonPath2";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Calibration from "./pages/Calibration";
@@ -181,7 +181,7 @@ export default function App() {
           path="/lesson-path1"
           element={
             <ProtectedRoute>
-              <Path1Lesson />
+              <LessonPath1 />
             </ProtectedRoute>
           }
         />
@@ -189,7 +189,7 @@ export default function App() {
           path="/lesson-path2"
           element={
             <ProtectedRoute>
-              <Path2Lesson />
+              <LessonPath2 />
             </ProtectedRoute>
           }
         />

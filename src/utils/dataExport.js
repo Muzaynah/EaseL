@@ -10,6 +10,7 @@
 
 import { getTrialLog, getSessionLog } from "./persistence";
 import { computeStageLadder, summariseSessions, recentAdherences } from "./stageAdaptation";
+import { firstStageForMode, pathLessonDisplayLevel } from "./lessonContent";
 
 export function buildCaregiverExport({ profile, settings }) {
   const now = new Date().toISOString();
@@ -128,7 +129,11 @@ export function buildCaregiverReadableReport({ profile, settings, userId }) {
   const mastered = ladder.filter((s) => s.status === "advance").length;
   const struggled = ladder.filter((s) => s.status === "widen").length;
   const improving = ladder.filter((s) => s.reason === "improving").length;
+  const pathIdNum = profile?.pathId ?? profile?.lipMode ?? 1;
   const currentLevel = profile?.currentLevel ?? profile?.currentStage ?? 0;
+  const canonForDisplay =
+    profile?.currentLevel ?? profile?.currentStage ?? firstStageForMode(pathIdNum);
+  const displayLessonLevel = pathLessonDisplayLevel(pathIdNum, canonForDisplay);
   const latestSession = sessions[0] ?? null;
   const childName = profile?.caregiverReported?.childName || "Learner";
 
@@ -137,7 +142,10 @@ export function buildCaregiverReadableReport({ profile, settings, userId }) {
     childName,
     pathId: profile?.pathId ?? profile?.lipMode ?? "—",
     pathLevel: profile?.pathLevel ?? "—",
+    /** Canonical curriculum stage index (0–6). */
     currentLevel,
+    /** 1-based level within the learner’s path (caregiver-facing). */
+    displayLessonLevel,
     summary: {
       sessions: sessionLog.length,
       attempts: trialLog.length,
@@ -154,7 +162,7 @@ export function buildCaregiverReadableReport({ profile, settings, userId }) {
       avgAdherence == null
         ? "Adherence data is still being collected."
         : `Average recent adherence is ${avgAdherence}%, with an overall trend of ${adherenceTrend(adherenceSeries).toLowerCase()}.`,
-      `Current placement is Path ${profile?.pathId ?? profile?.lipMode ?? "—"}, Level ${profile?.pathLevel ?? "—"}, and active lesson level ${currentLevel}.`,
+      `Current placement is Path ${profile?.pathId ?? profile?.lipMode ?? "—"}, screener tier ${profile?.pathLevel ?? "—"}, and active lesson level ${displayLessonLevel} (curriculum stage ${canonForDisplay}).`,
       latestSession
         ? `Most recent session fatigue was ${fatigueLabel(latestSession.fatigueIndex).toLowerCase()}, with ${latestSession.attempts} attempts over ${formatDuration(latestSession.durationMs)}.`
         : "No completed session summary is available yet.",
@@ -239,7 +247,7 @@ function renderReportCanvas(report) {
   y += 50;
   ctx.font = "400 24px 'Plus Jakarta Sans', Arial, sans-serif";
   const snapshot = [
-    `Path: ${report.pathId} · Level: ${report.pathLevel} · Active lesson level: ${report.currentLevel}`,
+    `Path: ${report.pathId} · Screener tier: ${report.pathLevel} · Lesson level: ${report.displayLessonLevel ?? report.currentLevel} (stage ${report.currentLevel})`,
     `Sessions: ${report.summary.sessions} · Attempts: ${report.summary.attempts} · Practice time: ${formatDuration(report.summary.totalPracticeMs)}`,
     `Average adherence: ${report.summary.avgAdherence != null ? `${report.summary.avgAdherence}%` : "—"} · Trend: ${report.summary.adherenceTrend}`,
     `Levels mastered: ${report.summary.levelsMastered} · In progress: ${report.summary.levelsInProgress} · Need support: ${report.summary.levelsNeedingSupport}`,
@@ -339,7 +347,7 @@ export function downloadCaregiverReportPdf(report) {
         <p class="muted">Generated: ${formatDateTime(report.exportedAt)}</p>
         <p><strong>Child:</strong> ${report.childName}</p>
         <div class="card">
-          <p><strong>Path/Level:</strong> Path ${report.pathId} · Level ${report.pathLevel} · Active lesson level ${report.currentLevel}</p>
+          <p><strong>Path / screener tier / lesson:</strong> Path ${report.pathId} · Tier ${report.pathLevel} · Lesson level ${report.displayLessonLevel ?? report.currentLevel} <span class="muted">(stage ${report.currentLevel})</span></p>
           <p><strong>Sessions:</strong> ${report.summary.sessions} · <strong>Attempts:</strong> ${report.summary.attempts} · <strong>Practice time:</strong> ${formatDuration(report.summary.totalPracticeMs)}</p>
           <p><strong>Average adherence:</strong> ${report.summary.avgAdherence != null ? `${report.summary.avgAdherence}%` : "—"} · <strong>Trend:</strong> ${report.summary.adherenceTrend}</p>
           <p><strong>Levels mastered:</strong> ${report.summary.levelsMastered} · <strong>In progress:</strong> ${report.summary.levelsInProgress} · <strong>Need support:</strong> ${report.summary.levelsNeedingSupport}</p>

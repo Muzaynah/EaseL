@@ -15,6 +15,7 @@ import {
   getStage,
   firstStageForMode,
   lastStageForMode,
+  pathLessonDisplayLevel,
 } from "../utils/lessonContent";
 import imgFreeDrawMascot from "../assets/illustrations/vecteezy_a-blue-cartoon-shark-with-arms-and-legs_68086196.png";
 import imgLessonsMascot from "../assets/illustrations/vecteezy_a-sticker-of-a-green-leaf-with-a-face_68086203.png";
@@ -212,6 +213,7 @@ function Mode2Home({ welcomeFirstName, profile }) {
   );
   const currentStageDef = getStage(currentStage);
   const pathLevel = getPathLevelLabel(profile);
+  const displayLessonLevel = pathLessonDisplayLevel(2, currentStage);
 
   const quickActions = [
     {
@@ -247,7 +249,7 @@ function Mode2Home({ welcomeFirstName, profile }) {
     },
     {
       label: "Current level",
-      value: `Level ${currentStage}`,
+      value: `Level ${displayLessonLevel}`,
     },
     { label: "Sessions logged", value: `${totalSessions}` },
     { label: "Lesson attempts passed", value: `${completedLessons}` },
@@ -271,7 +273,7 @@ function Mode2Home({ welcomeFirstName, profile }) {
                   Hi, {welcomeFirstName}!
                 </h1>
                 <p className="mt-1 text-base" style={{ color: "var(--easeL-text-muted)" }}>
-                  Path 2 · guided control · level {currentStage} ·{" "}
+                  Path 2 · guided control · level {displayLessonLevel} ·{" "}
                   <span className="font-semibold" style={{ color: "var(--easeL-primary)" }}>
                     {currentStageDef?.title ?? "—"}
                   </span>

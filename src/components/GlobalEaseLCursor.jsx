@@ -134,6 +134,7 @@ export default function GlobalEaseLCursor() {
       tool="brush"
       left={initialCursorPosition.x}
       top={initialCursorPosition.y}
+      accentBridgeRef={isLessonRoute ? lessonBridge : null}
     />
   ) : null;
 

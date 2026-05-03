@@ -11,6 +11,7 @@ import {
   LESSON_STAGES,
   firstStageForMode,
   lastStageForMode,
+  pathLessonDisplayLevel,
   variantsForStage,
   lessonCountInStage,
   lessonIndexWithinStage,
@@ -216,8 +217,9 @@ export default function LessonSelect() {
                           key={s.stage}
                           onClick={() => setCurrentLevel(s.stage)}
                           className={`flex-1 min-w-[44px] rounded-lg py-2 text-sm font-medium ${displayStage === s.stage ? "bg-[var(--easeL-primary)] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                          title={`Stage index ${s.stage}`}
                         >
-                          {s.stage}
+                          {pathLessonDisplayLevel(displayMode, s.stage)}
                         </button>
                       ))}
                     </div>
@@ -227,7 +229,7 @@ export default function LessonSelect() {
                       onClick={() => { navigate(`/lesson-path1?stage=${displayStage}&lockStage=1`); setDevOpen(false); }}
                       className="easeL-accent-bg easeL-accent-text-strong w-full rounded-lg py-2.5 text-sm font-medium hover:opacity-90"
                     >
-                      Open Path 1 Lesson (level {displayStage})
+                      Open Path 1 Lesson (level {pathLessonDisplayLevel(1, displayStage)})
                     </button>
                     <button
                       onClick={() => { navigate(`/lesson-path2?stage=${displayStage}&lockStage=1`); setDevOpen(false); }}
@@ -237,7 +239,7 @@ export default function LessonSelect() {
                         color: "var(--easeL-text)",
                       }}
                     >
-                      Open Path 2 Lesson (level {displayStage})
+                      Open Path 2 Lesson (level {pathLessonDisplayLevel(2, displayStage)})
                     </button>
                   </div>
                 </div>
@@ -252,7 +254,8 @@ export default function LessonSelect() {
             const stageTitle = language === "ur" ? s.titleUr ?? s.title : s.title;
             const variants = variantsForStage(s);
             const hasMultipleVariants = variants.length > 1;
-            const levelLabel = language === "ur" ? `مرحلہ ${s.stage}` : `Level ${s.stage}`;
+            const pathLevelNum = pathLessonDisplayLevel(displayMode, s.stage);
+            const levelLabel = language === "ur" ? `مرحلہ ${pathLevelNum}` : `Level ${pathLevelNum}`;
             const totalInStage = lessonCountInStage(s);
             const cards =
               locked || !hasMultipleVariants

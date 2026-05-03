@@ -150,6 +150,18 @@ export function lastStageForMode(mode) {
   return mode === 1 ? 2 : 6;
 }
 
+/**
+ * 1-based lesson level within a path (what caregivers see as "Level 1…N").
+ * Path 1: curriculum stages 0–2 → display 1–3. Path 2: stages 3–6 → display 1–4.
+ * URLs, `profile.currentStage`, and logs stay on canonical stage indices (0–6).
+ */
+export function pathLessonDisplayLevel(pathMode, canonicalStage) {
+  const floor = firstStageForMode(pathMode);
+  const cap = lastStageForMode(pathMode);
+  const s = Math.max(floor, Math.min(cap, Number(canonicalStage) || floor));
+  return s - floor + 1;
+}
+
 /** Pick a specific variant within a stage (e.g. which closed shape). */
 export function variantForAttempt(stage, attemptIndex) {
   if (stage.closedShapes?.length)
