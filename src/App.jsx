@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useState } from "react";
 import { useAuth } from "./context/AuthContext";
 import { useAppState } from "./context/AppStateContext";
 import { getNextSetupStep, isSetupRoute } from "./utils/setupFlow";
@@ -20,6 +21,7 @@ import PathScreener from "./pages/PathScreener";
 import Tutorial from "./pages/Tutorial";
 import CaregiverProgress from "./pages/CaregiverProgress";
 import GlobalEaseLCursor from "./components/GlobalEaseLCursor";
+import SettingsModal from "./components/SettingsModal";
 import { CursorPositionBridgeProvider } from "./context/CursorPositionBridgeContext";
 
 export default function App() {
@@ -32,10 +34,13 @@ export default function App() {
     reloadProfile,
     error: authError,
   } = useAuth();
-  const { hydrated } = useAppState();
+  const { hydrated, setProfile, settings } = useAppState();
   const location = useLocation();
 
   const isAuthenticated = !!user;
+
+  // Must be declared before any early returns — Rules of Hooks
+  const [globalSettingsOpen, setGlobalSettingsOpen] = useState(false);
 
   /**
    * ProtectedRoute: requires authentication + enforces setup order.
@@ -100,6 +105,14 @@ export default function App() {
   }
 
   const inSetup = isSetupRoute(location.pathname);
+  const navLanguage = profile?.caregiverReported?.language ?? "en";
+  const handleNavLanguageChange = (lang) => {
+    if (!setProfile) return;
+    setProfile((p) => ({
+      ...(p || {}),
+      caregiverReported: { ...(p?.caregiverReported || {}), language: lang },
+    }));
+  };
 
   return (
     <CursorPositionBridgeProvider>
@@ -116,9 +129,13 @@ export default function App() {
         profile={profile}
         inSetup={inSetup}
         onSignOut={signOut}
+        onOpenSettings={() => setGlobalSettingsOpen(true)}
+        language={navLanguage}
+        onLanguageChange={handleNavLanguageChange}
       />
       <GlobalEaseLCursor />
       <DevMenu />
+      <SettingsModal isOpen={globalSettingsOpen} onClose={() => setGlobalSettingsOpen(false)} />
         <main id="main-content" tabIndex={-1}>
           <div key={location.pathname} className="easeL-route-transition">
           <Routes>

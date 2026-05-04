@@ -125,7 +125,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="easeL-page-bg min-h-screen px-6 pb-16 pt-24">
+    <div className="easeL-page-bg min-h-screen px-6 pb-16 easeL-page-top">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
           <h1 className="easeL-heading-1">Settings</h1>

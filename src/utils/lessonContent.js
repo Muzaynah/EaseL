@@ -75,9 +75,9 @@ export const LESSON_STAGES = [
   {
     stage: 4,
     mode: 2,
-    title: "Rainbow arc",
-    titleUr: "قوس قزح",
-    description: "A soft curve — arc up and back down, like a rainbow.",
+    title: "Curved arc",
+    titleUr: "ٹیڑھی لکیر",
+    description: "A soft curve — arc up and back down.",
     icon: "arc",
     shape: "gentle-curve",
     autocompleteLevel: 25,
@@ -104,8 +104,8 @@ export const LESSON_STAGES = [
   {
     stage: 6,
     mode: 2,
-    title: "Familiar picture",
-    titleUr: "آشنا تصویر",
+    title: "Simple picture",
+    titleUr: "سادہ تصویر",
     description: "A kite, a sun, or a little house — one shape at a time.",
     icon: "sparkles",
     shape: "construction",

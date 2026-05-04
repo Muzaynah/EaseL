@@ -1,9 +1,23 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Urbanist:wght@600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Urbanist:wght@600;700&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap");
+
+/* Urdu text — Nastaliq style, RTL, comfortable line-height for script */
+.ur {
+  font-family: "Noto Nastaliq Urdu", serif;
+  direction: rtl;
+  line-height: 2;
+  letter-spacing: 0;
+}
 @import "./theme/easeLPalette.css";
 @import "tailwindcss";
 
 html {
   overflow-x: hidden;
+}
+
+/* Pages use this class instead of pt-24/pt-28 so they shift when the navbar hides */
+.easeL-page-top {
+  padding-top: var(--nav-offset, 96px);
+  transition: padding-top 500ms ease-in-out;
 }
 
 body {

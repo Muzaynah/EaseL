@@ -402,8 +402,8 @@ export default function LessonPath2() {
       if (muted) return;
       const spokenGuide =
         language === "ur"
-          ? "سبز نقطے سے شروع کریں، نقطوں والی لکیر پر چلیں، اور شروع کرنے کے لیے منہ کھولیں۔"
-          : "Start at the green dot, trace the dotted line, and open your mouth to begin.";
+          ? "نقطوں والی لکیر پر چلیں، اور شروع کرنے کے لیے منہ کھولیں۔"
+          : "open your mouth to begin and trace the dotted line.";
       speakInstruction(spokenGuide, { language });
     },
   });

@@ -349,7 +349,14 @@ export function isPointInCorridor(point, corridor) {
 
 /**
  * Rich accuracy along the true polyline (not vertex-only distance).
- * `corridor.width` is the full allowed band; half is the scoring radius, matching in-lesson visual.
+ * `corridor.width` is the full allowed band; half is the scoring radius.
+ *
+ * Scoring model:
+ *   - Points outside the corridor score ZERO — no partial credit for missing.
+ *   - Points inside score 0.5 (at edge) → 1.0 (on centerline), linearly.
+ *   - Final adherence = (insideFraction) × (mean inside-quality × 100).
+ *     → 100% requires staying perfectly on the line the whole time.
+ *     → 0 inside time = 0 score. There is no floor from outside strokes.
  */
 export function computePathAccuracy(userPath, corridor) {
   if (!userPath?.length || !corridor?.centerline?.length) {
@@ -365,31 +372,27 @@ export function computePathAccuracy(userPath, corridor) {
   const w = Math.max(1, (corridor.width ?? 20) / 2);
   let inside = 0;
   let sumDev = 0;
-  let sumQuality = 0;
+  let sumInsideQuality = 0;
   for (const p of userPath) {
     const d = distanceToPath(p, corridor.centerline);
     sumDev += d;
-    if (d <= w) inside++;
-    // In-band: 1 at line, 0 at edge. Outside: steep extra penalty (drives score down)
     if (d <= w) {
-      const q = 0.5 + 0.5 * (1 - d / w);
-      sumQuality += q;
-    } else {
-      const over = d - w;
-      sumQuality += Math.max(0, 0.5 * (1 - over / (w * 2.2)));
+      inside++;
+      // Linear ramp: 0.5 at corridor edge → 1.0 on centerline
+      sumInsideQuality += 0.5 + 0.5 * (1 - d / w);
     }
+    // Outside: contributes 0 to quality — no partial credit
   }
-  const inPct = (inside / n) * 100;
-  const meanDev = sumDev / n;
-  const meanQual = (sumQuality / n) * 100;
-  // Heavy weight on "time" inside the band + smooth closeness; off-path drags the mean quality down
-  const adherence = Math.max(0, Math.min(100, Math.round(0.48 * inPct + 0.52 * meanQual)));
+  const inFrac = inside / n;                              // 0–1
+  const meanInsideQ = inside > 0 ? sumInsideQuality / inside : 0; // 0.5–1.0
+  // Score = fraction of time inside × how close to centre while inside
+  const adherence = Math.max(0, Math.min(100, Math.round(inFrac * meanInsideQ * 100)));
   return {
     adherence,
     insideCount: inside,
     outsideCount: n - inside,
     sampleCount: n,
-    meanDeviation: meanDev,
+    meanDeviation: sumDev / n,
   };
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, BookOpen, Home, RotateCcw, Save, Star } from "lucide-react";
+import { ArrowRight, BookOpen, Home, RotateCcw, Save, Sparkles, Star } from "lucide-react";
 import ScoreSprinkles from "../../../components/ScoreSprinkles";
 import { UI_TOKENS } from "../../../theme/uiTokens";
 
@@ -35,7 +35,6 @@ export default function Path2RewardModal({
   scoreRevealMs,
   gaugeRadius,
   scoreGaugeProgress,
-  stageUnlockAdherence,
   masteryProgressVisual,
   stage,
   saved,
@@ -246,7 +245,7 @@ export default function Path2RewardModal({
                             className="text-[11px] font-bold uppercase tracking-wide sm:text-xs"
                             fill="var(--easeL-accent-mint)"
                           >
-                            {language === "ur" ? "کلیئر" : "Cleared"}
+                            {language === "ur" ? "کھلا" : "Unlocked"}
                           </text>
                         </g>
                       </g>
@@ -272,49 +271,47 @@ export default function Path2RewardModal({
               </div>
             </div>
           </div>
-          <div
-            className="mt-4 rounded-xl border-2 px-3 py-2.5 text-center text-xs font-semibold sm:text-sm"
-            style={
-              finishedPayload.unlockQualified
-                ? {
-                    background: "color-mix(in srgb, var(--easeL-accent-mint) 12%, white)",
-                    borderColor: "color-mix(in srgb, var(--easeL-accent-mint) 40%, var(--easeL-border-strong))",
-                    color: "var(--easeL-text)",
-                  }
-                : {
-                    background: "color-mix(in srgb, var(--easeL-accent-coral) 10%, white)",
-                    borderColor: "color-mix(in srgb, var(--easeL-accent-coral) 35%, var(--easeL-border-strong))",
-                    color: "var(--easeL-text)",
-                  }
-            }
-          >
-            {finishedPayload.unlockQualified
-              ? language === "ur"
-                ? "اگلا مرحلہ کھل گیا"
-                : "Next stage unlocked"
-              : language === "ur"
-              ? `اگلا مرحلہ: مزید ${stageUnlockAdherence}%`
-              : `Next stage: need ${stageUnlockAdherence}% overall`}
-          </div>
-          {finishedPayload.masteryProgress ? (
-            <div className="mt-3 rounded-xl border-2 px-3 py-2.5" style={{ borderColor: "var(--easeL-border-subtle)" }}>
-              <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold sm:text-xs" style={{ color: "var(--easeL-text-muted)" }}>
-                <span>{language === "ur" ? "مہارت" : "Mastery"}</span>
-                <span className="tabular-nums">
-                  {finishedPayload.masteryProgress.after}/{finishedPayload.masteryProgress.target}
-                </span>
+          {/* Mastery — continuous progress bar, no X/Y counts */}
+          {finishedPayload.masteryProgress ? (() => {
+            const frac = masteryProgressVisual;
+            const isMastered = frac >= 1;
+            return (
+              <div className="mt-3 rounded-xl border-2 px-3 py-3"
+                style={{ borderColor: isMastered ? "color-mix(in srgb, var(--easeL-accent-mint) 45%, transparent)" : "var(--easeL-border-subtle)" }}>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wide sm:text-xs"
+                    style={{ color: isMastered ? "var(--easeL-accent-mint)" : "var(--easeL-text-muted)" }}>
+                    {language === "ur" ? "مہارت" : "Mastery"}
+                  </span>
+                  {isMastered ? (
+                    <span className="flex items-center gap-1 text-[10px] font-bold" style={{ color: "var(--easeL-accent-mint)" }}>
+                      <Sparkles className="w-3 h-3" />
+                      {language === "ur" ? "مکمل" : "Mastered!"}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-medium" style={{ color: "var(--easeL-text-muted)" }}>
+                      {language === "ur" ? "جاری" : "Building…"}
+                    </span>
+                  )}
+                </div>
+                <div className="h-2.5 w-full overflow-hidden rounded-full"
+                  style={{ background: isMastered ? "color-mix(in srgb, var(--easeL-accent-mint) 18%, white)" : "var(--easeL-border-subtle)" }}>
+                  <div className="h-full rounded-full transition-[width] duration-700 ease-out"
+                    style={{
+                      width: `${Math.round(frac * 100)}%`,
+                      background: isMastered ? "var(--easeL-accent-mint)" : "var(--easeL-primary)",
+                    }} />
+                </div>
+                {!isMastered && (
+                  <p className="mt-1.5 text-[10px] font-medium" style={{ color: "var(--easeL-text-muted)" }}>
+                    {language === "ur"
+                      ? "مہارت کئی کامیاب کوششوں کے بعد مکمل ہوتی ہے۔"
+                      : "Mastery fills over multiple successful attempts."}
+                  </p>
+                )}
               </div>
-              <div className="h-2 w-full overflow-hidden rounded-full" style={{ background: "var(--easeL-border-subtle)" }}>
-                <div
-                  className="h-full rounded-full transition-[width] duration-500 ease-out"
-                  style={{
-                    width: `${Math.round(masteryProgressVisual * 100)}%`,
-                    background: "var(--easeL-accent-mint)",
-                  }}
-                />
-              </div>
-            </div>
-          ) : null}
+            );
+          })() : null}
         </div>
 
         {finishedPayload.unlock ? (

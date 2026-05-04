@@ -134,11 +134,12 @@ export default function Home({ user }) {
   const { profile, effectivePathId } = useAppState();
   const welcomeFirstName = deriveWelcomeFirstName(user, profile);
   const pathId = effectivePathId ?? profile?.pathId ?? profile?.lipMode ?? null;
+  const language = profile?.caregiverReported?.language ?? "en";
 
   if (pathId === 1) {
-    return <Mode1Home welcomeFirstName={welcomeFirstName} />;
+    return <Mode1Home welcomeFirstName={welcomeFirstName} language={language} />;
   }
-  return <Mode2Home welcomeFirstName={welcomeFirstName} profile={profile} />;
+  return <Mode2Home welcomeFirstName={welcomeFirstName} profile={profile} language={language} />;
 }
 
 function getPathLevelLabel(profile) {
@@ -159,44 +160,43 @@ function getPathLevelLabel(profile) {
   return "Not assigned";
 }
 
-function Mode1Home({ welcomeFirstName }) {
+function Mode1Home({ welcomeFirstName, language }) {
+  const ur = language === "ur";
   return (
-    <div
-      className="easeL-page-bg flex min-h-screen flex-col items-center justify-center px-3 pb-20 pt-24 sm:px-4"
-    >
+    <div className="easeL-page-bg flex min-h-screen flex-col items-center justify-center px-3 pb-20 easeL-page-top sm:px-4">
       <div className="w-full min-w-0 max-w-xl text-center">
         <p className="mb-3 text-2xl" style={{ color: "var(--easeL-text-muted)" }}>
-          Hi, {welcomeFirstName}!
+          {ur ? <span className="ur">ہیلو، {welcomeFirstName}!</span> : `Hi, ${welcomeFirstName}!`}
         </p>
-        <h1
-          className="mb-10 text-3xl font-extrabold md:text-4xl"
-          style={{ color: "var(--easeL-text)" }}
-        >
-          Ready to practise?
+        <h1 className="mb-10 text-3xl font-extrabold md:text-4xl" style={{ color: "var(--easeL-text)" }}>
+          {ur ? <span className="ur">کیا آپ مشق کے لیے تیار ہیں؟</span> : "Ready to practise?"}
         </h1>
         <Link
           to="/lesson-path1"
           className="group flex w-full max-w-full flex-col items-center gap-6 rounded-[2rem] p-8 text-white shadow-2xl transition-transform hover:scale-[1.02] active:scale-[0.99] sm:rounded-[2.5rem] sm:p-10 md:p-12"
           style={{ background: "var(--easeL-primary)", boxShadow: "var(--easeL-shadow-soft)" }}
-          aria-label="Start today's lesson"
+          aria-label={ur ? "آج کا سبق شروع کریں" : "Start today's lesson"}
         >
-          <span
-            className="flex h-28 w-28 items-center justify-center rounded-full"
-            style={{ background: "color-mix(in srgb, white 22%, transparent)" }}
-          >
+          <span className="flex h-28 w-28 items-center justify-center rounded-full"
+            style={{ background: "color-mix(in srgb, white 22%, transparent)" }}>
             <Play className="h-16 w-16 fill-white" strokeWidth={0} />
           </span>
-          <span className="text-4xl font-extrabold tracking-tight md:text-5xl">Start lesson</span>
+          <span className={`text-4xl font-extrabold tracking-tight md:text-5xl ${ur ? "ur" : ""}`}>
+            {ur ? "سبق شروع کریں" : "Start lesson"}
+          </span>
         </Link>
         <p className="mt-8 text-lg" style={{ color: "var(--easeL-text-muted)" }}>
-          Caregiver: use the button top right (your initial) for profile, settings, and progress.
+          {ur
+            ? <span className="ur">نگہبان: اوپر دائیں طرف اپنے نام کے پہلے حرف والے بٹن سے profile اور progress دیکھیں۔</span>
+            : "Caregiver: use the button top right (your initial) for profile, settings, and progress."}
         </p>
       </div>
     </div>
   );
 }
 
-function Mode2Home({ welcomeFirstName, profile }) {
+function Mode2Home({ welcomeFirstName, profile, language }) {
+  const ur = language === "ur";
   const trialLog = typeof window !== "undefined" ? getTrialLog() : [];
   const sessionLog = typeof window !== "undefined" ? getSessionLog() : [];
 
@@ -217,25 +217,25 @@ function Mode2Home({ welcomeFirstName, profile }) {
 
   const quickActions = [
     {
-      title: "Guided Lessons",
-      description: "Learn how to draw with step-by-step lessons.",
-      buttonText: "Open Lessons",
+      title: ur ? "سبق" : "Guided Lessons",
+      description: ur ? "قدم بہ قدم سبق سے ڈرائنگ سیکھیں۔" : "Learn how to draw with step-by-step lessons.",
+      buttonText: ur ? "سبق کھولیں" : "Open Lessons",
       path: "/lessons",
       tone: "lavender",
       mascot: imgLessonsMascot,
     },
     {
-      title: "Free Draw",
-      description: "A big blank canvas for your imagination.",
-      buttonText: "Open Canvas",
+      title: ur ? "آزاد ڈرائنگ" : "Free Draw",
+      description: ur ? "اپنی مرضی سے کینوس پر کچھ بھی بنائیں۔" : "A big blank canvas for your imagination.",
+      buttonText: ur ? "کینوس کھولیں" : "Open Canvas",
       path: "/canvas",
       tone: "ash",
       mascot: imgFreeDrawMascot,
     },
     {
-      title: "My Gallery",
-      description: "Your saved drawings and lessons in one place.",
-      buttonText: "View Gallery",
+      title: ur ? "میری گیلری" : "My Gallery",
+      description: ur ? "آپ کی تمام محفوظ ڈرائنگز یہاں ہیں۔" : "Your saved drawings and lessons in one place.",
+      buttonText: ur ? "گیلری دیکھیں" : "View Gallery",
       path: "/gallery",
       tone: "coral",
       mascot: imgGalleryMascot,
@@ -243,25 +243,16 @@ function Mode2Home({ welcomeFirstName, profile }) {
   ];
 
   const summary = [
-    {
-      label: "Learning path",
-      value: pathLevel,
-    },
-    {
-      label: "Current level",
-      value: `Level ${displayLessonLevel}`,
-    },
-    { label: "Sessions logged", value: `${totalSessions}` },
-    { label: "Lesson attempts passed", value: `${completedLessons}` },
-    { label: "Practice time", value: `${practiceHours} h` },
-    {
-      label: "Last calibrated",
-      value: formatDate(profile?.calibration?.lastCalibratedAt),
-    },
+    { label: ur ? "راستہ" : "Learning path", value: pathLevel },
+    { label: ur ? "موجودہ سطح" : "Current level", value: ur ? `سطح ${displayLessonLevel}` : `Level ${displayLessonLevel}` },
+    { label: ur ? "سیشن" : "Sessions logged", value: `${totalSessions}` },
+    { label: ur ? "سبق پاس" : "Lesson attempts passed", value: `${completedLessons}` },
+    { label: ur ? "مشق کا وقت" : "Practice time", value: `${practiceHours} h` },
+    { label: ur ? "آخری calibration" : "Last calibrated", value: formatDate(profile?.calibration?.lastCalibratedAt) },
   ];
 
   return (
-    <div className="easeL-page-bg min-h-screen px-3 pb-16 pt-24 sm:px-5 md:px-6 md:pt-28">
+    <div className="easeL-page-bg min-h-screen px-3 pb-16 easeL-page-top sm:px-5 md:px-6 md:easeL-page-top">
       <div className="mx-auto max-w-6xl min-w-0 space-y-10 sm:space-y-12">
         <section className="min-w-0">
             <div
@@ -269,14 +260,13 @@ function Mode2Home({ welcomeFirstName, profile }) {
               style={{ borderColor: "var(--easeL-border-strong)", background: "var(--easeL-bg-section)" }}
             >
               <div className="min-w-0">
-                <h1 className="easeL-heading-1 text-balance">
-                  Hi, {welcomeFirstName}!
+                <h1 className={`easeL-heading-1 text-balance ${ur ? "ur" : ""}`}>
+                  {ur ? `ہیلو، ${welcomeFirstName}!` : `Hi, ${welcomeFirstName}!`}
                 </h1>
                 <p className="mt-1 text-base" style={{ color: "var(--easeL-text-muted)" }}>
-                  Path 2 · guided control · level {displayLessonLevel} ·{" "}
-                  <span className="font-semibold" style={{ color: "var(--easeL-primary)" }}>
-                    {currentStageDef?.title ?? "—"}
-                  </span>
+                  {ur
+                    ? <span className="ur">Path 2 · سطح {displayLessonLevel} · <span className="font-semibold" style={{ color: "var(--easeL-primary)" }}>{currentStageDef?.title ?? "—"}</span></span>
+                    : <>Path 2 · guided control · level {displayLessonLevel} · <span className="font-semibold" style={{ color: "var(--easeL-primary)" }}>{currentStageDef?.title ?? "—"}</span></>}
                 </p>
               </div>
               <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:shrink-0">
@@ -285,7 +275,7 @@ function Mode2Home({ welcomeFirstName, profile }) {
                   className="easeL-btn-outline inline-flex min-h-12 w-full min-w-0 items-center justify-center gap-2 px-5 text-[0.95rem] font-semibold sm:w-auto"
                 >
                   <BarChart3 className="h-5 w-5" />
-                  Progress
+                  <span className={ur ? "ur" : ""}>{ur ? "ترقی" : "Progress"}</span>
                 </Link>
                 <Link
                   to="/lessons"
@@ -293,7 +283,7 @@ function Mode2Home({ welcomeFirstName, profile }) {
                   style={{ background: "var(--easeL-primary)" }}
                 >
                   <BookOpen className="h-5 w-5" />
-                  Continue path
+                  <span className={ur ? "ur" : ""}>{ur ? "آگے جاری رکھیں" : "Continue path"}</span>
                 </Link>
               </div>
             </div>
@@ -301,7 +291,7 @@ function Mode2Home({ welcomeFirstName, profile }) {
 
         <section className="min-w-0">
           <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="easeL-heading-2 shrink-0">What do you want to do today?</h2>
+            <h2 className={`easeL-heading-2 shrink-0 ${ur ? "ur" : ""}`}>{ur ? "آج کیا کرنا ہے؟" : "What do you want to do today?"}</h2>
             <figure
               className="relative mx-auto h-28 w-28 shrink-0 sm:mx-0 sm:h-32 sm:w-32"
               aria-hidden
@@ -374,13 +364,10 @@ function Mode2Home({ welcomeFirstName, profile }) {
                   >
                     <div className="flex w-full flex-row items-center gap-2 sm:gap-3">
                       <div className="min-w-0 flex-1 basis-0 text-left">
-                        <h3 className="easeL-home-shortcut-title text-pretty leading-snug" style={{ color: "var(--easeL-ink)" }}>
+                        <h3 className={`easeL-home-shortcut-title text-pretty leading-snug ${ur ? "ur" : ""}`} style={{ color: "var(--easeL-ink)" }}>
                           {action.title}
                         </h3>
-                        <p
-                          className="mt-1.5 max-w-[32ch] text-[1rem] font-medium leading-snug sm:text-[1.02rem]"
-                          style={{ color: "var(--easeL-text)" }}
-                        >
+                        <p className={`mt-1.5 max-w-[32ch] text-[1rem] font-medium leading-snug sm:text-[1.02rem] ${ur ? "ur" : ""}`} style={{ color: "var(--easeL-text)" }}>
                           {action.description}
                         </p>
                       </div>
@@ -399,7 +386,7 @@ function Mode2Home({ welcomeFirstName, profile }) {
                   </div>
                   <Link
                     to={action.path}
-                    className="easeL-home-shortcut-cta mt-2.5 w-full shrink-0 sm:mt-3"
+                    className={`easeL-home-shortcut-cta mt-2.5 w-full shrink-0 sm:mt-3 ${ur ? "ur" : ""}`}
                     style={{
                       ["--easeL-home-shortcut-cta-border"]: toneStyles.ctaBorder,
                       ["--easeL-home-shortcut-cta-fg"]: "var(--easeL-ink)",
@@ -414,8 +401,8 @@ function Mode2Home({ welcomeFirstName, profile }) {
         </section>
 
         <section className="min-w-0">
-          <h2 className="easeL-heading-2 mb-4 text-balance sm:mb-5" style={{ color: "var(--easeL-ink)" }}>
-            Your summary
+          <h2 className={`easeL-heading-2 mb-4 text-balance sm:mb-5 ${ur ? "ur" : ""}`} style={{ color: "var(--easeL-ink)" }}>
+            {ur ? "خلاصہ" : "Your summary"}
           </h2>
           <div
             className="easeL-home-summary-panel rounded-3xl border-2 p-4 sm:p-5 md:p-6"
@@ -450,16 +437,10 @@ function Mode2Home({ welcomeFirstName, profile }) {
                         <Icon className="h-[1.125rem] w-[1.125rem]" strokeWidth={2.35} style={{ color: "var(--easeL-ink)" }} />
                       </div>
                       <div className="min-w-0 flex-1 text-left">
-                        <p
-                          className="text-[0.78rem] font-semibold leading-tight sm:text-[0.8rem]"
-                          style={{ color: "var(--easeL-text-muted)" }}
-                        >
+                        <p className={`text-[0.78rem] font-semibold leading-tight sm:text-[0.8rem] ${ur ? "ur" : ""}`} style={{ color: "var(--easeL-text-muted)" }}>
                           {item.label}
                         </p>
-                        <p
-                          className="mt-1 text-[1.02rem] font-bold leading-snug text-pretty sm:text-[1.06rem]"
-                          style={{ color: "var(--easeL-ink)" }}
-                        >
+                        <p className={`mt-1 text-[1.02rem] font-bold leading-snug text-pretty sm:text-[1.06rem] ${ur ? "ur" : ""}`} style={{ color: "var(--easeL-ink)" }}>
                           {item.value}
                         </p>
                       </div>

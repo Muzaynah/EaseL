@@ -61,7 +61,7 @@ export default function SignUp() {
   };
 
   return (
-    <div className="easeL-page-bg flex items-center justify-center px-4 pb-20 pt-28 sm:px-6">
+    <div className="easeL-page-bg flex items-center justify-center px-4 pb-20 easeL-page-top sm:px-6">
       <div className="w-full max-w-md">
         <div className="easeL-auth-card p-8 sm:p-10">
           <h1

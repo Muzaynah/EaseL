@@ -1,6 +1,6 @@
 // CanvasPage.jsx
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate, useBeforeUnload } from "react-router-dom";
 import { Menu, Brush, Pencil, Eraser, PaintBucket } from "lucide-react";
 import { useFaceMesh } from "../hooks/useFaceMesh";
 import { useDrawing } from "../hooks/useDrawing";
@@ -19,6 +19,7 @@ import CameraPreview from "../components/CameraPreview";
 import Cursor from "../components/Cursor";
 import SettingsModal from "../components/SettingsModal";
 import { useAuth } from "../context/AuthContext";
+import { useCursorPositionBridgeRef } from "../context/CursorPositionBridgeContext";
 import {
     getCanvasProjectCloud,
     isFirestorePermissionError,
@@ -336,20 +337,44 @@ export default function CanvasPage() {
         loadProjectLayers(dataMap);
     }, [layers, loadProjectLayers]);
 
+    const canvasBridge = useCursorPositionBridgeRef();
+
     useEffect(() => {
         let animationFrameId;
         const renderCursor = () => {
+            const x = cursorPos.current.x;
+            const y = cursorPos.current.y;
             if (cursorRef.current) {
-                cursorRef.current.style.left = cursorPos.current.x + "px";
-                cursorRef.current.style.top = cursorPos.current.y + "px";
+                cursorRef.current.style.left = x + "px";
+                cursorRef.current.style.top  = y + "px";
+            }
+            // Publish into the bridge so Navbar can detect head cursor near top
+            if (canvasBridge?.current) {
+                canvasBridge.current.raw = { x, y };
             }
             animationFrameId = requestAnimationFrame(renderCursor);
         };
         renderCursor();
         return () => cancelAnimationFrame(animationFrameId);
-    }, []);
+    }, [canvasBridge]);
 
     const [saveStatus, setSaveStatus] = useState("idle");
+    const [hasUnsavedStrokes, setHasUnsavedStrokes] = useState(false);
+
+    // Mark dirty whenever a stroke ends; clear on save
+    useEffect(() => {
+        if (strokeState === "complete") setHasUnsavedStrokes(true);
+    }, [strokeState]);
+
+    // Warn on browser unload (tab close / refresh)
+    useBeforeUnload(
+        useCallback(
+            (e) => {
+                if (hasUnsavedStrokes && saveStatus === "idle") e.preventDefault();
+            },
+            [hasUnsavedStrokes, saveStatus]
+        )
+    );
 
     async function saveProject() {
         if (!canvasRef.current || saveStatus !== "idle" || !user?.uid) return;
@@ -374,6 +399,7 @@ export default function CanvasPage() {
             });
             if (projectId) setCurrentProjectId(projectId);
             setSaveStatus("saved");
+            setHasUnsavedStrokes(false);
             setTimeout(() => setSaveStatus("idle"), 2500);
         } catch (e) {
             if (isFirestorePermissionError(e)) {
@@ -392,8 +418,8 @@ export default function CanvasPage() {
     const toolLabel = TOOL_META[tool]?.label ?? "Brush";
 
     return (
-        <div className="easeL-page-bg min-h-screen relative overflow-hidden pt-20 font-sans select-none">
-            <div className="mx-auto flex h-[calc(100vh-5rem)] max-w-[1800px] gap-3 px-3 pb-3">
+        <div className="easeL-page-bg min-h-screen relative overflow-hidden easeL-page-top font-sans select-none">
+            <div className="mx-auto flex max-w-[1800px] gap-3 px-3 pb-3" style={{ height: "calc(100vh - var(--nav-offset, 96px))" }}>
 
                 {/* ── Left sidebar: Drawing tools ── */}
                 <aside

@@ -3,6 +3,8 @@
  * Pair with src/theme/paletteTokens.js if you need the same values in JavaScript.
  */
 :root {
+  /* Navbar offset — JS writes this when nav hides/shows; pages use it for padding-top */
+  --nav-offset: 96px;
   /* Page & surfaces (lavender + cream — high contrast with text) */
   --easeL-bg-page: #f7f7f2;
   --easeL-bg-cream: #f8c0b8;
@@ -85,18 +87,8 @@
   --easeL-cartoon-shadow-hover-tight: 7px 7px 0 0 var(--easeL-cartoon-shadow-color);
   --easeL-cartoon-shadow-xs: 1px 1px 0 0 var(--easeL-cartoon-shadow-color-rest);
   /* Landing — hero: stronger lavender / mint color (still readable behind type) */
-  --easeL-landing-hero-bg: #d4d9e0;
-  --easeL-landing-hero-radial:
-    radial-gradient(ellipse 120% 80% at 0% 12%, color-mix(in srgb, var(--easeL-bg-card-butter) 55%, transparent) 0%, transparent 50%),
-    radial-gradient(ellipse 110% 85% at 8% 22%, color-mix(in srgb, var(--easeL-accent-rose) 38%, transparent) 0%, transparent 58%),
-    radial-gradient(ellipse 105% 80% at 100% 65%, color-mix(in srgb, var(--easeL-bg-card-mint) 45%, transparent) 0%, transparent 50%),
-    radial-gradient(ellipse 70% 55% at 50% 48%, color-mix(in srgb, white 32%, transparent) 0%, transparent 60%),
-    linear-gradient(
-      122deg,
-      color-mix(in srgb, var(--easeL-bg-section-alt) 68%, var(--easeL-landing-hero-bg)) 0%,
-      var(--easeL-landing-hero-bg) 38%,
-      color-mix(in srgb, var(--easeL-bg-card-mint) 48%, var(--easeL-landing-hero-bg)) 100%
-    );
+  --easeL-landing-hero-bg: color-mix(in srgb, var(--easeL-bg-card-mint) 28%, white);
+  --easeL-landing-hero-radial: none;
   --easeL-landing-hero-bottom-rule: color-mix(in srgb, var(--easeL-cartoon-outline) 35%, transparent);
   --easeL-landing-hero-photo-border: color-mix(in srgb, var(--easeL-cartoon-outline) 55%, var(--easeL-bg-section) 45%);
   --easeL-landing-hero-display-fg: #6b3fa3;
@@ -123,7 +115,8 @@
 /* Nav bar (modular: apply class on <nav>) */
 .easeL-nav {
   pointer-events: auto;
-  top: var(--easeL-nav-top-offset);
+  top: 0;
+  background: var(--easeL-nav-bg, #f385ff);
 }
 
 .easeL-nav-shell {

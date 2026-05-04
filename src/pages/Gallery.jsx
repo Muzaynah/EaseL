@@ -10,18 +10,19 @@ import {
   listLessonResultsCloud,
 } from "../firebase/cloudData";
 
-function formatRelative(ms) {
-  if (!ms) return "Saved";
+function formatRelative(ms, ur = false) {
+  if (!ms) return ur ? "محفوظ" : "Saved";
   const diff = Date.now() - ms;
   const day = 86_400_000;
-  if (diff < day) return "Today";
-  if (diff < 2 * day) return "Yesterday";
-  if (diff < 7 * day) return `${Math.floor(diff / day)} days ago`;
+  if (diff < day) return ur ? "آج" : "Today";
+  if (diff < 2 * day) return ur ? "کل" : "Yesterday";
+  if (diff < 7 * day) return ur ? `${Math.floor(diff / day)} دن پہلے` : `${Math.floor(diff / day)} days ago`;
   return new Date(ms).toLocaleDateString();
 }
 
 export default function Gallery() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const ur = (profile?.caregiverReported?.language ?? "en") === "ur";
   const navigate = useNavigate();
   const [freeDrawItems, setFreeDrawItems] = useState([]);
   const [lessonItems, setLessonItems] = useState([]);
@@ -95,56 +96,47 @@ export default function Gallery() {
   }
 
   return (
-    <div className="easeL-page-bg min-h-screen px-6 pb-16 pt-24">
+    <div className="easeL-page-bg min-h-screen px-6 pb-16 easeL-page-top">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <h1 className="easeL-heading-1">My Gallery</h1>
+          <h1 className={`easeL-heading-1 ${ur ? "ur" : ""}`}>{ur ? "میری گیلری" : "My Gallery"}</h1>
           <div className="flex flex-wrap items-center gap-3">
             <Link
               to="/canvas"
               className="easeL-btn-solid inline-flex min-h-12 items-center justify-center gap-2 px-6 transition-all hover:opacity-95"
             >
               <Plus className="w-5 h-5" />
-              New drawing
+              <span className={ur ? "ur" : ""}>{ur ? "نئی ڈرائنگ" : "New drawing"}</span>
             </Link>
           </div>
         </div>
 
         {loadState === "loading" ? (
           <div className="easeL-card p-12 text-center">
-            <div
-              className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-4 border-[var(--easeL-border-subtle)] border-t-[var(--easeL-primary)]"
-              aria-hidden
-            />
-            <h2 className="easeL-heading-2 mb-2">Loading gallery...</h2>
-            <p className="easeL-text-muted">Fetching your saved free-draw projects and lesson results.</p>
+            <div className="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-4 border-[var(--easeL-border-subtle)] border-t-[var(--easeL-primary)]" aria-hidden />
+            <h2 className={`easeL-heading-2 mb-2 ${ur ? "ur" : ""}`}>{ur ? "گیلری لوڈ ہو رہی ہے..." : "Loading gallery..."}</h2>
+            <p className={`easeL-text-muted ${ur ? "ur" : ""}`}>{ur ? "آپ کی ڈرائنگز اور سبق لوڈ ہو رہے ہیں۔" : "Fetching your saved free-draw projects and lesson results."}</p>
           </div>
         ) : loadState === "denied" ? (
           <div className="easeL-card p-12 text-center" style={{ background: "var(--easeL-bg-card-coral)" }}>
-            <h2 className="easeL-heading-2 mb-2">Permission denied</h2>
-            <p className="easeL-text-muted mb-6">
-              We could not read gallery items from cloud storage for this account.
+            <h2 className={`easeL-heading-2 mb-2 ${ur ? "ur" : ""}`}>{ur ? "اجازت نہیں" : "Permission denied"}</h2>
+            <p className={`easeL-text-muted mb-6 ${ur ? "ur" : ""}`}>
+              {ur ? "اس account کی گیلری نہیں کھل سکی۔" : "We could not read gallery items from cloud storage for this account."}
             </p>
-            <button
-              type="button"
-              onClick={() => loadGallery(user?.uid, { current: false })}
-              className="easeL-btn-solid inline-flex min-h-12 items-center justify-center px-8 transition-all"
-            >
-              Retry
+            <button type="button" onClick={() => loadGallery(user?.uid, { current: false })}
+              className="easeL-btn-solid inline-flex min-h-12 items-center justify-center px-8 transition-all">
+              <span className={ur ? "ur" : ""}>{ur ? "دوبارہ کوشش" : "Retry"}</span>
             </button>
           </div>
         ) : loadState === "network" ? (
           <div className="easeL-card p-12 text-center" style={{ background: "var(--easeL-bg-card-coral)" }}>
-            <h2 className="easeL-heading-2 mb-2">Network error</h2>
-            <p className="easeL-text-muted mb-6">
-              We could not fetch your cloud gallery right now.
+            <h2 className={`easeL-heading-2 mb-2 ${ur ? "ur" : ""}`}>{ur ? "نیٹ ورک خرابی" : "Network error"}</h2>
+            <p className={`easeL-text-muted mb-6 ${ur ? "ur" : ""}`}>
+              {ur ? "ابھی گیلری نہیں کھل سکی، دوبارہ کوشش کریں۔" : "We could not fetch your cloud gallery right now."}
             </p>
-            <button
-              type="button"
-              onClick={() => loadGallery(user?.uid, { current: false })}
-              className="easeL-btn-solid inline-flex min-h-12 items-center justify-center px-8 transition-all"
-            >
-              Retry
+            <button type="button" onClick={() => loadGallery(user?.uid, { current: false })}
+              className="easeL-btn-solid inline-flex min-h-12 items-center justify-center px-8 transition-all">
+              <span className={ur ? "ur" : ""}>{ur ? "دوبارہ کوشش" : "Retry"}</span>
             </button>
           </div>
         ) : loadState === "empty" || totalItems === 0 ? (
@@ -152,22 +144,19 @@ export default function Gallery() {
             <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full" style={{ background: "var(--easeL-bg-page)" }}>
               <Palette className="h-12 w-12" style={{ color: "var(--easeL-text-muted)" }} />
             </div>
-            <h2 className="easeL-heading-2 mb-2">No drawings yet</h2>
-            <p className="easeL-text-muted mb-6">Saved free-draw projects and lesson results appear here.</p>
-            <Link
-              to="/canvas"
-              className="easeL-btn-solid inline-flex min-h-12 items-center justify-center px-8 transition-all"
-            >
-              Start creating
+            <h2 className={`easeL-heading-2 mb-2 ${ur ? "ur" : ""}`}>{ur ? "ابھی کوئی ڈرائنگ نہیں" : "No drawings yet"}</h2>
+            <p className={`easeL-text-muted mb-6 ${ur ? "ur" : ""}`}>{ur ? "آپ کی محفوظ ڈرائنگز یہاں نظر آئیں گی۔" : "Saved free-draw projects and lesson results appear here."}</p>
+            <Link to="/canvas" className="easeL-btn-solid inline-flex min-h-12 items-center justify-center px-8 transition-all">
+              <span className={ur ? "ur" : ""}>{ur ? "بنانا شروع کریں" : "Start creating"}</span>
             </Link>
           </div>
         ) : (
           <>
             <section className="mb-10">
-              <h2 className="easeL-heading-2 mb-4">Free Draw Projects</h2>
+              <h2 className={`easeL-heading-2 mb-4 ${ur ? "ur" : ""}`}>{ur ? "آزاد ڈرائنگز" : "Free Draw Projects"}</h2>
               {freeDrawItems.length === 0 ? (
-                <div className="rounded-2xl border-2 p-5" style={{ background: "var(--easeL-bg-section)", borderColor: "var(--easeL-border-strong)", color: "var(--easeL-text-muted)" }}>
-                  No free-draw projects saved yet.
+                <div className={`rounded-2xl border-2 p-5 ${ur ? "ur" : ""}`} style={{ background: "var(--easeL-bg-section)", borderColor: "var(--easeL-border-strong)", color: "var(--easeL-text-muted)" }}>
+                  {ur ? "ابھی کوئی آزاد ڈرائنگ محفوظ نہیں۔" : "No free-draw projects saved yet."}
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -223,9 +212,9 @@ export default function Gallery() {
                       </div>
                       <div className="p-4">
                         <h3 className="font-semibold truncate" style={{ color: "var(--easeL-text)" }}>{drawing.title}</h3>
-                        <p className="text-sm mt-0.5" style={{ color: "var(--easeL-text-muted)" }}>{formatRelative(drawing.createdAt)}</p>
-                        <span className="inline-block mt-2 px-2 py-0.5 rounded-lg text-xs font-medium" style={{ background: "var(--easeL-bg-card-butter)", color: "var(--easeL-primary)" }}>
-                          Free draw
+                        <p className="text-sm mt-0.5" style={{ color: "var(--easeL-text-muted)" }}>{formatRelative(drawing.createdAt, ur)}</p>
+                        <span className={`inline-block mt-2 px-2 py-0.5 rounded-lg text-xs font-medium ${ur ? "ur" : ""}`} style={{ background: "var(--easeL-bg-card-butter)", color: "var(--easeL-primary)" }}>
+                          {ur ? "آزاد ڈرائنگ" : "Free draw"}
                         </span>
                       </div>
                     </div>
@@ -235,10 +224,10 @@ export default function Gallery() {
             </section>
 
             <section>
-              <h2 className="easeL-heading-2 mb-4">Lesson Results</h2>
+              <h2 className={`easeL-heading-2 mb-4 ${ur ? "ur" : ""}`}>{ur ? "سبق کے نتائج" : "Lesson Results"}</h2>
               {lessonItems.length === 0 ? (
-                <div className="rounded-2xl border-2 p-5" style={{ background: "var(--easeL-bg-section)", borderColor: "var(--easeL-border-strong)", color: "var(--easeL-text-muted)" }}>
-                  No lesson results saved yet.
+                <div className={`rounded-2xl border-2 p-5 ${ur ? "ur" : ""}`} style={{ background: "var(--easeL-bg-section)", borderColor: "var(--easeL-border-strong)", color: "var(--easeL-text-muted)" }}>
+                  {ur ? "ابھی کوئی سبق محفوظ نہیں۔" : "No lesson results saved yet."}
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -268,13 +257,13 @@ export default function Gallery() {
                       </button>
                       <div className="p-4">
                         <h3 className="font-semibold truncate" style={{ color: "var(--easeL-text)" }}>{drawing.title}</h3>
-                        <p className="text-sm mt-0.5" style={{ color: "var(--easeL-text-muted)" }}>{formatRelative(drawing.createdAt)}</p>
-                        <p className="mt-1 text-sm font-bold" style={{ color: "var(--easeL-text)" }}>
-                          Score: {typeof drawing.score === "number" ? `${drawing.score}%` : "n/a"}
+                        <p className="text-sm mt-0.5" style={{ color: "var(--easeL-text-muted)" }}>{formatRelative(drawing.createdAt, ur)}</p>
+                        <p className={`mt-1 text-sm font-bold ${ur ? "ur" : ""}`} style={{ color: "var(--easeL-text)" }}>
+                          {ur ? "اسکور" : "Score"}: {typeof drawing.score === "number" ? `${drawing.score}%` : "n/a"}
                         </p>
                         <div className="mt-2 flex items-center justify-between">
-                          <span className="inline-block px-2 py-0.5 rounded-lg text-xs font-medium" style={{ background: "var(--easeL-bg-card-coral)", color: "var(--easeL-accent-coral)" }}>
-                            Lesson
+                          <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-medium ${ur ? "ur" : ""}`} style={{ background: "var(--easeL-bg-card-coral)", color: "var(--easeL-accent-coral)" }}>
+                            {ur ? "سبق" : "Lesson"}
                           </span>
                           <button
                             onClick={() => deleteLesson(drawing)}
@@ -309,8 +298,8 @@ export default function Gallery() {
             </button>
             <div className="border-b p-4" style={{ borderColor: "var(--easeL-border-subtle)" }}>
               <h3 className="text-lg font-bold" style={{ color: "var(--easeL-text)" }}>{selectedLesson.title}</h3>
-              <p className="text-sm" style={{ color: "var(--easeL-text-muted)" }}>
-                Score: {typeof selectedLesson.score === "number" ? `${selectedLesson.score}%` : "n/a"}
+              <p className={`text-sm ${ur ? "ur" : ""}`} style={{ color: "var(--easeL-text-muted)" }}>
+                {ur ? "اسکور" : "Score"}: {typeof selectedLesson.score === "number" ? `${selectedLesson.score}%` : "n/a"}
               </p>
             </div>
             <div className="flex min-h-[50vh] items-center justify-center p-4" style={{ background: "var(--easeL-bg-page)" }}>
@@ -321,7 +310,7 @@ export default function Gallery() {
                   className="max-h-[75vh] w-auto object-contain"
                 />
               ) : (
-                <div style={{ color: "var(--easeL-text-muted)" }}>No preview</div>
+                <div className={ur ? "ur" : ""} style={{ color: "var(--easeL-text-muted)" }}>{ur ? "کوئی preview نہیں" : "No preview"}</div>
               )}
             </div>
           </div>
