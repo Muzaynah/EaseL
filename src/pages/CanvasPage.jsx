@@ -1,6 +1,7 @@
 // CanvasPage.jsx
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
+import { Menu, Brush, Pencil, Eraser, PaintBucket } from "lucide-react";
 import { useFaceMesh } from "../hooks/useFaceMesh";
 import { useDrawing } from "../hooks/useDrawing";
 import { useGestureControl } from "../hooks/useGestureControl";
@@ -16,8 +17,7 @@ import DrawingCanvas from "../components/DrawingCanvas";
 import LayerPanel from "../components/LayerPanel";
 import CameraPreview from "../components/CameraPreview";
 import Cursor from "../components/Cursor";
-import StatusHUD from "../components/StatusHUD";
-import TroubleshootAssist from "../components/TroubleshootAssist";
+import SettingsModal from "../components/SettingsModal";
 import { useAuth } from "../context/AuthContext";
 import {
     getCanvasProjectCloud,
@@ -31,6 +31,12 @@ function getInitialBrushSize(settings) {
     const size = settings?.brushSize ?? "M";
     return BRUSH_SIZE_MAP[size] ?? 20;
 }
+
+const TOOL_META = {
+    brush: { label: "Brush", Icon: Brush },
+    eraser: { label: "Eraser", Icon: Eraser },
+    fill: { label: "Fill", Icon: PaintBucket },
+};
 
 export default function CanvasPage() {
     const { profile, settings } = useAppState();
@@ -48,18 +54,11 @@ export default function CanvasPage() {
     const [isPenDown, setIsPenDown] = useState(false);
     const [strokeState, setStrokeState] = useState("idle");
     const [stateReason, setStateReason] = useState("");
-    const [debugStats, setDebugStats] = useState({
-        activationAttempts: 0,
-        activationAccepted: 0,
-        falsePositives: 0,
-        pauseCount: 0,
-        strokeStartLatencyMs: null,
-    });
 
     const activationConfig = resolveActivationConfig(profile, "canvas");
     const { cursorPosRef, updateCursorFromLandmarks, freezeRecalibrationRef } = useCalibratedCursor(profile);
     const cursorPos = cursorPosRef;
-    // Refs mirror state so gesture/callbacks always see latest (avoids stale tool/color)
+
     const toolRef = useRef(tool);
     const colorRef = useRef(brushColor);
     const isPenDownRef = useRef(isPenDown);
@@ -78,9 +77,14 @@ export default function CanvasPage() {
     const [currentProjectId, setCurrentProjectId] = useState(null);
     const pendingProjectLayersRef = useRef(null);
 
+    const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+
+    // Sidebar collapse states
+    const [leftCompact, setLeftCompact] = useState(false);
+    const [rightCollapsed, setRightCollapsed] = useState(false);
+
     const buttonRefs = useRef({});
 
-    // Track previous settings to detect changes
     const prevSettings = useRef({ color: brushColor, tool, size: brushSize });
 
     const {
@@ -110,19 +114,9 @@ export default function CanvasPage() {
         onButtonHover: setHoveredButton,
         onButtonClick: handleButtonClick,
         onMouthEvent: ({ accepted }) => {
-            setDebugStats((s) => ({
-                ...s,
-                activationAttempts: s.activationAttempts + 1,
-                activationAccepted: s.activationAccepted + (accepted ? 1 : 0),
-            }));
-            if (!accepted) {
-                setStateReason("mouth-not-confirmed");
-            }
+            if (!accepted) setStateReason("mouth-not-confirmed");
         },
-        onActivateOutside: () => {
-            setDebugStats((s) => ({ ...s, falsePositives: s.falsePositives + 1 }));
-            setStateReason("activate-outside");
-        },
+        onActivateOutside: () => setStateReason("activate-outside"),
         buttonRefs,
         cursorPosRef: cursorPosRef,
         activationMethod: activationConfig.activationMethod,
@@ -136,21 +130,14 @@ export default function CanvasPage() {
     const handleFaceMeshResults = useCallback(
         (results) => {
             if (!results.multiFaceLandmarks?.[0]) return;
-
             const landmarks = results.multiFaceLandmarks[0];
-
-            // Calibrated cursor position (tilt, neutral, movement range - same as Tutorial/Screener)
             updateCursorFromLandmarks(landmarks);
-            // Pen toggle and button hover/click using same cursor position
             processLandmarks(landmarks, isPenDownRef.current);
 
             const position = cursorPos.current;
-
-            // Drawing logic - use ref so we have latest pen state from gesture
             if (canvasRef.current) {
                 const canvas = canvasRef.current;
                 const rect = canvas.getBoundingClientRect();
-
                 const inside =
                     position.x >= rect.left &&
                     position.x <= rect.right &&
@@ -158,18 +145,12 @@ export default function CanvasPage() {
                     position.y <= rect.bottom;
 
                 if (isPenDownRef.current && inside) {
-                    const { x, y } = getCanvasCoordinates(
-                        canvas,
-                        position.x,
-                        position.y
-                    );
-
+                    const { x, y } = getCanvasCoordinates(canvas, position.x, position.y);
                     draw(x, y);
                 }
                 if (isPenDownRef.current && !inside && wasInsideRef.current) {
                     setStrokeState("paused");
                     setStateReason("out-of-canvas");
-                    setDebugStats((s) => ({ ...s, pauseCount: s.pauseCount + 1 }));
                     appendTelemetryLog({ area: "canvas", event: "stroke-paused", reason: "out-of-canvas" });
                 } else if (isPenDownRef.current && inside && !wasInsideRef.current) {
                     setStrokeState("drawing");
@@ -182,14 +163,9 @@ export default function CanvasPage() {
         [updateCursorFromLandmarks, processLandmarks, draw]
     );
 
-    const { startFaceMesh } = useFaceMesh({
-        videoRef,
-        onResults: handleFaceMeshResults,
-    });
+    const { startFaceMesh } = useFaceMesh({ videoRef, onResults: handleFaceMeshResults });
 
     function handlePenToggle(newPenState) {
-        // Fill tool: one-shot fill at cursor on mouth open (no stroke, no pen down)
-        // Use refs so we always see latest tool/color even when callback is from a previous render
         if (newPenState && toolRef.current === "fill") {
             if (!canvasRef.current) return;
             const rect = canvasRef.current.getBoundingClientRect();
@@ -200,9 +176,7 @@ export default function CanvasPage() {
                 cursorPos.current.y <= rect.bottom;
             if (inside) {
                 const { x, y } = getCanvasCoordinates(
-                    canvasRef.current,
-                    cursorPos.current.x,
-                    cursorPos.current.y
+                    canvasRef.current, cursorPos.current.x, cursorPos.current.y
                 );
                 fillAt(x, y, colorRef.current);
             }
@@ -221,13 +195,6 @@ export default function CanvasPage() {
                 event: "stroke-start",
                 activationMethod: activationConfig.activationMethod,
             });
-            setDebugStats((s) => ({
-                ...s,
-                strokeStartLatencyMs:
-                    activationTsRef.current != null
-                        ? Math.round(performance.now() - activationTsRef.current)
-                        : s.strokeStartLatencyMs,
-            }));
         } else if (!newPenState && isPenDownRef.current) {
             endStroke();
             isPenDownRef.current = false;
@@ -236,15 +203,11 @@ export default function CanvasPage() {
             setStrokeState("complete");
             setStateReason("manual-stop");
             appendTelemetryLog({ area: "canvas", event: "stroke-stop", reason: "toggle-up" });
-            setTimeout(() => {
-                setStrokeState("idle");
-                setStateReason("");
-            }, 700);
+            setTimeout(() => { setStrokeState("idle"); setStateReason(""); }, 700);
         }
     }
 
     function handleButtonClick(btnId) {
-        // End current stroke when interacting with controls
         if (isPenDownRef.current) {
             endStroke();
             isPenDownRef.current = false;
@@ -253,17 +216,12 @@ export default function CanvasPage() {
             setStrokeState("idle");
             setStateReason("control-click");
         }
-
-        // When activation clicks a generic DOM control (not a registered hotspot),
-        // useGestureControl can call us with null. Ignore safely.
         if (!btnId) return;
-        
         if (btnId === "clear") clear();
         else if (btnId === "undo") undo();
         else if (btnId === "redo") redo();
         else if (btnId === "save") saveProject();
-        else if (btnId.startsWith("col-"))
-            setBrushColor(btnId.replace("col-", ""));
+        else if (btnId.startsWith("col-")) setBrushColor(btnId.replace("col-", ""));
         else if (btnId === "brush") setTool("brush");
         else if (btnId === "eraser") setTool("eraser");
         else if (btnId === "fill") setTool("fill");
@@ -285,9 +243,7 @@ export default function CanvasPage() {
         if (activeLayerId === layerId) setActiveLayerId(next[0]?.id ?? "layer_1");
     }
 
-    function handleLayerSelect(layerId) {
-        setActiveLayerId(layerId);
-    }
+    function handleLayerSelect(layerId) { setActiveLayerId(layerId); }
 
     function handleLayerToggleVisibility(layerId) {
         setLayers((prev) =>
@@ -307,26 +263,20 @@ export default function CanvasPage() {
         });
     }
 
-    // Detect setting changes and force stroke restart
     useEffect(() => {
-        const settingsChanged = 
+        const settingsChanged =
             prevSettings.current.color !== brushColor ||
             prevSettings.current.tool !== tool ||
             prevSettings.current.size !== brushSize;
-        
         if (settingsChanged && isPenDown) {
-            // End current stroke immediately
             endStroke();
             startStroke();
             setStrokeState("drawing");
             setStateReason("settings-updated");
         }
-        
         prevSettings.current = { color: brushColor, tool, size: brushSize };
     }, [brushColor, tool, brushSize]);
 
-    // Start face mesh after a short delay so the video element is mounted and ref is set
-    // (avoids cursor not moving on first visit due to ref being null when script onload runs).
     useEffect(() => {
         let cancelled = false;
         let faceMeshCleanup = null;
@@ -361,12 +311,12 @@ export default function CanvasPage() {
                         name: l.name || `Layer ${idx + 1}`,
                         visible: l.visible !== false,
                         canvasData: null,
-                    })),
+                    }))
                 );
                 setActiveLayerId(project.activeLayerId || projectLayers[0]?.id || "layer_1");
                 setCurrentProjectId(project.id);
                 pendingProjectLayersRef.current = Object.fromEntries(
-                    projectLayers.map((l, idx) => [l.id || `layer_${idx + 1}`, l.canvasData || ""]),
+                    projectLayers.map((l, idx) => [l.id || `layer_${idx + 1}`, l.canvasData || ""])
                 );
             } catch (e) {
                 if (isFirestorePermissionError(e)) {
@@ -376,9 +326,7 @@ export default function CanvasPage() {
                 console.warn("load project failed", e);
             }
         })();
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [searchParams, user?.uid]);
 
     useEffect(() => {
@@ -388,19 +336,8 @@ export default function CanvasPage() {
         loadProjectLayers(dataMap);
     }, [layers, loadProjectLayers]);
 
-    // One-time: tell user how to view or disable lag diagnostics in console
-    const hasLoggedDebugHint = useRef(false);
-    useEffect(() => {
-        if (hasLoggedDebugHint.current) return;
-        hasLoggedDebugHint.current = true;
-        console.info(
-            "[EaseL] Lag diagnostics: timing logs every 60 frames (faceMesh), every 100 draws, and per saveState. Set window.EaseL_DEBUG = false and refresh to disable."
-        );
-    }, []);
-
     useEffect(() => {
         let animationFrameId;
-
         const renderCursor = () => {
             if (cursorRef.current) {
                 cursorRef.current.style.left = cursorPos.current.x + "px";
@@ -408,19 +345,15 @@ export default function CanvasPage() {
             }
             animationFrameId = requestAnimationFrame(renderCursor);
         };
-
         renderCursor();
         return () => cancelAnimationFrame(animationFrameId);
     }, []);
 
-    const [saveStatus, setSaveStatus] = useState("idle"); // 'idle' | 'saving' | 'saved'
+    const [saveStatus, setSaveStatus] = useState("idle");
 
     async function saveProject() {
         if (!canvasRef.current || saveStatus !== "idle" || !user?.uid) return;
-
         setSaveStatus("saving");
-
-        // Brief delay so user sees the loading state
         await new Promise((r) => setTimeout(r, 400));
         try {
             const title = `Project ${new Date().toLocaleString()}`;
@@ -454,19 +387,149 @@ export default function CanvasPage() {
     }
 
     const canvasBg = settings?.canvasBg ?? "white";
+    const isDrawing = isPenDown || strokeState === "drawing";
+    const ToolIcon = TOOL_META[tool]?.Icon ?? Brush;
+    const toolLabel = TOOL_META[tool]?.label ?? "Brush";
 
     return (
-        <div className="easeL-page-bg relative h-screen w-screen overflow-hidden pt-20 font-sans select-none">
-            <div className="absolute inset-0 flex pt-20 items-center justify-center">
-                <DrawingCanvas canvasRef={canvasRef} canvasBg={canvasBg} />
-            </div>
+        <div className="easeL-page-bg min-h-screen relative overflow-hidden pt-20 font-sans select-none">
+            <div className="mx-auto flex h-[calc(100vh-5rem)] max-w-[1800px] gap-3 px-3 pb-3">
 
-            <StatusHUD isPenDown={isPenDown} strokeState={strokeState} stateReason={stateReason} />
-            <div className="absolute top-38 left-1/2 -translate-x-1/2 z-[200] rounded-xl bg-white/90 border border-slate-200 px-3 py-1 text-[11px] text-slate-600 font-semibold">
-                activations {debugStats.activationAccepted}/{debugStats.activationAttempts} · false+ {debugStats.falsePositives} · pauses {debugStats.pauseCount}
-            </div>
-            <div className="absolute top-24 right-4 z-[220]">
-                <TroubleshootAssist />
+                {/* ── Left sidebar: Drawing tools ── */}
+                <aside
+                    className={`hidden xl:flex flex-col gap-3 transition-all duration-300 overflow-hidden ${
+                        leftCompact ? "w-14" : "w-72"
+                    }`}
+                >
+                    {leftCompact && (
+                        <button
+                            onClick={() => setLeftCompact(false)}
+                            className="easeL-card rounded-3xl border-2 border-slate-200 bg-[var(--easeL-bg-section)] p-3 shadow-xl flex items-center justify-center hover:bg-slate-50 transition-colors"
+                            aria-label="Expand tools panel"
+                            title="Show drawing tools"
+                        >
+                            <Brush className="w-5 h-5 text-[var(--easeL-primary)]" />
+                        </button>
+                    )}
+                    {/* Always mounted so the floating mini toolbar renders when compact */}
+                    <div className={leftCompact ? "sr-only" : "flex flex-col flex-1 min-h-0"}>
+                        <CanvasControls
+                            ref={buttonRefs}
+                            tool={tool}
+                            setTool={setTool}
+                            color={brushColor}
+                            setColor={setBrushColor}
+                            brushSize={brushSize}
+                            setBrushSize={setBrushSize}
+                            onUndo={undo}
+                            onRedo={redo}
+                            onClear={clear}
+                            canUndo={canUndo}
+                            canRedo={canRedo}
+                            hoveredButton={hoveredButton}
+                            onSaveProject={saveProject}
+                            saveStatus={saveStatus}
+                            onOpenSettings={() => setSettingsModalOpen(true)}
+                            compactMode={leftCompact}
+                            onToggleCompact={() => setLeftCompact(true)}
+                        />
+                    </div>
+                </aside>
+
+                {/* ── Main canvas area ── */}
+                <main className="flex-1 flex flex-col min-h-0 min-w-0">
+                    <div className="easeL-card flex flex-col rounded-3xl border-2 border-slate-200 bg-[var(--easeL-bg-section)] shadow-xl flex-1 min-h-0 overflow-hidden">
+
+                        {/* Canvas header */}
+                        <div className="shrink-0 flex items-center justify-between gap-3 px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-white to-slate-50/60">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-[var(--easeL-primary)] opacity-60" />
+                                <p className="text-sm font-bold text-slate-700 tracking-wide">Drawing workspace</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {/* Pen state indicator */}
+                                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold tracking-wide transition-all duration-300 ${
+                                    isDrawing
+                                        ? "bg-emerald-100 text-emerald-700 shadow-sm shadow-emerald-200"
+                                        : "bg-slate-100 text-slate-500"
+                                }`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isDrawing ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+                                    {isDrawing ? "DRAWING" : strokeState === "paused" ? "PAUSED" : "READY"}
+                                </div>
+                                {/* Current tool badge */}
+                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--easeL-primary)] text-white text-xs font-semibold shadow-sm">
+                                    <ToolIcon className="w-3 h-3" />
+                                    {toolLabel}
+                                </div>
+                                {/* Color dot */}
+                                <div
+                                    className="w-6 h-6 rounded-full border-2 border-white shadow-md ring-1 ring-slate-200"
+                                    style={{ backgroundColor: brushColor }}
+                                    title={`Current color: ${brushColor}`}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Canvas body — fills all remaining space */}
+                        <div className={`flex-1 min-h-0 overflow-hidden transition-all duration-300 ${
+                            isDrawing ? "ring-2 ring-inset ring-emerald-400/30" : ""
+                        }`}>
+                            <DrawingCanvas canvasRef={canvasRef} canvasBg={canvasBg} />
+                        </div>
+                    </div>
+                </main>
+
+                {/* ── Right sidebar: Layers + Camera ── */}
+                <aside
+                    className={`hidden xl:flex flex-col gap-3 transition-all duration-300 overflow-hidden ${
+                        rightCollapsed ? "w-14" : "w-72"
+                    }`}
+                >
+                    {rightCollapsed ? (
+                        <button
+                            onClick={() => setRightCollapsed(false)}
+                            className="easeL-card rounded-3xl border-2 border-slate-200 bg-[var(--easeL-bg-section)] p-3 shadow-xl flex items-center justify-center hover:bg-slate-50 transition-colors"
+                            aria-label="Expand layers panel"
+                            title="Show layers"
+                        >
+                            <Menu className="w-5 h-5 text-[var(--easeL-primary)] rotate-90" />
+                        </button>
+                    ) : (
+                        <>
+                            {/* Layers panel */}
+                            <div className="easeL-card rounded-3xl border-2 border-slate-200 bg-[var(--easeL-bg-section)] shadow-xl flex-1 min-h-0 flex flex-col overflow-hidden">
+                                <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-white to-slate-50/60">
+                                    <p className="text-sm font-bold text-slate-700">Layers</p>
+                                    <button
+                                        onClick={() => setRightCollapsed(true)}
+                                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+                                        aria-label="Collapse layers panel"
+                                    >
+                                        <Menu className="w-4 h-4 rotate-90" />
+                                    </button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto min-h-0 p-3">
+                                    <LayerPanel
+                                        layers={layers}
+                                        activeLayerId={activeLayerId}
+                                        getLayerCanvasData={getLayerCanvasData}
+                                        onLayerSelect={handleLayerSelect}
+                                        onLayerAdd={handleLayerAdd}
+                                        onLayerDelete={handleLayerDelete}
+                                        onLayerToggleVisibility={handleLayerToggleVisibility}
+                                        onLayerReorder={handleLayerReorder}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Camera feed */}
+                            <div className="easeL-card rounded-3xl border-2 border-slate-200 bg-[var(--easeL-bg-section)] p-3 shadow-xl shrink-0">
+                                <p className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-widest">Camera feed</p>
+                                <CameraPreview videoRef={videoRef} />
+                            </div>
+                        </>
+                    )}
+                </aside>
             </div>
 
             <Cursor
@@ -478,36 +541,7 @@ export default function CanvasPage() {
                 tool={tool}
             />
 
-            <CanvasControls
-                ref={buttonRefs}
-                tool={tool}
-                setTool={setTool}
-                color={brushColor}
-                setColor={setBrushColor}
-                brushSize={brushSize}
-                setBrushSize={setBrushSize}
-                onUndo={undo}
-                onRedo={redo}
-                onClear={clear}
-                canUndo={canUndo}
-                canRedo={canRedo}
-                hoveredButton={hoveredButton}
-                onSaveProject={saveProject}
-                saveStatus={saveStatus}
-            />
-
-            <LayerPanel
-                layers={layers}
-                activeLayerId={activeLayerId}
-                getLayerCanvasData={getLayerCanvasData}
-                onLayerSelect={handleLayerSelect}
-                onLayerAdd={handleLayerAdd}
-                onLayerDelete={handleLayerDelete}
-                onLayerToggleVisibility={handleLayerToggleVisibility}
-                onLayerReorder={handleLayerReorder}
-            />
-
-            <CameraPreview videoRef={videoRef} />
+            <SettingsModal isOpen={settingsModalOpen} onClose={() => setSettingsModalOpen(false)} />
         </div>
     );
 }

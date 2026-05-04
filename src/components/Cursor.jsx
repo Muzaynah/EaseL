@@ -17,7 +17,7 @@ function hexToRgbCsv(hex, fallbackCsv) {
 }
 
 /** Universal cursor tone (dark green across head + trail). */
-const UNIVERSAL_CURSOR_RGB = hexToRgbCsv(UI_TOKENS.app.primary, "61, 31, 122");
+const UNIVERSAL_CURSOR_RGB = hexToRgbCsv(UI_TOKENS.app?.primary, "61, 31, 122");
 const UNIVERSAL_CURSOR_FILL_ACTIVE = `rgba(${UNIVERSAL_CURSOR_RGB}, 0.62)`;
 const UNIVERSAL_CURSOR_FILL_IDLE = "rgba(255, 255, 255, 0.9)";
 const UNIVERSAL_CURSOR_BORDER_ACTIVE = "rgba(255, 255, 255, 0.96)";

@@ -1,6 +1,4 @@
 // components/DrawingCanvas.jsx
-// Main drawing canvas container. canvasBg from settings: "white" | "grid" | "transparent"
-
 import React from "react";
 
 export default function DrawingCanvas({ canvasRef, canvasBg = "white" }) {
@@ -9,11 +7,7 @@ export default function DrawingCanvas({ canvasRef, canvasBg = "white" }) {
 
   return (
     <div
-      className={`relative rounded-3xl shadow-2xl border border-white/50 w-[88%] max-w-6xl h-[80%] max-h-[900px] overflow-hidden z-10 ring-1 ring-slate-200/30 ${
-        isTransparent
-          ? "bg-slate-100/80 backdrop-blur-md"
-          : "bg-white/95 backdrop-blur-md"
-      }`}
+      className={`w-full h-full ${isTransparent ? "bg-slate-50/80" : "bg-white"}`}
       style={
         isGrid
           ? {
@@ -22,7 +16,7 @@ export default function DrawingCanvas({ canvasRef, canvasBg = "white" }) {
                 linear-gradient(to bottom, rgba(0,0,0,0.06) 1px, transparent 1px)
               `,
               backgroundSize: "20px 20px",
-              backgroundColor: "var(--easeL-bg-section)",
+              backgroundColor: isTransparent ? "rgba(245,245,245,0.8)" : "#ffffff",
             }
           : undefined
       }

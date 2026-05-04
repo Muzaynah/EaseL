@@ -5,6 +5,9 @@ import { easeLPalette } from "./paletteTokens";
  * Update this file to change app-wide color behavior from one place.
  */
 export const UI_TOKENS = {
+  app: {
+    primary: "#613DFF",
+  },
   brush: {
     default: "#000000",
     palette: [
@@ -32,27 +35,25 @@ export const UI_TOKENS = {
       "#ffffff",
       "#000000",
     ],
-  },
-  lesson: {
-    canvasBg: "#F5F5F5",
-    corridorRoad: "#6C8EA2",
-    corridorGuide: "#E45B43",
-    tracePrimary: "#2F6F95",
-    tracePrimaryDark: "#235875",
-    success: "#8F74FF",
-    successSoft: "#22B892",
-    warning: "#E45B43",
-    danger: "#E45B43",
-    neutralMarker: "#6C8EA2",
-    ghost: "#8F74FF",
-    gaugeTrack: "#F5B4AA",
-    gaugeMarker: "#2F6F95",
-    gaugePass: "#8F74FF",
-  },
-  app: {
-    primary: easeLPalette.primary,
-    text: easeLPalette.text,
-    textMuted: easeLPalette.textMuted,
-    surface: easeLPalette.bgSection,
+    vibrantPalette: [
+      "#FF4D6D",
+      "#FF8A3D",
+      "#FFD43B",
+      "#8BD14B",
+      "#00C1A1",
+      "#00A1FF",
+      "#6270FF",
+      "#A05BFF",
+      "#F65BC4",
+      "#FF6BA8",
+      "#FED766",
+      "#64D2FF",
+      "#845EC2",
+      "#FF7F50",
+      "#4FBC9F",
+      "#D63E21",
+      "#4A90E2",
+      "#DB5AFF",
+    ],
   },
 };
