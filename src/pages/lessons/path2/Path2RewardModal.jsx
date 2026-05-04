@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, BookOpen, Home, RotateCcw, Save, Sparkles, Star } from "lucide-react";
+import { ArrowRight, BookOpen, Home, RotateCcw, Save, Sparkles, Star, ZoomIn, ZoomOut } from "lucide-react";
 import ScoreSprinkles from "../../../components/ScoreSprinkles";
 import { UI_TOKENS } from "../../../theme/uiTokens";
 
@@ -134,7 +134,7 @@ export default function Path2RewardModal({
   const passStarReached =
     passFrac <= 0.001 || displayArcFrac + 1e-5 >= passFrac;
   const passStarFill = passStarReached ? PASS_STAR_FILL_ACTIVE : PASS_STAR_FILL_PENDING;
-  const hasGaugeStatusLabel = showClearedUnderScore || showNotQuiteUnderScore;
+  const hasGaugeStatusLabel = (showClearedUnderScore && !finishedPayload.alreadyUnlocked) || showNotQuiteUnderScore;
 
   return (
     <div className="easeL-result-overlay fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-4">
@@ -234,7 +234,7 @@ export default function Path2RewardModal({
                     >
                       {displayPercent}%
                     </text>
-                    {showClearedUnderScore ? (
+                    {showClearedUnderScore && !finishedPayload.alreadyUnlocked ? (
                       <g transform="translate(0 13)">
                         <g className="easeL-cleared-under-score-pop">
                           <text
@@ -313,6 +313,27 @@ export default function Path2RewardModal({
             );
           })() : null}
         </div>
+
+        {/* Adaptation chip — only when system made a visible adjustment */}
+        {finishedPayload.adaptation && finishedPayload.adaptation.status !== "hold" ? (() => {
+          const adapt = finishedPayload.adaptation;
+          const isWiden = adapt.status === "widen";
+          return (
+            <div className="px-5 pb-2 shrink-0">
+              <div className="flex items-center gap-2 rounded-xl px-3 py-2"
+                style={{ background: isWiden ? "color-mix(in srgb, var(--easeL-accent-sky, #7ec8e3) 12%, white)" : "color-mix(in srgb, var(--easeL-accent-mint) 12%, white)", border: `1.5px solid ${isWiden ? "color-mix(in srgb, var(--easeL-accent-sky, #7ec8e3) 35%, transparent)" : "color-mix(in srgb, var(--easeL-accent-mint) 35%, transparent)"}` }}>
+                {isWiden
+                  ? <ZoomIn className="w-4 h-4 shrink-0" style={{ color: "var(--easeL-primary)" }} />
+                  : <ZoomOut className="w-4 h-4 shrink-0" style={{ color: "var(--easeL-accent-mint)" }} />}
+                <span className="text-xs font-semibold" style={{ color: "var(--easeL-text-muted)" }}>
+                  {isWiden
+                    ? (language === "ur" ? "راستہ چوڑا کیا گیا — اگلی بار آسان ہوگا" : "Path widened to help — next try is easier")
+                    : (language === "ur" ? "بہترین! راستہ تھوڑا تنگ ہوگا — اگلا چیلنج" : "Great control! Path narrowing — next challenge")}
+                </span>
+              </div>
+            </div>
+          );
+        })() : null}
 
         {finishedPayload.unlock ? (
           <div className="px-5 pb-2 shrink-0">

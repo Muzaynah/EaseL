@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Pencil, Trash2, Palette, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Palette, X, Download } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import {
   deleteCanvasProjectCloud,
   deleteLessonResultCloud,
+  getCanvasProjectCloud,
   isFirestorePermissionError,
   listCanvasProjectsCloud,
   listLessonResultsCloud,
@@ -93,6 +94,109 @@ export default function Gallery() {
     }
     setLessonItems((prev) => prev.filter((d) => d.id !== item.id));
     if (selectedLesson?.id === item.id) setSelectedLesson(null);
+  }
+
+  function downloadBlobUrl(blobUrl, filename) {
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(blobUrl);
+  }
+
+  function downloadImageUrl(url, filename) {
+    if (!url) return;
+    if (url.startsWith("data:")) {
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      return;
+    }
+    fetch(url)
+      .then((res) => res.blob())
+      .then((blob) => {
+        const blobUrl = URL.createObjectURL(blob);
+        downloadBlobUrl(blobUrl, filename);
+      })
+      .catch((error) => console.warn("download image failed", error));
+  }
+
+  async function exportFreeDrawProject(item) {
+    if (!user?.uid) return;
+    let project = item;
+    if (!project.layers) {
+      try {
+        project = await getCanvasProjectCloud(user.uid, item.id);
+      } catch (e) {
+        console.warn("failed to load project for export", e);
+      }
+    }
+    if (!project) return;
+
+    const width = project.width || 1200;
+    const height = project.height || 700;
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = width;
+    tempCanvas.height = height;
+    const ctx = tempCanvas.getContext("2d");
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+
+    const visibleLayers = Array.isArray(project.layers)
+      ? project.layers.filter((layer) => layer.visible !== false)
+      : [];
+
+    if (visibleLayers.length === 0) {
+      const name = project.title || "Free_Draw";
+      downloadImageUrl(project.thumbnail, `${name.replace(/\s+/g, "_")}.png`);
+      return;
+    }
+
+    let loadedCount = 0;
+    return new Promise((resolve) => {
+      visibleLayers.forEach((layer) => {
+        const src = layer.canvasData || layer.thumbnail || "";
+        if (!src) {
+          loadedCount += 1;
+          if (loadedCount === visibleLayers.length) {
+            const filename = `${(project.title || "Free_Draw").replace(/\s+/g, "_")}.png`;
+            downloadImageUrl(tempCanvas.toDataURL("image/png"), filename);
+            resolve();
+          }
+          return;
+        }
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, width, height);
+          loadedCount += 1;
+          if (loadedCount === visibleLayers.length) {
+            const filename = `${(project.title || "Free_Draw").replace(/\s+/g, "_")}.png`;
+            downloadImageUrl(tempCanvas.toDataURL("image/png"), filename);
+            resolve();
+          }
+        };
+        img.onerror = () => {
+          loadedCount += 1;
+          if (loadedCount === visibleLayers.length) {
+            const filename = `${(project.title || "Free_Draw").replace(/\s+/g, "_")}.png`;
+            downloadImageUrl(tempCanvas.toDataURL("image/png"), filename);
+            resolve();
+          }
+        };
+        img.src = src;
+      });
+    });
+  }
+
+  function exportLessonResult(item) {
+    const filename = `${(item.title || "Lesson_Result").replace(/\s+/g, "_")}.png`;
+    if (item.thumbnail) {
+      downloadImageUrl(item.thumbnail, filename);
+      return;
+    }
+    console.warn("No thumbnail available to export for lesson result", item.id);
   }
 
   return (
@@ -200,6 +304,17 @@ export default function Gallery() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              exportFreeDrawProject(drawing);
+                            }}
+                            className="easeL-interactive flex h-10 w-10 items-center justify-center rounded-xl bg-white/90 hover:bg-white"
+                            style={{ color: "var(--easeL-text)" }}
+                            title="Download"
+                          >
+                            <Download className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
                               deleteFree(drawing);
                             }}
                             className="easeL-interactive flex h-10 w-10 items-center justify-center rounded-xl bg-white/90 hover:bg-white"
@@ -265,14 +380,24 @@ export default function Gallery() {
                           <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-medium ${ur ? "ur" : ""}`} style={{ background: "var(--easeL-bg-card-coral)", color: "var(--easeL-accent-coral)" }}>
                             {ur ? "سبق" : "Lesson"}
                           </span>
-                          <button
-                            onClick={() => deleteLesson(drawing)}
-                            className="easeL-interactive flex h-9 w-9 items-center justify-center rounded-xl hover:brightness-95"
-                            style={{ background: "var(--easeL-bg-card-coral)", color: "var(--easeL-accent-coral)" }}
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => exportLessonResult(drawing)}
+                              className="easeL-interactive flex h-9 w-9 items-center justify-center rounded-xl hover:brightness-95"
+                              style={{ background: "var(--easeL-bg-section)", color: "var(--easeL-text)" }}
+                              title="Download"
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => deleteLesson(drawing)}
+                              className="easeL-interactive flex h-9 w-9 items-center justify-center rounded-xl hover:brightness-95"
+                              style={{ background: "var(--easeL-bg-card-coral)", color: "var(--easeL-accent-coral)" }}
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>

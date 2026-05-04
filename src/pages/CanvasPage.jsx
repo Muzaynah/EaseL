@@ -1,7 +1,7 @@
 // CanvasPage.jsx
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams, useNavigate, useBeforeUnload } from "react-router-dom";
-import { Menu, Brush, Pencil, Eraser, PaintBucket } from "lucide-react";
+import { Menu, Brush, Pencil, Eraser, PaintBucket, ChevronLeft, ChevronRight } from "lucide-react";
 import { useFaceMesh } from "../hooks/useFaceMesh";
 import { useDrawing } from "../hooks/useDrawing";
 import { useGestureControl } from "../hooks/useGestureControl";
@@ -83,6 +83,20 @@ export default function CanvasPage() {
     // Sidebar collapse states
     const [leftCompact, setLeftCompact] = useState(false);
     const [rightCollapsed, setRightCollapsed] = useState(false);
+    const [isTransitioning, setIsTransitioning] = useState(false);
+
+    // Stabilize drawing during panel transitions (only for right panel which causes issues)
+    useEffect(() => {
+        if (rightCollapsed !== undefined) { // Only stabilize when right panel changes
+            setIsTransitioning(true);
+            // Reset cursor position to center during transition to prevent stuck positions
+            cursorPos.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+            const timer = setTimeout(() => {
+                setIsTransitioning(false);
+            }, 150); // Shorter duration
+            return () => clearTimeout(timer);
+        }
+    }, [rightCollapsed]);
 
     const buttonRefs = useRef({});
 
@@ -360,6 +374,7 @@ export default function CanvasPage() {
 
     const [saveStatus, setSaveStatus] = useState("idle");
     const [hasUnsavedStrokes, setHasUnsavedStrokes] = useState(false);
+    const saveInProgressRef = useRef(false);
 
     // Mark dirty whenever a stroke ends; clear on save
     useEffect(() => {
@@ -377,7 +392,8 @@ export default function CanvasPage() {
     );
 
     async function saveProject() {
-        if (!canvasRef.current || saveStatus !== "idle" || !user?.uid) return;
+        if (!canvasRef.current || saveStatus !== "idle" || !user?.uid || saveInProgressRef.current) return;
+        saveInProgressRef.current = true;
         setSaveStatus("saving");
         await new Promise((r) => setTimeout(r, 400));
         try {
@@ -409,6 +425,83 @@ export default function CanvasPage() {
                 setStateReason("cloud-save-failed");
             }
             setSaveStatus("idle");
+        } finally {
+            saveInProgressRef.current = false;
+        }
+    }
+
+    function exportAsPNG() {
+        if (!canvasRef.current) return;
+        try {
+            // Create a temporary canvas to composite all visible layers
+            const tempCanvas = document.createElement('canvas');
+            const ctx = tempCanvas.getContext('2d');
+            tempCanvas.width = canvasRef.current.width;
+            tempCanvas.height = canvasRef.current.height;
+
+            // Fill with background
+            const canvasBg = settings?.canvasBg ?? "white";
+            if (canvasBg === "white") {
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            } else if (canvasBg === "grid") {
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                // Add grid pattern
+                ctx.strokeStyle = "rgba(0,0,0,0.06)";
+                ctx.lineWidth = 1;
+                for (let x = 0; x < tempCanvas.width; x += 20) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, tempCanvas.height);
+                    ctx.stroke();
+                }
+                for (let y = 0; y < tempCanvas.height; y += 20) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(tempCanvas.width, y);
+                    ctx.stroke();
+                }
+            }
+
+            // Composite visible layers
+            const visibleLayers = layers.filter(l => l.visible);
+            let loadedCount = 0;
+
+            const finishExport = () => {
+                const link = document.createElement('a');
+                const dateStr = new Date().toISOString().split('T')[0];
+                link.download = `EaseL_Drawing_${dateStr}.png`;
+                link.href = tempCanvas.toDataURL('image/png');
+                link.click();
+            };
+
+            if (visibleLayers.length === 0) {
+                finishExport();
+                return;
+            }
+
+            visibleLayers.forEach((layer) => {
+                const layerCanvas = getLayerCanvasData(layer.id);
+                if (layerCanvas) {
+                    const img = new Image();
+                    img.onload = () => {
+                        ctx.drawImage(img, 0, 0);
+                        loadedCount++;
+                        if (loadedCount === visibleLayers.length) {
+                            finishExport();
+                        }
+                    };
+                    img.src = layerCanvas;
+                } else {
+                    loadedCount++;
+                    if (loadedCount === visibleLayers.length) {
+                        finishExport();
+                    }
+                }
+            });
+        } catch (e) {
+            console.warn("exportAsPNG failed", e);
         }
     }
 
@@ -419,11 +512,11 @@ export default function CanvasPage() {
 
     return (
         <div className="easeL-page-bg min-h-screen relative overflow-hidden easeL-page-top font-sans select-none">
-            <div className="mx-auto flex max-w-[1800px] gap-3 px-3 pb-3" style={{ height: "calc(100vh - var(--nav-offset, 96px))" }}>
+            <div className="w-full flex gap-2 px-2 pb-2" style={{ height: "calc(100vh - 136px)" }}>
 
                 {/* ── Left sidebar: Drawing tools ── */}
                 <aside
-                    className={`hidden xl:flex flex-col gap-3 transition-all duration-300 overflow-hidden ${
+                    className={`hidden xl:flex flex-col gap-2 transition-all duration-300 overflow-hidden ${
                         leftCompact ? "w-14" : "w-72"
                     }`}
                 >
@@ -434,7 +527,7 @@ export default function CanvasPage() {
                             aria-label="Expand tools panel"
                             title="Show drawing tools"
                         >
-                            <Brush className="w-5 h-5 text-[var(--easeL-primary)]" />
+                            <ChevronRight className="w-5 h-5 text-[var(--easeL-primary)]" />
                         </button>
                     )}
                     {/* Always mounted so the floating mini toolbar renders when compact */}
@@ -454,6 +547,7 @@ export default function CanvasPage() {
                             canRedo={canRedo}
                             hoveredButton={hoveredButton}
                             onSaveProject={saveProject}
+                            onExportPNG={exportAsPNG}
                             saveStatus={saveStatus}
                             onOpenSettings={() => setSettingsModalOpen(true)}
                             compactMode={leftCompact}
@@ -463,11 +557,11 @@ export default function CanvasPage() {
                 </aside>
 
                 {/* ── Main canvas area ── */}
-                <main className="flex-1 flex flex-col min-h-0 min-w-0">
+                <main className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
                     <div className="easeL-card flex flex-col rounded-3xl border-2 border-slate-200 bg-[var(--easeL-bg-section)] shadow-xl flex-1 min-h-0 overflow-hidden">
 
                         {/* Canvas header */}
-                        <div className="shrink-0 flex items-center justify-between gap-3 px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-white to-slate-50/60">
+                        <div className="shrink-0 flex items-center justify-between gap-2 px-3 py-2 border-b border-slate-100 bg-gradient-to-r from-white to-slate-50/60">
                             <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 rounded-full bg-[var(--easeL-primary)] opacity-60" />
                                 <p className="text-sm font-bold text-slate-700 tracking-wide">Drawing workspace</p>
@@ -497,9 +591,7 @@ export default function CanvasPage() {
                         </div>
 
                         {/* Canvas body — fills all remaining space */}
-                        <div className={`flex-1 min-h-0 overflow-hidden transition-all duration-300 ${
-                            isDrawing ? "ring-2 ring-inset ring-emerald-400/30" : ""
-                        }`}>
+                        <div className="flex-1 min-h-0 overflow-hidden">
                             <DrawingCanvas canvasRef={canvasRef} canvasBg={canvasBg} />
                         </div>
                     </div>
@@ -507,58 +599,58 @@ export default function CanvasPage() {
 
                 {/* ── Right sidebar: Layers + Camera ── */}
                 <aside
-                    className={`hidden xl:flex flex-col gap-3 transition-all duration-300 overflow-hidden ${
+                    className={`hidden xl:flex flex-col gap-2 transition-all duration-300 overflow-hidden ${
                         rightCollapsed ? "w-14" : "w-72"
                     }`}
                 >
-                    {rightCollapsed ? (
-                        <button
-                            onClick={() => setRightCollapsed(false)}
-                            className="easeL-card rounded-3xl border-2 border-slate-200 bg-[var(--easeL-bg-section)] p-3 shadow-xl flex items-center justify-center hover:bg-slate-50 transition-colors"
-                            aria-label="Expand layers panel"
-                            title="Show layers"
-                        >
-                            <Menu className="w-5 h-5 text-[var(--easeL-primary)] rotate-90" />
-                        </button>
-                    ) : (
-                        <>
-                            {/* Layers panel */}
-                            <div className="easeL-card rounded-3xl border-2 border-slate-200 bg-[var(--easeL-bg-section)] shadow-xl flex-1 min-h-0 flex flex-col overflow-hidden">
-                                <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-white to-slate-50/60">
-                                    <p className="text-sm font-bold text-slate-700">Layers</p>
-                                    <button
-                                        onClick={() => setRightCollapsed(true)}
-                                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
-                                        aria-label="Collapse layers panel"
-                                    >
-                                        <Menu className="w-4 h-4 rotate-90" />
-                                    </button>
-                                </div>
-                                <div className="flex-1 overflow-y-auto min-h-0 p-3">
-                                    <LayerPanel
-                                        layers={layers}
-                                        activeLayerId={activeLayerId}
-                                        getLayerCanvasData={getLayerCanvasData}
-                                        onLayerSelect={handleLayerSelect}
-                                        onLayerAdd={handleLayerAdd}
-                                        onLayerDelete={handleLayerDelete}
-                                        onLayerToggleVisibility={handleLayerToggleVisibility}
-                                        onLayerReorder={handleLayerReorder}
-                                    />
-                                </div>
-                            </div>
+                    <button
+                        onClick={() => setRightCollapsed((prev) => !prev)}
+                        className="easeL-card rounded-3xl border-2 border-slate-200 bg-[var(--easeL-bg-section)] p-3 shadow-xl flex items-center justify-center hover:bg-slate-50 transition-colors"
+                        aria-label={rightCollapsed ? "Expand layers panel" : "Collapse layers panel"}
+                        title={rightCollapsed ? "Show layers" : "Hide layers panel"}
+                    >
+                        {rightCollapsed ? (
+                            <ChevronLeft className="w-5 h-5 text-[var(--easeL-primary)]" />
+                        ) : (
+                            <ChevronRight className="w-5 h-5 text-[var(--easeL-primary)]" />
+                        )}
+                    </button>
 
-                            {/* Camera feed */}
-                            <div className="easeL-card rounded-3xl border-2 border-slate-200 bg-[var(--easeL-bg-section)] p-3 shadow-xl shrink-0">
-                                <p className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-widest">Camera feed</p>
-                                <CameraPreview videoRef={videoRef} />
+                    <div className={`flex flex-col gap-2 transition-all duration-300 overflow-hidden ${
+                        rightCollapsed
+                            ? "opacity-0 pointer-events-none max-h-0"
+                            : "opacity-100 max-h-full"
+                    }`}>
+                        {/* Layers panel */}
+                        <div className="easeL-card rounded-3xl border-2 border-slate-200 bg-[var(--easeL-bg-section)] shadow-xl flex-1 min-h-0 flex flex-col overflow-hidden">
+                            <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-white to-slate-50/60">
+                                <p className="text-sm font-bold text-slate-700">Layers</p>
                             </div>
-                        </>
-                    )}
+                            <div className="flex-1 overflow-y-auto min-h-0 p-3">
+                                <LayerPanel
+                                    layers={layers}
+                                    activeLayerId={activeLayerId}
+                                    getLayerCanvasData={getLayerCanvasData}
+                                    onLayerSelect={handleLayerSelect}
+                                    onLayerAdd={handleLayerAdd}
+                                    onLayerDelete={handleLayerDelete}
+                                    onLayerToggleVisibility={handleLayerToggleVisibility}
+                                    onLayerReorder={handleLayerReorder}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Camera feed */}
+                        <div className="easeL-card rounded-3xl border-2 border-slate-200 bg-[var(--easeL-bg-section)] p-3 shadow-xl shrink-0">
+                            <p className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-widest">Camera feed</p>
+                            <CameraPreview videoRef={videoRef} />
+                        </div>
+                    </div>
                 </aside>
             </div>
 
             <Cursor
+                key={`cursor-${isTransitioning ? 'transition' : 'normal'}`}
                 ref={cursorRef}
                 left={cursorPos.current.x}
                 top={cursorPos.current.y}

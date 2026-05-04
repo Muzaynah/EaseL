@@ -127,6 +127,14 @@ export function computeFatigueIndex(sessionTrials) {
  * Returns a descriptor for whether the user should advance, hold, or be
  * granted more assistance based on the most recent trials for a stage.
  *
+ * Adaptation logic (§7.3):
+ *   - "advance": k-of-n recent passes AND jitter low → ready to progress
+ *   - "hold":    improving or insufficient data (also: grace period — user was
+ *                doing well recently so one bad score doesn't immediately widen)
+ *   - "widen":   sustained struggle — multiple consecutive failures with no
+ *                recent good run. Requires at least 2 recent failures AND no
+ *                pass in the last 3 attempts (prevents single-bad-score widening).
+ *
  * Contract:
  *   {
  *     status: "advance" | "hold" | "widen",
@@ -181,8 +189,23 @@ export function evaluateMastery(stageDef, recentTrials) {
     };
   }
 
-  const widenTrigger = stageDef?.stage <= 2 ? 2 : 1;
-  if (passCount <= widenTrigger) {
+  // Grace period: if there was a pass in the most recent 3 attempts, hold
+  // rather than widening — the user was doing well and had one bad attempt.
+  // Only widen when there has been sustained struggle with no recent recovery.
+  const recentGrace = mostRecent(recentTrials, 3);
+  const recentGracePass = recentGrace.filter((t) => didTrialPass(t, stageDef)).length;
+  const consecutiveFailsAtEnd = (() => {
+    let n = 0;
+    for (let i = recentTrials.length - 1; i >= 0; i--) {
+      if (!didTrialPass(recentTrials[i], stageDef)) n++;
+      else break;
+    }
+    return n;
+  })();
+
+  // Widen only after at least 2 consecutive failures AND no pass in last 3
+  const widenTrigger = stageDef?.stage <= 2 ? 1 : 2;
+  if (consecutiveFailsAtEnd >= widenTrigger && recentGracePass === 0 && passCount === 0) {
     return {
       status: "widen",
       passCount,
@@ -199,7 +222,7 @@ export function evaluateMastery(stageDef, recentTrials) {
     passRate,
     meanJitter,
     window: window.length,
-    reason: "improving",
+    reason: recentGracePass > 0 ? "recovering" : "improving",
   };
 }
 
@@ -236,16 +259,19 @@ export function getAdaptedStage(stageDef, recentTrials) {
   let autocompleteDelta = 0;
 
   if (mastery.status === "widen") {
-    widthMul = 1.3;
-    holdRadiusMul = 1.2;
-    holdMsDelta = -300;     // easier to hold
-    autocompleteDelta = +15; // more system-assisted completion
+    // Sustained struggle — open up assistance meaningfully
+    widthMul = 1.25;
+    holdRadiusMul = 1.18;
+    holdMsDelta = -400;      // easier to hold
+    autocompleteDelta = +20; // more system-assisted completion
   } else if (mastery.status === "advance") {
-    widthMul = 0.92;
-    holdRadiusMul = 0.95;
-    holdMsDelta = +200;
-    autocompleteDelta = -10;
+    // Consistent mastery — tighten challenge modestly
+    widthMul = 0.90;
+    holdRadiusMul = 0.93;
+    holdMsDelta = +250;
+    autocompleteDelta = -12;
   }
+  // "hold" (including "recovering" reason) — no change, keep current parameters
 
   return {
     ...stageDef,

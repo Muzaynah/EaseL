@@ -6,7 +6,7 @@ import { UI_TOKENS } from "../theme/uiTokens";
 
 const TABS = ["Accessibility", "Drawing"];
 
-const DEFAULT_COLORS = [UI_TOKENS.brush.default, ...UI_TOKENS.brush.palette];
+const DEFAULT_COLORS = [...new Set([UI_TOKENS.brush.default, ...UI_TOKENS.brush.palette])]
 
 const ACCESSIBILITY_DEFAULTS = {
   headSensitivity: 75,

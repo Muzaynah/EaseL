@@ -243,16 +243,41 @@ export default function SettingsModal({ isOpen, onClose }) {
           {activeTab === "Drawing" && (
             <div className="space-y-5">
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">Default brush size</label>
-                <select
-                  value={form.brushSize}
-                  onChange={(e) => update("brushSize", e.target.value)}
-                  className="easeL-input min-h-10 px-3 text-sm"
-                >
-                  {["S", "M", "L", "XL"].map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
+                <label className="mb-3 block text-sm font-semibold text-slate-700">Default brush size</label>
+                <div className="grid grid-cols-4 gap-3">
+                  {["S", "M", "L", "XL"].map((s) => {
+                    const sizeMap = { S: 8, M: 20, L: 32, XL: 48 };
+                    const size = sizeMap[s];
+                    const isActive = form.brushSize === s;
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => update("brushSize", s)}
+                        className={`p-3 rounded-lg font-semibold text-sm transition-all duration-150 border flex flex-col items-center justify-center min-h-[60px] gap-2 ${
+                          isActive
+                            ? "bg-[var(--easeL-primary)] text-white border-[#235875] shadow-md"
+                            : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-[var(--easeL-primary)]"
+                        }`}
+                        title={`${s} (${size}px)`}
+                      >
+                        <div className="relative w-9 h-9 flex items-center justify-center">
+                          <div
+                            className="rounded-full border-2 transition-all"
+                            style={{
+                              width: `${Math.max(size * 0.6, 6)}px`,
+                              height: `${Math.max(size * 0.6, 6)}px`,
+                              borderColor: isActive ? 'rgba(255,255,255,0.4)' : 'currentColor',
+                              opacity: 0.6,
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs">{s}</span>
+                        <span className="text-[10px] opacity-75">{size}px</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div>

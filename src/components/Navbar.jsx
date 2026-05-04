@@ -1,5 +1,5 @@
 import { NavLink, Link, useLocation } from "react-router-dom";
-import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Menu, X, User, Settings, LogOut, House, BookOpen, Image as ImageIcon, BarChart3, Brush } from "lucide-react";
 import { useCursorPositionBridgeRef } from "../context/CursorPositionBridgeContext";
 
@@ -7,9 +7,6 @@ import { useCursorPositionBridgeRef } from "../context/CursorPositionBridgeConte
 const NAV_BAR_H = 92;   // px — the actual nav pill row height
 const WAVE_H    = 28;   // px — the wave SVG below the bar
 const NAV_TOTAL = NAV_BAR_H + WAVE_H + 16; // what pages offset by
-
-const HIDE_AFTER_MS  = 4000; // ms of inactivity before sliding up
-const REVEAL_ZONE_PX = 72;   // head cursor y ≤ this → show navbar
 
 // Writes --nav-offset onto <html> so pages can animate their padding-top via CSS
 function setNavOffset(px) {
@@ -26,11 +23,8 @@ export default function Navbar({
 }) {
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [hidden, setHidden] = useState(false);
-  const profileRef   = useRef(null);
-  const hideTimerRef = useRef(null);
-  const location     = useLocation();
-  const isLanding    = location.pathname === "/";
+  const profileRef = useRef(null);
+  const location = useLocation();
 
   // Head-cursor bridge (may not be available on all routes)
   let cursorPosRef = null;
@@ -39,54 +33,10 @@ export default function Navbar({
     cursorPosRef = useCursorPositionBridgeRef();
   } catch { /* not in context */ }
 
-  // ------------------------------------------------------------------
-  // Auto-hide / reveal logic
-  // ------------------------------------------------------------------
-  const reveal = useCallback(() => {
-    setHidden(false);
-    clearTimeout(hideTimerRef.current);
-    if (!isLanding) {
-      hideTimerRef.current = setTimeout(() => setHidden(true), HIDE_AFTER_MS);
-    }
-  }, [isLanding]);
-
-  // Mouse movement
+  // Keep the navbar visible and fixed in place on every page.
   useEffect(() => {
-    window.addEventListener("mousemove", reveal);
-    reveal(); // start the timer on mount
-    return () => {
-      window.removeEventListener("mousemove", reveal);
-      clearTimeout(hideTimerRef.current);
-    };
-  }, [reveal]);
-
-  // Head cursor proximity — bridge stores position in .raw.y
-  useEffect(() => {
-    if (!cursorPosRef) return;
-    let raf;
-    const check = () => {
-      const y = cursorPosRef.current?.raw?.y ?? cursorPosRef.current?.y ?? Infinity;
-      if (y <= REVEAL_ZONE_PX) reveal();
-      raf = requestAnimationFrame(check);
-    };
-    raf = requestAnimationFrame(check);
-    return () => cancelAnimationFrame(raf);
-  }, [cursorPosRef, reveal]);
-
-  // Never hide on landing page
-  useEffect(() => {
-    if (isLanding) {
-      setHidden(false);
-      clearTimeout(hideTimerRef.current);
-    }
-  }, [isLanding]);
-
-  // Sync CSS variable so pages shift with the navbar
-  useEffect(() => {
-    setNavOffset(hidden ? 44 : NAV_TOTAL);
-  }, [hidden]);
-  // Initialise on mount
-  useEffect(() => { setNavOffset(NAV_TOTAL); }, []);
+    setNavOffset(NAV_TOTAL);
+  }, []);
 
   // ------------------------------------------------------------------
   // Profile / mode
@@ -126,7 +76,7 @@ export default function Navbar({
   // ------------------------------------------------------------------
   // Render
   // ------------------------------------------------------------------
-  const translateY = hidden ? `-${NAV_TOTAL + 8}px` : "0px";
+  const translateY = "0px";
 
   return (
     <div

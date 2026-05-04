@@ -1,9 +1,9 @@
 // components/DrawingCanvas.jsx
 import React from "react";
 
-// 3:2 landscape — more horizontal space; composition preserved across sidebar states
-const CANVAS_W = 1800;
-const CANVAS_H = 1200;
+// Wide 16:9 landscape — more horizontal, less vertical space for drawing
+const CANVAS_W = 1920;
+const CANVAS_H = 1080;
 
 export default function DrawingCanvas({ canvasRef, canvasBg = "white" }) {
   const isGrid = canvasBg === "grid";
@@ -21,17 +21,17 @@ export default function DrawingCanvas({ canvasRef, canvasBg = "white" }) {
     : { backgroundColor: isTransparent ? "rgba(245,245,245,0.8)" : "#ffffff" };
 
   return (
-    // Outer: fills available space, centers the canvas
-    <div className="w-full h-full flex items-center justify-center overflow-hidden bg-slate-100">
-      {/* Inner: locked 4:3 ratio — grows to fit but never distorts */}
+    // Outer: fills available space, centers the canvas with padding for margin
+    <div className="w-full h-full flex items-center justify-center overflow-hidden bg-slate-100 p-4">
+      {/* Inner: locked 16:9 ratio — scales proportionally, never stretches */}
       <div
-        className="relative shadow-lg"
+        className="relative shadow-2xl"
         style={{
           aspectRatio: `${CANVAS_W} / ${CANVAS_H}`,
-          maxWidth: "100%",
-          maxHeight: "100%",
-          width: "auto",
-          height: "100%",
+          width: "100%",
+          maxWidth: "min(100%, calc(80vh * (16 / 9)))",
+          height: "auto",
+          maxHeight: "80vh",
           ...bgStyle,
         }}
       >
@@ -39,7 +39,7 @@ export default function DrawingCanvas({ canvasRef, canvasBg = "white" }) {
           ref={canvasRef}
           width={CANVAS_W}
           height={CANVAS_H}
-          className="absolute inset-0 w-full h-full"
+          className="absolute inset-0 w-full h-full drop-shadow-lg"
         />
       </div>
     </div>

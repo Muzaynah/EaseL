@@ -105,6 +105,8 @@ export function usePath2ScoringProgression({
     );
     const requiredAd = getDynamicRequiredAdherence(stage, stageTrialsBefore);
     const unlockQualified = finalAdherence >= STAGE_UNLOCK_ADHERENCE;
+    // True when the next stage is already accessible (was unlocked on a prior attempt)
+    const alreadyUnlocked = (profile?.currentStage ?? 0) > stage.stage;
     const totalOut = results.reduce((s, r) => s + (r.outsideCount ?? 0), 0);
     const totalIn = results.reduce((s, r) => s + (r.insideCount ?? 0), 0);
     const offPathPercent =
@@ -168,7 +170,9 @@ export function usePath2ScoringProgression({
       requiredAdherence: requiredAd,
       passed: finalAdherence >= requiredAd,
       unlockQualified,
+      alreadyUnlocked,
       unlock: newUnlock,
+      adaptation: adaptedStage._adaptation ?? null,
       masteryProgress: {
         before: masteryBefore,
         after: Math.min(

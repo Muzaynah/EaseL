@@ -3,8 +3,8 @@ import React, { forwardRef, useCallback, useEffect, useRef } from "react";
 import { UI_TOKENS } from "../theme/uiTokens";
 
 /** Below max 32-bit signed int so fixed layers stay sane on all screens */
-export const EASEL_CURSOR_DOT_Z = 2_147_483_630;
-export const EASEL_CURSOR_TRAIL_Z = 2_147_483_620;
+export const EASEL_CURSOR_DOT_Z = 2_147_483_640;
+export const EASEL_CURSOR_TRAIL_Z = 2_147_483_630;
 
 function hexToRgbCsv(hex, fallbackCsv) {
   if (typeof hex !== "string") return fallbackCsv;
@@ -37,7 +37,7 @@ const CONE_REF_SCALE = 0.86;
 
 /** From reference diameter: head dot and trail stroke width match `wMax`. */
 function coneStrokeExtents(refDiameterPx) {
-  const wMax = Math.min(16, Math.max(6, refDiameterPx * 0.52));
+  const wMax = Math.max(6, refDiameterPx * 0.52);
   return { wMax };
 }
 

@@ -10,10 +10,23 @@ import {
   Settings,
   Menu,
   X,
+  ChevronRight,
+  Download,
 } from 'lucide-react';
 import { UI_TOKENS } from "../theme/uiTokens";
 
 const colors = UI_TOKENS.brush.vibrantPalette;
+const BRUSH_SIZES = [
+  { key: 'S', size: 8, label: 'S' },
+  { key: 'M', size: 20, label: 'M' },
+  { key: 'L', size: 32, label: 'L' },
+  { key: 'XL', size: 48, label: 'XL' },
+];
+
+function getSizeKey(size) {
+  const map = { 8: 'S', 20: 'M', 32: 'L', 48: 'XL' };
+  return map[size] ?? 'M';
+}
 
 const CanvasControls = React.forwardRef(({
   tool,
@@ -29,6 +42,7 @@ const CanvasControls = React.forwardRef(({
   canRedo,
   hoveredButton,
   onSaveProject,
+  onExportPNG,
   saveStatus,
   onOpenSettings,
   compactMode,
@@ -86,7 +100,7 @@ const CanvasControls = React.forwardRef(({
   if (compactMode) {
     return (
       <div
-        className="fixed z-[600] w-56 rounded-2xl border-2 border-slate-200 bg-white/98 p-3 shadow-2xl backdrop-blur-xl select-none"
+        className="fixed z-[600] w-56 rounded-2xl border-2 border-slate-200 bg-white/98 p-2 shadow-2xl backdrop-blur-xl select-none"
         style={{ left: position.x, top: position.y }}
       >
         <div
@@ -95,7 +109,6 @@ const CanvasControls = React.forwardRef(({
         >
           <span className="flex items-center gap-1.5">
             <Menu className="w-3 h-3" />
-            Mini toolbar
           </span>
           <button
             type="button"
@@ -174,22 +187,22 @@ const CanvasControls = React.forwardRef(({
   // Full sidebar panel
   return (
     <div className="easeL-card rounded-3xl border-2 border-slate-200 bg-[var(--easeL-bg-section)] shadow-xl flex flex-col overflow-hidden">
-      <div className="p-4 flex flex-col gap-5 overflow-y-auto flex-1">
+      <div className="p-3 flex flex-col gap-4 overflow-y-auto flex-1">
         {/* Header */}
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-bold text-slate-800 tracking-wide">Drawing tools</p>
           <button
             type="button"
             onClick={onToggleCompact}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:border-[var(--easeL-primary)] shadow-sm transition-all"
+            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50 hover:border-[var(--easeL-primary)] shadow-sm transition-all"
+            title="Collapse toolbar"
           >
-            <Menu className="w-3.5 h-3.5" />
-            Mini
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 
         {/* Tool buttons */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-1">
           {[
             { id: 'brush', Icon: Brush, active: tool === 'brush', onClick: () => setTool('brush'), label: 'Brush' },
             { id: 'eraser', Icon: Eraser, active: tool === 'eraser', onClick: () => setTool('eraser'), label: 'Eraser' },
@@ -209,25 +222,42 @@ const CanvasControls = React.forwardRef(({
           ))}
         </div>
 
-        {/* Brush size */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold uppercase tracking-widest text-slate-500">Brush Size</label>
-            <span className="text-xs font-bold text-[var(--easeL-primary)] bg-blue-50 px-2 py-0.5 rounded-lg tabular-nums">
-              {brushSize}px
-            </span>
-          </div>
-          <div className="relative flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
-            <input
-              type="range"
-              min="2"
-              max="50"
-              value={brushSize}
-              onChange={(e) => setBrushSize(parseInt(e.target.value, 10))}
-              className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer accent-[var(--easeL-primary)]"
-            />
-            <div className="w-4 h-4 rounded-full bg-slate-400 shrink-0" />
+        {/* Brush size — discrete buttons */}
+        <div className="space-y-1">
+          <label className="text-xs font-semibold uppercase tracking-widest text-slate-500">Brush Size</label>
+          <div className="grid grid-cols-4 gap-1">
+            {BRUSH_SIZES.map(({ key, size, label }) => {
+              const isActive = brushSize === size;
+              return (
+                <button
+                  key={key}
+                  ref={(el) => register(`size-${key}`, el)}
+                  onClick={() => setBrushSize(size)}
+                  className={`p-2 rounded-lg font-semibold text-sm transition-all duration-150 border flex flex-col items-center justify-center min-h-[56px] gap-1 ${
+                    isActive
+                      ? 'bg-[var(--easeL-primary)] text-white border-[#235875] shadow-md'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-[var(--easeL-primary)]'
+                  } ${
+                    hoveredButton === `size-${key}` ? 'ring-2 ring-[color:var(--easeL-focus-ring)] ring-offset-2 ring-offset-white' : ''
+                  }`}
+                  aria-label={`Brush size ${label}`}
+                  title={`${label} (${size}px)`}
+                >
+                  <div className="relative w-8 h-8 flex items-center justify-center">
+                    <div
+                      className="rounded-full border-2 transition-all"
+                      style={{
+                        width: `${Math.max(size * 0.6, 6)}px`,
+                        height: `${Math.max(size * 0.6, 6)}px`,
+                        borderColor: isActive ? 'rgba(255,255,255,0.4)' : 'currentColor',
+                        opacity: 0.6,
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs">{label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -243,7 +273,7 @@ const CanvasControls = React.forwardRef(({
               <span className="text-[10px] font-mono text-slate-400">{color}</span>
             </div>
           </div>
-          <div className="grid grid-cols-6 gap-2">
+          <div className="grid grid-cols-6 gap-1">
             {colors.map((c) => (
               <button
                 key={c}
@@ -262,7 +292,7 @@ const CanvasControls = React.forwardRef(({
         </div>
 
         {/* Undo / Redo / Clear */}
-        <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-100">
+        <div className="grid grid-cols-3 gap-1 pt-2 border-t border-slate-100">
           <button
             ref={(el) => register('undo', el)}
             onClick={onUndo}
@@ -294,37 +324,53 @@ const CanvasControls = React.forwardRef(({
           </button>
         </div>
 
-        {/* Save */}
-        <button
-          ref={(el) => register('save', el)}
-          onClick={onSaveProject}
-          disabled={saveStatus !== 'idle'}
-          className={[
-            'w-full min-h-[44px] rounded-xl font-semibold text-sm transition-all duration-150',
-            'flex items-center justify-center gap-2',
-            saveStatus === 'saving'
-              ? 'bg-[var(--easeL-primary)] cursor-wait text-white border border-[#235875]'
-              : saveStatus === 'saved'
-                ? 'bg-emerald-500 text-white border border-emerald-600 cursor-default'
-                : 'bg-white text-slate-700 border border-slate-200 hover:bg-[var(--easeL-primary)] hover:text-white hover:border-[var(--easeL-primary)] active:scale-95',
-            hoveredButton === 'save' ? 'ring-2 ring-[color:var(--easeL-focus-ring)] ring-offset-2 ring-offset-white' : '',
-          ].filter(Boolean).join(' ')}
-          aria-label="Save project"
-        >
-          {saveStatus === 'saving' ? (
-            <>
-              <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Saving…
-            </>
-          ) : saveStatus === 'saved' ? (
-            'Saved!'
-          ) : (
-            <>
-              <Save size={16} />
-              Save Project
-            </>
-          )}
-        </button>
+        {/* Save and Export */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            ref={(el) => register('save', el)}
+            onClick={onSaveProject}
+            disabled={saveStatus !== 'idle'}
+            className={[
+              'w-full min-h-[44px] rounded-xl font-semibold text-sm transition-all duration-150',
+              'flex items-center justify-center gap-2',
+              saveStatus === 'saving'
+                ? 'bg-[var(--easeL-primary)] cursor-wait text-white border border-[#235875]'
+                : saveStatus === 'saved'
+                  ? 'bg-emerald-500 text-white border border-emerald-600 cursor-default'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-[var(--easeL-primary)] hover:text-white hover:border-[var(--easeL-primary)] active:scale-95',
+              hoveredButton === 'save' ? 'ring-2 ring-[color:var(--easeL-focus-ring)] ring-offset-2 ring-offset-white' : '',
+            ].filter(Boolean).join(' ')}
+            aria-label="Save project"
+          >
+            {saveStatus === 'saving' ? (
+              <>
+                <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Saving…
+              </>
+            ) : saveStatus === 'saved' ? (
+              'Saved!'
+            ) : (
+              <>
+                <Save size={16} />
+                Save
+              </>
+            )}
+          </button>
+          <button
+            ref={(el) => register('export', el)}
+            onClick={onExportPNG}
+            className={[
+              'w-full min-h-[44px] rounded-xl font-semibold text-sm transition-all duration-150',
+              'flex items-center justify-center gap-2',
+              'bg-white text-slate-700 border border-slate-200 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 active:scale-95',
+              hoveredButton === 'export' ? 'ring-2 ring-[color:var(--easeL-focus-ring)] ring-offset-2 ring-offset-white' : '',
+            ].filter(Boolean).join(' ')}
+            aria-label="Export as PNG"
+          >
+            <Download size={16} />
+            Export PNG
+          </button>
+        </div>
       </div>
     </div>
   );
