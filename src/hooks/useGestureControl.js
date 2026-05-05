@@ -29,8 +29,8 @@ export function useGestureControl({
   framesToConfirm = 3,
   /** Cooldown between activations in ms. Default 300 */
   cooldownMs = 300,
-  /** For activationMethod "dwell": ms cursor must stay within radius to trigger. Default 800 */
-  dwellMs = 800,
+  /** For activationMethod "dwell": ms cursor must stay within radius to trigger. Default 3000 */
+  dwellMs = 3000,
   /** For activationMethod "dwell": max px movement to count as "holding". Default 15 */
   dwellRadius = 15,
 }) {

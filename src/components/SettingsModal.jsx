@@ -214,8 +214,7 @@ export default function SettingsModal({ isOpen, onClose }) {
 
               <div className="space-y-3 border-t border-slate-100 pt-4">
                 <ToggleRow label="Audio feedback" description="Reward beeps and spoken cues" value={form.audioFeedback} onChange={(v) => update("audioFeedback", v)} />
-                <ToggleRow label="High contrast" description="Thicker outlines, higher-contrast targets" value={form.highContrast} onChange={(v) => update("highContrast", v)} />
-                <ToggleRow label="Dwell activation" description="1s cursor dwell instead of mouth-open" value={useDwellActivation} onChange={setUseDwellActivation} />
+                <ToggleRow label="Dwell activation" description="3s cursor dwell instead of mouth-open" value={useDwellActivation} onChange={setUseDwellActivation} />
               </div>
 
               <div className="border-t border-slate-100 pt-4">

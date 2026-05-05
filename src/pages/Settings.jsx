@@ -266,16 +266,9 @@ export default function Settings() {
                 </div>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="font-medium" style={{ color: "var(--easeL-text)" }}>High contrast</p>
-                    <p className="text-sm" style={{ color: "var(--easeL-text-muted)" }}>Thicker outlines, higher-contrast targets.</p>
-                  </div>
-                  <Toggle value={form.highContrast} onChange={(v) => update("highContrast", v)} />
-                </div>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
                     <p className="font-medium" style={{ color: "var(--easeL-text)" }}>Dwell activation fallback</p>
                     <p className="text-sm" style={{ color: "var(--easeL-text-muted)" }}>
-                      Use 1 s cursor dwell instead of mouth-open when gesture is unreliable (§3.4).
+                      Use 3 s cursor dwell instead of mouth-open when gesture is unreliable (§3.4).
                     </p>
                   </div>
                   <Toggle value={useDwellActivation} onChange={setUseDwellActivation} />

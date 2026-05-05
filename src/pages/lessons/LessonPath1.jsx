@@ -16,7 +16,7 @@ import { getStage, pathLessonDisplayLevel } from "../../utils/lessonContent";
 import { appendTrialLog, appendSessionLog, getTrialLog } from "../../utils/persistence";
 import { getEffectiveActivationMethod } from "../../utils/profileSchema";
 import { resolveActivationConfig } from "../../utils/activationConfig";
-import { sayPhrase, stopSpeech } from "../../utils/screenerAudio";
+import { announceInstruction, stopAnnouncement, announceElement } from "../../utils/audioAnnouncer";
 import {
   filterTrials,
   getAdaptedStage,
@@ -62,9 +62,10 @@ function buildSegmentCenterline(start, end, segments = 84) {
   return pts;
 }
 
-function buildPath1LessonPath(stageDef, attemptIndex, width, height) {
+function buildPath1LessonPath(stageDef, attemptIndex, width, height, options = {}) {
   if (stageDef.stage === 0) {
-    const dir = DIR_LESSONS[attemptIndex % DIR_LESSONS.length];
+    // Accept direction from options (URL ?variant=left) or rotate by attempt
+    const dir = options.variant || DIR_LESSONS[attemptIndex % DIR_LESSONS.length];
     const cx = width / 2;
     const cy = height / 2;
     const len = 220;
@@ -278,7 +279,7 @@ export default function LessonPath1() {
   });
   const { caregiverControlsVisible, revealCaregiverControls } = useLessonCaregiverToolbarReveal();
 
-  const [phase, setPhase] = useState("demo"); // demo | trial | reinforce
+  const [phase, setPhase] = useState("demo"); // demo | trial | reinforce | complete
   const [attempt, setAttempt] = useState(0);
   const [fillHead, setFillHead] = useState(0);
   const [path, setPath] = useState(null);
@@ -287,6 +288,7 @@ export default function LessonPath1() {
   const [masteryToast, setMasteryToast] = useState(null);
   const [instructionDismiss, setInstructionDismiss] = useState(0);
   const [stageUnlock, setStageUnlock] = useState(null);
+  const [stage0Mastery, setStage0Mastery] = useState(null);
   const [, setMasteryHint] = useState("");
   const [, setAttemptFeedback] = useState("");
   const [adaptiveFeedback, setAdaptiveFeedback] = useState(null);
@@ -325,6 +327,25 @@ export default function LessonPath1() {
       freezeRecalibrationRef.current = phase === "trial";
     }
   }, [phase, freezeRecalibrationRef]);
+
+  // Populate Stage 0 mastery status for the completion modal
+  useEffect(() => {
+    if (phase !== "complete" || stage.stage !== 0) return;
+    const log = getTrialLog();
+    const directions = ["left", "right", "up", "down"];
+    const masterStatus = {};
+    for (const dir of directions) {
+      const lessonKey = `0:${dir}`;
+      const dirTrials = filterTrials(log, {
+        userId: user?.uid ?? "local",
+        mode: 1,
+        stage: 0,
+      }).filter((t) => t.lessonKey === lessonKey);
+      const result = evaluateMastery(stage, dirTrials);
+      masterStatus[dir] = result.mastered;
+    }
+    setStage0Mastery(masterStatus);
+  }, [phase, stage, user?.uid]);
 
   const resetTrial = useCallback(() => {
     activationErrorsRef.current = 0;
@@ -387,12 +408,19 @@ export default function LessonPath1() {
       jitterSamplesRef.current.length > 0
         ? jitterSamplesRef.current.reduce((a, b) => a + b, 0) / jitterSamplesRef.current.length
         : 0;
+    // For Stage 0, track each direction separately in mastery
+    const lessonKey = st.stage === 0 && pathRef.current?.lessonDirection
+      ? `${st.stage}:${pathRef.current.lessonDirection}`
+      : st.stage;
+
     appendTrialLog({
       userId: user?.uid ?? "local",
       mode: 1,
       stage: st.stage,
+      lessonKey,
       attempt: attempt + 1,
       shape: st.shape,
+      direction: st.stage === 0 ? pathRef.current?.lessonDirection : null,
       durationMs: duration,
       success,
       activationErrors: activationErrorsRef.current,
@@ -409,10 +437,17 @@ export default function LessonPath1() {
     });
     reinforcement.trigger();
     setPhase("reinforce");
+
+    // For mastery evaluation, use lessonKey to filter trials (includes direction for Stage 0)
     const staged = filterTrials(getTrialLog(), {
       userId: user?.uid ?? "local",
       mode: 1,
       stage: st.stage,
+    }).filter((t) => {
+      if (st.stage === 0) {
+        return t.lessonKey === lessonKey;
+      }
+      return true;
     });
     const mastery = evaluateMastery(st, staged);
     setMasteryHint(getMasteryFeedback(st, mastery));
@@ -461,6 +496,29 @@ export default function LessonPath1() {
         setStageUnlock(unlockedNext);
         return;
       }
+      // Check if Stage 0 is complete before looping
+      if (st.stage === 0) {
+        const log = getTrialLog();
+        const directions = ["left", "right", "up", "down"];
+        let allDirsComplete = true;
+        for (const dir of directions) {
+          const lessonKey = `0:${dir}`;
+          const dirTrials = filterTrials(log, {
+            userId: user?.uid ?? "local",
+            mode: 1,
+            stage: 0,
+          }).filter((t) => t.lessonKey === lessonKey);
+          const result = evaluateMastery(st, dirTrials);
+          if (!result.mastered) {
+            allDirsComplete = false;
+            break;
+          }
+        }
+        if (allDirsComplete) {
+          setPhase("complete");
+          return;
+        }
+      }
       setAttempt((a) => a + 1);
       resetTrial();
       setPhase("demo");
@@ -468,10 +526,12 @@ export default function LessonPath1() {
   }, [attempt, effectiveActivation, reinforcement, user?.uid, resetTrial, profile, updateProfile, searchParams, language]);
 
   useEffect(() => {
-    const p = buildPath1LessonPath(adaptedStage, attempt, CANVAS_WIDTH, CANVAS_HEIGHT);
+    if (stageUnlock || phase === "complete") return;
+    const variant = searchParams.get("variant") || null;
+    const p = buildPath1LessonPath(adaptedStage, attempt, CANVAS_WIDTH, CANVAS_HEIGHT, { variant });
     setPath(p);
     resetTrial();
-  }, [adaptedStage, attempt, resetTrial]);
+  }, [adaptedStage, attempt, resetTrial, searchParams, stageUnlock, phase]);
 
   // Dismiss the instruction card as soon as the user shows intent — either
   // the line has started filling or they've moved into the hold target.
@@ -499,6 +559,12 @@ export default function LessonPath1() {
     [],
   );
 
+  const handleToolbarHover = useCallback((target) => {
+    if (target) {
+      announceElement(target, language);
+    }
+  }, [language]);
+
   const { processLandmarks } = useGestureControl({
     cursorPosRef,
     activationMethod: effectiveActivation,
@@ -506,6 +572,7 @@ export default function LessonPath1() {
     onMouthEvent: () => {
       mouthEventsRef.current += 1;
     },
+    onButtonHover: handleToolbarHover,
     buttonRefs,
     mouthOpenThreshold: activationConfig.mouthOpenThreshold,
     framesToConfirm: activationConfig.framesToConfirm,
@@ -722,15 +789,38 @@ export default function LessonPath1() {
 
   useEffect(() => {
     if (muted) {
-      stopSpeech();
+      stopAnnouncement();
       return;
     }
     if (phase === "demo") {
-      const key = stage.shape === "hold" ? "holdStill" : "tiltTowardTarget";
-      sayPhrase("watchMe", language);
-      setTimeout(() => sayPhrase(key, language), 1400);
+      const watchText = language === "ur" ? "پہلے میری طرف دیکھیں۔" : "Watch me first.";
+      announceInstruction(watchText, language);
+
+      setTimeout(() => {
+        if (stage.shape === "hold") {
+          const holdText = language === "ur"
+            ? "دائرے پر سر کو ساکن رکھیں۔"
+            : "Hold your head as still as you can.";
+          announceInstruction(holdText, language);
+        } else if (stage.stage === 0) {
+          const dir = pathRef.current?.lessonDirection;
+          const dirTexts = {
+            left: language === "ur" ? "بائیں طرف حرکت دیں۔" : "Move left.",
+            right: language === "ur" ? "دائیں طرف حرکت دیں۔" : "Move right.",
+            up: language === "ur" ? "اوپر حرکت دیں۔" : "Move up.",
+            down: language === "ur" ? "نیچے حرکت دیں۔" : "Move down."
+          };
+          const text = dirTexts[dir] || "Move your head.";
+          announceInstruction(text, language);
+        } else {
+          const tiltText = language === "ur"
+            ? "اپنا سر شکل کی طرف جھکائیں۔"
+            : "Tilt your head toward the shape.";
+          announceInstruction(tiltText, language);
+        }
+      }, 1400);
     }
-    return () => stopSpeech();
+    return () => stopAnnouncement();
   }, [phase, stage, language, muted]);
 
   function autocompleteFrom(fromIndex, durationMs = AUTOCOMPLETE_MS) {
@@ -955,7 +1045,7 @@ export default function LessonPath1() {
   }, []);
 
   function handleExit() {
-    stopSpeech();
+    stopAnnouncement();
     appendSessionLog({
       userId: user?.uid ?? "local",
       mode: 1,
@@ -1308,15 +1398,15 @@ export default function LessonPath1() {
         <div className="easeL-result-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="easeL-result-modal w-full max-w-md p-6">
             <p className="easeL-accent-text-strong text-xs font-semibold tracking-wide">
-              {language === "ur" ? "مبارک ہو" : "Congratulations"}
+              {language === "ur" ? "شاباش" : "Well done"}
             </p>
             <h3 className="mt-1 text-2xl font-bold" style={{ color: "var(--easeL-text)" }}>
-              {language === "ur" ? "نیا لیول کھل گیا" : "New level unlocked"}
+              {language === "ur" ? "بہت اچھا!" : "Good job!"}
             </h3>
             <p className="mt-2" style={{ color: "var(--easeL-text-muted)" }}>
               {language === "ur"
-                ? `آپ ${stageUnlock.title} پر جا سکتے ہیں۔`
-                : `You can now move to ${stageUnlock.title}.`}
+                ? `${stageUnlock.title} کے لیے تیار ہیں؟`
+                : `Ready to try ${stageUnlock.title}?`}
             </p>
             <div className="mt-5 flex gap-2">
               <button
@@ -1332,6 +1422,76 @@ export default function LessonPath1() {
                 className="easeL-btn-outline flex-1 min-h-11 font-semibold"
               >
                 {language === "ur" ? "یہی جاری رکھیں" : "Stay on this level"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {phase === "complete" && stage.stage === 0 && (
+        <div className="easeL-result-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="easeL-result-modal w-full max-w-md p-6">
+            <p className="easeL-accent-text-strong text-xs font-semibold tracking-wide">
+              {language === "ur" ? "مبارک ہو" : "Congratulations"}
+            </p>
+            <h3 className="mt-1 text-2xl font-bold" style={{ color: "var(--easeL-text)" }}>
+              {language === "ur" ? "سمت سیکھی مکمل" : "Directions complete"}
+            </h3>
+            <p className="mt-2" style={{ color: "var(--easeL-text-muted)" }}>
+              {language === "ur"
+                ? "آپ نے تمام سمتوں میں مہارت حاصل کی ہے۔"
+                : "You've mastered all directions!"}
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {["left", "right", "up", "down"].map((dir) => (
+                <div
+                  key={dir}
+                  className="rounded-lg border-2 p-3 text-center"
+                  style={{
+                    borderColor: stage0Mastery?.[dir]
+                      ? "var(--easeL-accent-success)"
+                      : "var(--easeL-border-subtle)",
+                    background: stage0Mastery?.[dir]
+                      ? "color-mix(in srgb, var(--easeL-accent-success) 8%, white)"
+                      : "transparent",
+                  }}
+                >
+                  <p className="text-sm font-semibold" style={{ color: "var(--easeL-text)" }}>
+                    {language === "ur"
+                      ? {
+                          left: "بائیں",
+                          right: "دائیں",
+                          up: "اوپر",
+                          down: "نیچے",
+                        }[dir]
+                      : dir.charAt(0).toUpperCase() + dir.slice(1)}
+                  </p>
+                  <p className="text-xs" style={{ color: "var(--easeL-text-muted)" }}>
+                    {stage0Mastery?.[dir] ? "✓" : "—"}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPhase("demo");
+                  setStage(getStage(1));
+                }}
+                className="easeL-btn-solid flex-1"
+              >
+                {language === "ur" ? "اگلا لیول" : "Next level"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPhase("demo");
+                  setAttempt(0);
+                }}
+                className="easeL-btn-outline flex-1 min-h-11 font-semibold"
+              >
+                {language === "ur" ? "دوبارہ کریں" : "Practice again"}
               </button>
             </div>
           </div>

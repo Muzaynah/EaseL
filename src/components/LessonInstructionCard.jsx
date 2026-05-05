@@ -16,7 +16,7 @@ import { Info } from "lucide-react";
  *     starts drawing, so the card doesn't block their first pen-toggle)
  */
 
-const MAX_SHOWINGS = 2;
+const MAX_SHOWINGS = 999; // Always speak instructions for accessibility
 
 const COPY = {
   0: {
@@ -90,9 +90,10 @@ export default function LessonInstructionCard({
     if (seen >= MAX_SHOWINGS) return undefined;
     setVisible(true);
     incrementSeenCount(mode, stage);
+    // Audio is handled by the lesson phase useEffects, not here
     const t = setTimeout(() => setVisible(false), durationMs);
     return () => clearTimeout(t);
-  }, [active, mode, stage, durationMs]);
+  }, [active, mode, stage, durationMs, language]);
 
   useEffect(() => {
     if (dismissSignal) setVisible(false);

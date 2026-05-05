@@ -309,15 +309,8 @@ export function maybeAdvanceStage({ profile, trialLog, userId }) {
     mode: stageDef.mode,
     stage: current,
   });
-  const latest = stageTrials[stageTrials.length - 1];
-  // Fast progression rule: one strong pass unlocks the next stage immediately.
-  if (latest && typeof latest.adherence === "number" && latest.adherence >= STAGE_UNLOCK_ADHERENCE) {
-    return current + 1;
-  }
-  // For non-adherence stages (e.g. hold), one successful attempt advances.
-  if (latest && typeof latest.adherence !== "number" && latest.success) {
-    return current + 1;
-  }
+  const mastery = evaluateMastery(stageDef, stageTrials);
+  if (mastery.status === "advance") return current + 1;
   return null;
 }
 

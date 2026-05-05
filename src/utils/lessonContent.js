@@ -21,12 +21,13 @@ export const LESSON_STAGES = [
     description:
       "Learn left, right, up, and down with short guided lines.",
     icon: "eye",
-    shape: "straight",
+    shape: "directions",
+    directions: ["left", "right", "up", "down"],
     autocompleteLevel: 100,
     corridorWidth: 220,
     corridorLength: 920,
     requiredAdherence: 50,
-    trialsForMastery: 4,
+    trialsForMastery: 3,
   },
   {
     stage: 1,
@@ -162,8 +163,10 @@ export function pathLessonDisplayLevel(pathMode, canonicalStage) {
   return s - floor + 1;
 }
 
-/** Pick a specific variant within a stage (e.g. which closed shape). */
+/** Pick a specific variant within a stage (e.g. which closed shape or direction). */
 export function variantForAttempt(stage, attemptIndex) {
+  if (stage.directions?.length)
+    return stage.directions[attemptIndex % stage.directions.length];
   if (stage.closedShapes?.length)
     return stage.closedShapes[attemptIndex % stage.closedShapes.length];
   if (stage.construction?.length)
@@ -173,13 +176,16 @@ export function variantForAttempt(stage, attemptIndex) {
 
 /**
  * List every variant in a stage as distinct shape identifiers.  Stages with
- * a single fixed shape (Stage 0-4) return a single-element array with a
- * sensible label.  Stages 5/6 return one entry per variant (circle /
- * square / triangle, sun / kite / house).  Used by LessonSelect to render
- * one tile per variant when the stage is unlocked.
+ * a single fixed shape (Stage 1-4) return a single-element array with a
+ * sensible label.  Stage 0 returns 4 directions (left/right/up/down).
+ * Stages 5/6 return one entry per variant (circle / square / triangle, sun / kite / house).
+ * Used by LessonSelect to render one tile per variant when the stage is unlocked.
  */
 export function variantsForStage(stage) {
   if (!stage) return [];
+  if (stage.directions?.length) {
+    return stage.directions.map((v) => ({ variant: v, label: v }));
+  }
   if (stage.closedShapes?.length) {
     return stage.closedShapes.map((v) => ({ variant: v, label: v }));
   }
@@ -189,9 +195,13 @@ export function variantsForStage(stage) {
   return [{ variant: null, label: stage.shape }];
 }
 
-/** Localised short name for circle / square / kite / … (tiles + lesson chrome). */
+/** Localised short name for circle / square / kite / direction / … (tiles + lesson chrome). */
 export const LESSON_VARIANT_LABELS = {
   en: {
+    left: "Move Left",
+    right: "Move Right",
+    up: "Move Up",
+    down: "Move Down",
     circle: "Circle",
     square: "Square",
     triangle: "Triangle",
@@ -200,6 +210,10 @@ export const LESSON_VARIANT_LABELS = {
     house: "House",
   },
   ur: {
+    left: "بائیں حرکت دیں",
+    right: "دائیں حرکت دیں",
+    up: "اوپر حرکت دیں",
+    down: "نیچے حرکت دیں",
     circle: "دائرہ",
     square: "مربع",
     triangle: "مثلث",

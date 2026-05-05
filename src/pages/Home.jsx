@@ -144,19 +144,11 @@ export default function Home({ user }) {
 
 function getPathLevelLabel(profile) {
   const pathId = profile?.pathId ?? profile?.lipMode ?? null;
-  const pathLevel =
-    profile?.pathLevel ??
-    (pathId === 1
-      ? profile?.lipTier === 1
-        ? 1
-        : 2
-      : pathId === 2
-      ? profile?.lipTier === 3
-        ? 1
-        : 2
-      : null);
-  if (pathId === 1) return `Path 1 - Level ${pathLevel ?? 1}`;
-  if (pathId === 2) return `Path 2 - Level ${pathLevel ?? 1}`;
+  const currentStage = profile?.currentStage ?? profile?.currentLevel ?? null;
+  if (!pathId) return "Not assigned";
+  const displayLevel = currentStage != null ? pathLessonDisplayLevel(pathId, currentStage) : 1;
+  if (pathId === 1) return `Path 1 · Level ${displayLevel}`;
+  if (pathId === 2) return `Path 2 · Level ${displayLevel}`;
   return "Not assigned";
 }
 

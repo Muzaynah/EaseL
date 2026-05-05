@@ -4,7 +4,6 @@ import { useAuth } from "./context/AuthContext";
 import { useAppState } from "./context/AppStateContext";
 import { getNextSetupStep, isSetupRoute } from "./utils/setupFlow";
 import Navbar from "./components/Navbar";
-import DevMenu from "./components/DevMenu";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
@@ -20,6 +19,7 @@ import Calibration from "./pages/Calibration";
 import PathScreener from "./pages/PathScreener";
 import Tutorial from "./pages/Tutorial";
 import CaregiverProgress from "./pages/CaregiverProgress";
+import LearningPaths from "./pages/LearningPaths";
 import GlobalEaseLCursor from "./components/GlobalEaseLCursor";
 import SettingsModal from "./components/SettingsModal";
 import { CursorPositionBridgeProvider } from "./context/CursorPositionBridgeContext";
@@ -134,7 +134,6 @@ export default function App() {
         onLanguageChange={handleNavLanguageChange}
       />
       <GlobalEaseLCursor />
-      <DevMenu />
       <SettingsModal isOpen={globalSettingsOpen} onClose={() => setGlobalSettingsOpen(false)} />
         <main id="main-content" tabIndex={-1}>
           <div key={location.pathname} className="easeL-route-transition">
@@ -212,6 +211,14 @@ export default function App() {
         />
         <Route path="/lesson-mode1" element={<Navigate to="/lesson-path1" replace />} />
         <Route path="/lesson-mode2" element={<Navigate to="/lesson-path2" replace />} />
+        <Route
+          path="/learning-paths"
+          element={
+            <ProtectedRoute>
+              <LearningPaths />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/gallery"
           element={

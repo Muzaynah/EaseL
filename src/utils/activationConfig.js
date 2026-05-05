@@ -5,14 +5,14 @@ export const ACTIVATION_PRESETS = {
     mouthOpenThreshold: 0.022,
     framesToConfirm: 1,
     cooldownMs: 250,
-    dwellMs: 900,
+    dwellMs: 3000,
     dwellRadius: 18,
   },
   canvas: {
     mouthOpenThreshold: 0.022,
     framesToConfirm: 1,
     cooldownMs: 250,
-    dwellMs: 900,
+    dwellMs: 3000,
     dwellRadius: 18,
   },
 };

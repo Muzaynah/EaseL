@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import {
-  DISABILITY_LEVEL_OPTIONS,
   LANGUAGE_OPTIONS,
   SESSION_LENGTH_OPTIONS,
 } from "../utils/profileSchema";
@@ -24,8 +23,6 @@ export default function SignUp() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [createdBy, setCreatedBy] = useState("");
-  const [disabilityLevel, setDisabilityLevel] = useState("");
   const [language, setLanguage] = useState("en");
   const [sessionLengthPreference, setSessionLengthPreference] = useState(15);
   const [showPassword, setShowPassword] = useState(false);
@@ -45,9 +42,7 @@ export default function SignUp() {
       const nextPath = await signUp(email.trim(), password, {
         name: displayName.trim() || "User",
         email: email.trim(),
-        createdBy: createdBy.trim() || null,
         caregiverReported: {
-          disabilityLevel: disabilityLevel || null,
           language,
           sessionLengthPreference: Number(sessionLengthPreference) || 15,
         },
@@ -214,47 +209,6 @@ export default function SignUp() {
               {confirmPassword && !match && (
                 <p className="mt-2 text-base" style={{ color: "var(--easeL-accent-coral)" }}>Passwords do not match</p>
               )}
-            </div>
-
-            <div>
-              <label
-                htmlFor="createdBy"
-                className="mb-2 block text-base font-semibold"
-                style={{ color: "var(--easeL-text)" }}
-              >
-                Created by (optional)
-              </label>
-              <input
-                id="createdBy"
-                type="text"
-                value={createdBy}
-                onChange={(e) => setCreatedBy(e.target.value)}
-                className="easeL-input"
-                placeholder="e.g. parent or clinician name"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="disabilityLevel"
-                className="mb-2 block text-base font-semibold"
-                style={{ color: "var(--easeL-text)" }}
-              >
-                Disability level (optional)
-              </label>
-              <select
-                id="disabilityLevel"
-                value={disabilityLevel}
-                onChange={(e) => setDisabilityLevel(e.target.value)}
-                className="easeL-input"
-              >
-                <option value="">Not specified</option>
-                {DISABILITY_LEVEL_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label} — {opt.description}
-                  </option>
-                ))}
-              </select>
             </div>
 
             <div>

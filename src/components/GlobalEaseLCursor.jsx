@@ -8,6 +8,7 @@ import { useFaceMesh } from "../hooks/useFaceMesh";
 import { useCalibratedCursor } from "../hooks/useCalibratedCursor";
 import { useGestureControl } from "../hooks/useGestureControl";
 import { resolveActivationConfig } from "../utils/activationConfig";
+import { announceElement, clearAnnouncement } from "../utils/audioAnnouncer";
 
 const HIDE_PREFIXES = ["/canvas", "/tutorial", "/screener"];
 
@@ -48,10 +49,19 @@ export default function GlobalEaseLCursor() {
 
   const { cursorPosRef, updateCursorFromLandmarks } = useCalibratedCursor(profile);
   const activation = resolveActivationConfig(profile ?? {}, "canvas");
+  const language = profile?.caregiverReported?.language ?? "en";
+
+  const handleButtonHover = useCallback((target) => {
+    if (target) {
+      announceElement(target, language);
+    } else {
+      clearAnnouncement();
+    }
+  }, [language]);
 
   const { processLandmarks } = useGestureControl({
     onPenToggle: () => {},
-    onButtonHover: () => {},
+    onButtonHover: handleButtonHover,
     buttonRefs: emptyButtonRefs,
     cursorPosRef,
     activationMethod: activation.activationMethod,

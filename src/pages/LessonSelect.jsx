@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Lock, CheckCheck, Sparkles, Code2, ChevronDown, ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Lock, CheckCheck, ArrowRight, LayoutGrid } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import {
   LESSON_STAGES,
@@ -17,13 +17,12 @@ import { didTrialPass, evaluateMastery, filterTrials } from "../utils/stageAdapt
 
 export default function LessonSelect() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, profile } = useAuth();
   const [pathId, setPathId] = useState(null);
   const [currentLevel, setCurrentLevel] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [devOpen, setDevOpen] = useState(false);
-  const devDropdownRef = useRef(null);
   const language = profile?.caregiverReported?.language ?? "en";
 
   useEffect(() => {
@@ -46,7 +45,9 @@ export default function LessonSelect() {
           setLoadError("Profile not available. Please retry from Home.");
           setPathId(null); setCurrentLevel(0);
         } else {
-          setPathId(profile.pathId ?? profile.lipMode ?? null);
+          // forcePathId from LearningPaths navigation allows viewing either path
+          const forced = location.state?.forcePathId;
+          setPathId(forced ?? profile.pathId ?? profile.lipMode ?? null);
           setCurrentLevel(resolveUnlockedStage(profile));
         }
       } catch (e) {
@@ -57,15 +58,7 @@ export default function LessonSelect() {
       setLoading(false);
     }
     load();
-  }, [user?.uid, profile?.pathId, profile?.lipMode, profile?.currentLevel, profile?.currentStage]);
-
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (devDropdownRef.current && !devDropdownRef.current.contains(e.target)) setDevOpen(false);
-    }
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
+  }, [user?.uid, profile?.pathId, profile?.lipMode, profile?.currentLevel, profile?.currentStage, location.state?.forcePathId]);
 
   if (loading) {
     return (
@@ -90,13 +83,20 @@ export default function LessonSelect() {
     );
   }
 
+  const assignedPath = profile?.pathId ?? profile?.lipMode ?? null;
   const displayMode = pathId;
+  // When viewing Path 1 from the LearningPaths page as a Path 2 user, all levels are unlocked for viewing
+  const isViewingOtherPath = assignedPath != null && displayMode != null && displayMode !== assignedPath;
   const stages = LESSON_STAGES.filter((s) =>
     displayMode === 1 ? s.mode === 1 : s.mode === 2
   );
   const stageFloor = firstStageForMode(displayMode);
   const stageCeiling = lastStageForMode(displayMode);
-  const displayStage = Math.max(stageFloor, Math.min(stageCeiling, currentLevel ?? stageFloor));
+  // Path 1 users viewing Path 2 see all locked; Path 2 users viewing Path 1 see all unlocked
+  const effectiveCurrentLevel = isViewingOtherPath && displayMode === 1
+    ? stageCeiling  // Path 2 user viewing Path 1 — show all unlocked
+    : currentLevel ?? stageFloor;
+  const displayStage = Math.max(stageFloor, Math.min(stageCeiling, effectiveCurrentLevel));
   const lessonPath = displayMode === 1 ? "/lesson-path1" : "/lesson-path2";
   const trialLog = typeof window !== "undefined" ? getTrialLog() : [];
 
@@ -142,63 +142,20 @@ export default function LessonSelect() {
             </div>
           </div>
 
-          {/* Dev menu */}
-          <div className="relative" ref={devDropdownRef}>
-            <button
-              type="button"
-              onClick={() => setDevOpen((o) => !o)}
-              className="easeL-interactive flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 font-semibold shadow"
-              style={{ background: "var(--easeL-bg-card-coral)", borderColor: "var(--easeL-border-strong)", color: "var(--easeL-text)" }}
-            >
-              <Code2 className="w-4 h-4" />
-              Dev
-              <ChevronDown className={`w-4 h-4 easeL-transition-standard ${devOpen ? "rotate-180" : ""}`} />
-            </button>
-            {devOpen && (
-              <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl shadow-xl border-2 overflow-hidden z-50"
-                style={{ background: "var(--easeL-bg-section)", borderColor: "var(--easeL-border-strong)" }}>
-                <div className="p-3 border-b" style={{ background: "var(--easeL-bg-card-coral)", borderColor: "var(--easeL-border-strong)" }}>
-                  <p className="text-xs font-semibold tracking-wide" style={{ color: "var(--easeL-text)" }}>Development only</p>
-                </div>
-                <div className="p-3 space-y-3">
-                  <div>
-                    <p className="text-xs font-medium text-slate-500 mb-1">Path</p>
-                    <div className="flex gap-2">
-                      {[1, 2].map((p) => (
-                        <button key={p} onClick={() => setPathId(p)}
-                          className={`flex-1 rounded-lg py-2 text-sm font-medium ${displayMode === p ? "bg-[var(--easeL-primary)] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-                          Path {p}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-slate-500 mb-1">Jump to level</p>
-                    <div className="flex gap-2 flex-wrap">
-                      {stages.map((s) => (
-                        <button key={s.stage} onClick={() => setCurrentLevel(s.stage)}
-                          className={`flex-1 min-w-[44px] rounded-lg py-2 text-sm font-medium ${displayStage === s.stage ? "bg-[var(--easeL-primary)] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
-                          title={`Stage index ${s.stage}`}>
-                          {pathLessonDisplayLevel(displayMode, s.stage)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="pt-2 border-t border-slate-200 flex flex-col gap-2">
-                    <button onClick={() => { navigate(`/lesson-path2?stage=${displayStage}&lockStage=1`); setDevOpen(false); }}
-                      className="easeL-accent-bg easeL-accent-text-strong w-full rounded-lg py-2.5 text-sm font-medium hover:opacity-90">
-                      Open lesson (level {pathLessonDisplayLevel(displayMode, displayStage)})
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/learning-paths")}
+            className="easeL-btn-outline flex items-center gap-2 min-h-11 px-4"
+          >
+            <LayoutGrid className="w-4 h-4" />
+            {language === "ur" ? "تمام راستے" : "All paths"}
+          </button>
         </div>
 
         <div className="space-y-4">
           {stages.map((s) => {
-            const locked = displayStage < s.stage;
+            // Path 1 users can't start Path 2 lessons even when viewing
+            const locked = displayStage < s.stage || (isViewingOtherPath && displayMode === 2);
             const stageTitle = language === "ur" ? s.titleUr ?? s.title : s.title;
             const variants = variantsForStage(s);
             const hasMultipleVariants = variants.length > 1;

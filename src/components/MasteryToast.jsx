@@ -19,7 +19,7 @@ export default function MasteryToast({ message, language = "en" }) {
 
   if (!message || !visible) return null;
 
-  const label = language === "ur" ? "مبارک ہو! نیا مرحلہ" : "Congratulations! New stage unlocked";
+  const label = language === "ur" ? "شاباش!" : "Good job!";
 
   return (
     <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-fade-scale-in">

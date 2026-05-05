@@ -24,13 +24,8 @@ import { calculateAdherence } from "../../utils/corridorGeometry";
 import { getCanvasCoordinates } from "../../utils/canvasUtils";
 import { appendSessionLog, getTrialLog } from "../../utils/persistence";
 import { resolveActivationConfig } from "../../utils/activationConfig";
-import {
-  sayPhrase,
-  stopSpeech,
-  playSuccessBeep,
-  playCheerSound,
-  speakInstruction,
-} from "../../utils/screenerAudio";
+import { playCheerSound, playSuccessBeep, stopSpeech } from "../../utils/screenerAudio";
+import { announceInstruction, stopAnnouncement, announceElement } from "../../utils/audioAnnouncer";
 import { saveLessonResultCloud } from "../../firebase/cloudData";
 import { filterTrials, getAdaptedStage, STAGE_UNLOCK_ADHERENCE } from "../../utils/stageAdaptation";
 import Path2RewardModal from "./path2/Path2RewardModal";
@@ -399,12 +394,7 @@ export default function LessonPath2() {
     language,
     onComplete: onDemoCountdownComplete,
     onBeforeCountdown: () => {
-      if (muted) return;
-      const spokenGuide =
-        language === "ur"
-          ? "نقطوں والی لکیر پر چلیں، اور شروع کرنے کے لیے منہ کھولیں۔"
-          : "open your mouth to begin and trace the dotted line.";
-      speakInstruction(spokenGuide, { language });
+      // Audio is handled in the phase-change useEffect above, no need to announce here
     },
   });
 
@@ -435,12 +425,19 @@ export default function LessonPath2() {
     return () => clearInterval(id);
   }, [phase, isDrawing, currentSegment]);
 
+  const handleToolbarHover = useCallback((target) => {
+    if (target) {
+      announceElement(target, language);
+    }
+  }, [language]);
+
   const { processLandmarks } = useGestureControl({
     cursorPosRef,
     activationMethod,
     onMouthEvent: () => {
       mouthEventsRef.current += 1;
     },
+    onButtonHover: handleToolbarHover,
     buttonRefs,
     mouthOpenThreshold: activationConfig.mouthOpenThreshold,
     framesToConfirm: activationConfig.framesToConfirm,
@@ -763,11 +760,26 @@ export default function LessonPath2() {
 
   useEffect(() => {
     if (muted) {
-      stopSpeech();
+      stopAnnouncement();
       return;
     }
-    if (phase === "trial") sayPhrase("openMouth", language);
-    return () => stopSpeech();
+    if (phase === "demo") {
+      const watchText = language === "ur" ? "پہلے میری طرف دیکھیں۔" : "Watch me first.";
+      announceInstruction(watchText, language);
+      setTimeout(() => {
+        const traceText = language === "ur"
+          ? "نقطوں والی لکیر پر چلیں۔"
+          : "Trace the dotted line.";
+        announceInstruction(traceText, language);
+      }, 1400);
+    }
+    if (phase === "trial") {
+      const openText = language === "ur"
+        ? "شروع کرنے کے لیے منہ کھولیں۔"
+        : "Open your mouth to start.";
+      announceInstruction(openText, language);
+    }
+    return () => stopAnnouncement();
   }, [phase, language, muted]);
 
   /** Paint the whole scene: background, ghost road, completed segments (tier

@@ -77,6 +77,22 @@ export function playErrorBeep() {
   }
 }
 
+let voicesCache = [];
+
+function loadVoices() {
+  if (typeof window === "undefined" || !window.speechSynthesis) return [];
+  voicesCache = window.speechSynthesis.getVoices();
+  return voicesCache;
+}
+
+// Initialize voices on page load
+if (typeof window !== "undefined" && window.speechSynthesis) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    voicesCache = window.speechSynthesis.getVoices();
+  };
+  loadVoices();
+}
+
 /**
  * Speak instruction text using the browser's speech synthesis.
  * Supports English and Urdu (framework §8.4) — if an Urdu voice is not
@@ -89,24 +105,67 @@ export function playErrorBeep() {
 export function speakInstruction(text, { onEnd, language = "en" } = {}) {
   if (typeof window === "undefined" || !window.speechSynthesis || !text) return;
   try {
-    window.speechSynthesis.cancel();
+    // Don't cancel immediately - let current speech finish naturally
+    // Only cancel if we're starting a new instruction
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+    }
+
     const u = new SpeechSynthesisUtterance(text);
-    u.rate = language === "ur" ? 0.85 : 0.7;
-    u.pitch = 1;
-    u.volume = 1;
-    const voices = window.speechSynthesis.getVoices();
-    const preferred =
-      language === "ur"
-        ? voices.find((v) => v.lang?.toLowerCase().startsWith("ur")) ||
-          voices.find((v) => v.lang?.toLowerCase().startsWith("hi")) ||
-          voices.find((v) => v.lang?.toLowerCase().startsWith("en"))
-        : voices.find((v) => v.lang?.toLowerCase().startsWith("en"));
-    if (preferred) u.voice = preferred;
-    u.lang = preferred?.lang ?? (language === "ur" ? "ur-PK" : "en-US");
-    u.onend = () => onEnd?.();
+    u.rate = language === "ur" ? 1.0 : 0.9;
+    u.pitch = 1.0;
+    u.volume = 1.0;
+
+    // Get fresh voices, or use cache if empty
+    let voices = window.speechSynthesis.getVoices();
+    if (!voices || voices.length === 0) {
+      voices = voicesCache;
+    }
+    if (!voices || voices.length === 0) {
+      // Emergency fallback: try loading again with delay
+      setTimeout(() => {
+        const retryVoices = window.speechSynthesis.getVoices();
+        if (retryVoices && retryVoices.length > 0) {
+          selectVoiceAndSpeak(u, retryVoices, language, onEnd);
+        } else {
+          // Just speak without voice selection
+          u.onend = () => onEnd?.();
+          window.speechSynthesis.speak(u);
+        }
+      }, 100);
+      return;
+    }
+
+    selectVoiceAndSpeak(u, voices, language, onEnd);
+  } catch (err) {
+    console.warn("Speech synthesis error:", err);
+  }
+}
+
+function selectVoiceAndSpeak(u, voices, language, onEnd) {
+  const preferred =
+    language === "ur"
+      ? voices.find((v) => v.lang?.toLowerCase().startsWith("ur")) ||
+        voices.find((v) => v.lang?.toLowerCase().startsWith("hi")) ||
+        voices.find((v) => v.lang?.toLowerCase().startsWith("en"))
+      : voices.find((v) => v.lang?.toLowerCase().startsWith("en")) ||
+        voices.find((v) => v.lang?.toLowerCase().startsWith("en-us"));
+
+  if (preferred) {
+    u.voice = preferred;
+    u.lang = preferred.lang;
+  } else {
+    u.lang = language === "ur" ? "ur-PK" : "en-US";
+  }
+
+  u.onend = () => onEnd?.();
+  u.onerror = (e) => {
+    console.warn("Speech synthesis error:", e);
+    onEnd?.();
+  };
+
+  if (window.speechSynthesis) {
     window.speechSynthesis.speak(u);
-  } catch {
-    // Speech synthesis availability varies by browser/OS.
   }
 }
 
@@ -142,6 +201,74 @@ export const PHRASES = {
   allDone: {
     en: "All done. Wonderful.",
     ur: "بہت خوب۔ مکمل ہو گیا۔",
+  },
+  moveLeft: {
+    en: "Move left.",
+    ur: "بائیں طرف حرکت دیں۔",
+  },
+  moveRight: {
+    en: "Move right.",
+    ur: "دائیں طرف حرکت دیں۔",
+  },
+  moveUp: {
+    en: "Move up.",
+    ur: "اوپر حرکت دیں۔",
+  },
+  moveDown: {
+    en: "Move down.",
+    ur: "نیچے حرکت دیں۔",
+  },
+  excellent: {
+    en: "Excellent work!",
+    ur: "شاندار کام!",
+  },
+  wellDone: {
+    en: "Well done!",
+    ur: "خوب رہا!",
+  },
+  keepGoing: {
+    en: "Keep going!",
+    ur: "جاری رکھیں!",
+  },
+  traceCircle: {
+    en: "Trace the circle.",
+    ur: "دائرے کو ٹریس کریں۔",
+  },
+  traceSquare: {
+    en: "Trace the square.",
+    ur: "مربع کو ٹریس کریں۔",
+  },
+  traceTriangle: {
+    en: "Trace the triangle.",
+    ur: "مثلث کو ٹریس کریں۔",
+  },
+  drawSun: {
+    en: "Draw the sun.",
+    ur: "سورج بنائیں۔",
+  },
+  drawKite: {
+    en: "Draw the kite.",
+    ur: "پتنگ بنائیں۔",
+  },
+  drawHouse: {
+    en: "Draw the house.",
+    ur: "مکان بنائیں۔",
+  },
+  masteryCongrats: {
+    en: "You've mastered this!",
+    ur: "آپ نے یہ سیکھ لیا!",
+  },
+  nextLevel: {
+    en: "Ready for the next level?",
+    ur: "اگلے درجے کے لیے تیار ہیں؟",
+  },
+  getReady: {
+    en: "Get ready.",
+    ur: "تیار ہو جائیں۔",
+  },
+  startTracing: {
+    en: "Start tracing.",
+    ur: "ٹریسنگ شروع کریں۔",
   },
 };
 

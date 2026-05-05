@@ -131,22 +131,6 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-6">
-            <button
-              type="button"
-              className="easeL-interactive flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border-2 bg-white text-base font-semibold"
-              style={{ borderColor: "var(--easeL-border)", color: "var(--easeL-text)" }}
-            >
-              <span
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-sm font-bold"
-                style={{ background: "var(--easeL-border-subtle)" }}
-              >
-                G
-              </span>
-              Sign in with Google
-            </button>
-          </div>
-
           <div className="mt-6 text-center">
             <Link to="/" className="easeL-link text-base" aria-label="Back to EaseL intro">
               Back

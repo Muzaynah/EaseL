@@ -47,7 +47,7 @@ export default function Path2RewardModal({
 }) {
   const passFrac = Math.max(
     0,
-    Math.min(1, (finishedPayload.requiredAdherence ?? 0) / 100),
+    Math.min(1, (stage?.requiredAdherence ?? finishedPayload.requiredAdherence ?? 0) / 100),
   );
   const gaugeR = Math.max(1, Number(gaugeRadius) || 64);
   const gaugeLen = 2 * Math.PI * gaugeR;
@@ -207,6 +207,7 @@ export default function Path2RewardModal({
                   {showScoreKnob ? (
                     <circle cx={knobX} cy={knobY} r={END_CAP_R} fill={endCapFill} />
                   ) : null}
+                  {passFrac > 0 ? (
                   <g
                     transform={`translate(${passMarkerX} ${passMarkerY})`}
                     style={{ filter: PASS_STAR_SHADOW }}
@@ -223,6 +224,7 @@ export default function Path2RewardModal({
                       />
                     </g>
                   </g>
+                  ) : null}
                   <g transform="translate(80 80)">
                     <text
                       x="0"
@@ -245,7 +247,7 @@ export default function Path2RewardModal({
                             className="text-[11px] font-bold uppercase tracking-wide sm:text-xs"
                             fill="var(--easeL-accent-mint)"
                           >
-                            {language === "ur" ? "کھلا" : "Unlocked"}
+                            {language === "ur" ? "شاباش!" : "Good job!"}
                           </text>
                         </g>
                       </g>
@@ -342,7 +344,7 @@ export default function Path2RewardModal({
               style={{ borderColor: "color-mix(in srgb, var(--easeL-primary) 30%, transparent)" }}
             >
               <p className="easeL-accent-text-strong text-[10px] font-bold tracking-wider">
-                {language === "ur" ? "نیا مرحلہ" : "New stage"}
+                {language === "ur" ? "اگلا مرحلہ" : "Next up"}
               </p>
               <p className="text-sm font-bold" style={{ color: "var(--easeL-text)" }}>
                 {finishedPayload.unlock.title}
